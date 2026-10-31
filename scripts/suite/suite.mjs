@@ -71,6 +71,12 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'login-look-check',
+    what: "the sign-in page draws orknux.ai's sky, lower-case wordmark and field labels",
+    needs: [],
+    /* Signs nobody in and changes nothing. */
+  },
+  {
     name: 'quick-chat-copy-check',
     what: "the quick chat's copy button shows only while the pointer is on its message, and leaves no blank row in a one-word question",
     needs: ['workspace'],

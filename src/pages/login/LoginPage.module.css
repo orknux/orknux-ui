@@ -26,10 +26,19 @@
 .header {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: var(--space-16);
+  text-align: center;
 }
 
 .logomark {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.brand {
   display: flex;
   align-items: center;
   gap: var(--space-8);
@@ -37,13 +46,6 @@
 
 .logoIcon {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-6);
 }
 
 .logoIcon svg {
@@ -53,23 +55,35 @@
   height: 20px;
 }
 
+/* As in orknux.ai's header: lower case, in the page's own face. */
 .wordmark {
   margin: 0;
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: var(--text-base);
-  letter-spacing: 1px;
+  font-weight: 600;
+  font-size: var(--text-xl);
+  letter-spacing: -0.01em;
   color: var(--color-text-primary);
 }
 
+/* orknux.ai's release pill, with its dot. */
 .versionBadge {
-  padding: var(--space-2) var(--space-6);
-  background: var(--color-border);
-  border-radius: var(--radius-4);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-4) var(--space-12);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
   font-family: var(--font-mono);
-  font-weight: 500;
-  font-size: var(--text-2xs);
+  font-size: var(--text-sm);
   color: var(--color-text-secondary);
+}
+
+.versionBadge::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: var(--sky-dot);
+  border-radius: var(--radius-full);
 }
 
 .headings {
@@ -82,6 +96,7 @@
   margin: 0;
   font-weight: 600;
   font-size: var(--text-2xl);
+  letter-spacing: -0.02em;
   color: var(--color-text-primary);
 }
 
@@ -118,11 +133,8 @@
 }
 
 .label {
-  font-family: var(--font-mono);
   font-weight: 500;
-  font-size: var(--text-sm);
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
+  font-size: var(--text-md);
   color: var(--color-text-secondary);
 }
 
@@ -168,11 +180,6 @@
   color: var(--color-text-muted);
 }
 
-/* The username reads as an identifier, so it uses the mono face. */
-.inputMono {
-  font-family: var(--font-mono);
-}
-
 .toggleVisibility {
   display: flex;
   align-items: center;
@@ -212,7 +219,7 @@
   background: var(--color-accent);
   border: 0;
   border-radius: var(--radius-6);
-  font-weight: 600;
+  font-weight: 500;
   font-size: var(--text-base);
   color: var(--color-accent-foreground);
   cursor: pointer;
@@ -241,8 +248,7 @@
  *
  * Sign-in is the first thing anybody sees, so it arrives rather than appearing:
  * the card rises into place and its parts follow a beat behind it, which reads
- * as the page settling instead of as three separate things moving. A slow
- * violet wash sits behind it all.
+ * as the page settling instead of as three separate things moving.
  *
  * Everything here is off for anyone who has asked for less motion — an
  * animation nobody can turn off is worse than none.
@@ -272,34 +278,149 @@
   }
 }
 
-@keyframes glowDrift {
-  from {
-    opacity: 0.35;
-    transform: translate3d(-6%, -3%, 0) scale(1);
-  }
-
-  to {
-    opacity: 0.6;
-    transform: translate3d(6%, 3%, 0) scale(1.12);
-  }
-}
-
 .page {
   position: relative;
   overflow: hidden;
 }
 
-/* The wash. Behind everything, and out of the accessibility tree. */
+/*
+ * orknux.ai's sky: the same stars at the same places on the same three tiles, and
+ * its blue wash. Written out here rather than shared, as the site is another
+ * repository, and kept in step by hand. Its falling stars are left out: a form
+ * somebody is typing a password into is not a place for something to catch the eye.
+ */
 .page::before {
   content: '';
   position: absolute;
-  inset: -20%;
+  inset: 0;
   z-index: 0;
   background:
-    radial-gradient(40% 40% at 30% 30%, rgb(124 58 237 / 18%), transparent 70%),
-    radial-gradient(35% 35% at 70% 65%, rgb(96 165 250 / 10%), transparent 70%);
-  animation: glowDrift 14s ease-in-out infinite alternate;
+    radial-gradient(closest-side at 50% 45%, var(--sky-wash-strong), transparent 75%),
+    radial-gradient(closest-side at 50% 45%, var(--sky-wash-soft), transparent 100%);
   pointer-events: none;
+}
+
+.sky {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.stars {
+  position: absolute;
+  inset: 0;
+  background-repeat: repeat;
+}
+
+.starsFar {
+  --tile: 420px;
+  background-size: var(--tile) var(--tile);
+  background-image:
+    radial-gradient(1px 1px at 165px 77px, var(--sky-star-3), transparent),
+    radial-gradient(1px 1px at 333px 24px, var(--sky-star-4), transparent),
+    radial-gradient(1px 1px at 420px 274px, var(--sky-star-4), transparent),
+    radial-gradient(1px 1px at 187px 298px, var(--sky-star-4), transparent),
+    radial-gradient(1px 1px at 259px 109px, var(--sky-star-4), transparent),
+    radial-gradient(1px 1px at 44px 222px, var(--sky-star-3), transparent),
+    radial-gradient(1px 1px at 35px 123px, var(--sky-star-4), transparent),
+    radial-gradient(1px 1px at 282px 217px, var(--sky-star-4), transparent),
+    radial-gradient(1px 1px at 289px 63px, var(--sky-star-4), transparent),
+    radial-gradient(1px 1px at 322px 321px, var(--sky-star-4), transparent),
+    radial-gradient(1px 1px at 295px 299px, var(--sky-star-3), transparent),
+    radial-gradient(1px 1px at 25px 113px, var(--sky-star-4), transparent),
+    radial-gradient(1px 1px at 285px 68px, var(--sky-star-3), transparent),
+    radial-gradient(1px 1px at 214px 73px, var(--sky-star-4), transparent),
+    radial-gradient(1px 1px at 292px 157px, var(--sky-star-4), transparent),
+    radial-gradient(1px 1px at 52px 297px, var(--sky-star-4), transparent),
+    radial-gradient(1px 1px at 190px 49px, var(--sky-star-4), transparent),
+    radial-gradient(1px 1px at 288px 30px, var(--sky-star-4), transparent),
+    radial-gradient(1px 1px at 254px 348px, var(--sky-star-3), transparent),
+    radial-gradient(1px 1px at 397px 160px, var(--sky-star-3), transparent),
+    radial-gradient(1px 1px at 299px 232px, var(--sky-star-3), transparent),
+    radial-gradient(1px 1px at 153px 127px, var(--sky-star-4), transparent),
+    radial-gradient(1px 1px at 357px 399px, var(--sky-star-4), transparent),
+    radial-gradient(1px 1px at 41px 294px, var(--sky-star-3), transparent),
+    radial-gradient(1px 1px at 268px 253px, var(--sky-star-3), transparent),
+    radial-gradient(1px 1px at 373px 229px, var(--sky-star-3), transparent),
+    radial-gradient(1px 1px at 311px 37px, var(--sky-star-4), transparent),
+    radial-gradient(1px 1px at 262px 214px, var(--sky-star-4), transparent),
+    radial-gradient(1px 1px at 387px 175px, var(--sky-star-4), transparent),
+    radial-gradient(1px 1px at 250px 215px, var(--sky-star-4), transparent),
+    radial-gradient(1px 1px at 342px 39px, var(--sky-star-3), transparent),
+    radial-gradient(1px 1px at 174px 355px, var(--sky-star-3), transparent),
+    radial-gradient(1px 1px at 304px 254px, var(--sky-star-3), transparent),
+    radial-gradient(1px 1px at 35px 47px, var(--sky-star-3), transparent),
+    radial-gradient(1px 1px at 242px 356px, var(--sky-star-4), transparent),
+    radial-gradient(1px 1px at 31px 374px, var(--sky-star-3), transparent),
+    radial-gradient(1px 1px at 331px 295px, var(--sky-star-3), transparent),
+    radial-gradient(1px 1px at 145px 366px, var(--sky-star-3), transparent),
+    radial-gradient(1px 1px at 342px 177px, var(--sky-star-4), transparent),
+    radial-gradient(1px 1px at 236px 181px, var(--sky-star-4), transparent);
+  animation: drift 70s linear infinite;
+}
+
+.starsMid {
+  --tile: 560px;
+  background-size: var(--tile) var(--tile);
+  background-image:
+    radial-gradient(1.5px 1.5px at 119px 505px, var(--sky-star-5), transparent),
+    radial-gradient(1.5px 1.5px at 223px 294px, var(--sky-star-5), transparent),
+    radial-gradient(1.5px 1.5px at 253px 407px, var(--sky-star-2), transparent),
+    radial-gradient(1.5px 1.5px at 508px 82px, var(--sky-star-5), transparent),
+    radial-gradient(1.5px 1.5px at 459px 411px, var(--sky-star-2), transparent),
+    radial-gradient(1.5px 1.5px at 140px 440px, var(--sky-star-2), transparent),
+    radial-gradient(1.5px 1.5px at 425px 367px, var(--sky-star-2), transparent),
+    radial-gradient(1.5px 1.5px at 236px 154px, var(--sky-star-5), transparent),
+    radial-gradient(1.5px 1.5px at 180px 154px, var(--sky-star-5), transparent),
+    radial-gradient(1.5px 1.5px at 238px 12px, var(--sky-star-2), transparent),
+    radial-gradient(1.5px 1.5px at 186px 269px, var(--sky-star-2), transparent),
+    radial-gradient(1.5px 1.5px at 4px 149px, var(--sky-star-2), transparent),
+    radial-gradient(1.5px 1.5px at 547px 378px, var(--sky-star-2), transparent),
+    radial-gradient(1.5px 1.5px at 128px 527px, var(--sky-star-5), transparent),
+    radial-gradient(1.5px 1.5px at 467px 401px, var(--sky-star-2), transparent),
+    radial-gradient(1.5px 1.5px at 408px 403px, var(--sky-star-5), transparent),
+    radial-gradient(1.5px 1.5px at 493px 410px, var(--sky-star-5), transparent),
+    radial-gradient(1.5px 1.5px at 195px 68px, var(--sky-star-5), transparent);
+  animation: drift 60s linear infinite;
+}
+
+.starsNear {
+  --tile: 760px;
+  background-size: var(--tile) var(--tile);
+  background-image:
+    radial-gradient(2.2px 2.2px at 451px 166px, var(--sky-star-6), transparent),
+    radial-gradient(2.2px 2.2px at 348px 615px, var(--sky-star-6), transparent),
+    radial-gradient(2.2px 2.2px at 104px 0px, var(--sky-star-6), transparent),
+    radial-gradient(2.2px 2.2px at 549px 103px, var(--sky-star-1), transparent),
+    radial-gradient(2.2px 2.2px at 628px 26px, var(--sky-star-6), transparent),
+    radial-gradient(2.2px 2.2px at 212px 628px, var(--sky-star-1), transparent),
+    radial-gradient(2.2px 2.2px at 152px 649px, var(--sky-star-1), transparent),
+    radial-gradient(2.2px 2.2px at 355px 616px, var(--sky-star-1), transparent),
+    radial-gradient(2.2px 2.2px at 485px 125px, var(--sky-star-6), transparent);
+  animation: drift 50s linear infinite, twinkle 5s ease-in-out infinite alternate;
+}
+
+/* One tile's height per cycle, each layer its own, so the loop has no seam. */
+@keyframes drift {
+  from {
+    background-position: 0 0;
+  }
+
+  to {
+    background-position: 0 calc(-1 * var(--tile));
+  }
+}
+
+@keyframes twinkle {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0.45;
+  }
 }
 
 .card {
@@ -322,7 +443,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .page::before,
+  .stars,
   .card,
   .header,
   .form,

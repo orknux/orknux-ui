@@ -6,6 +6,7 @@ import type { AuthMethodInfo, Credentials } from '../../api/session';
 import eyeIcon from '../../assets/eye.svg';
 import { OrknuxMark } from '../../components/OrknuxMark';
 import { Attribution } from '../../components/Attribution';
+import { LoginSky } from './LoginSky';
 import styles from './LoginPage.module.css';
 import { t } from '../../i18n';
 
@@ -77,13 +78,16 @@ export function LoginPage({ onSubmit, onResetPassword, version = `v${__APP_VERSI
 
   return (
     <main className={styles.page}>
+      <LoginSky />
       <div className={styles.card}>
         <header className={styles.header}>
           <div className={styles.logomark}>
-            <span className={styles.logoIcon}>
-              <OrknuxMark />
-            </span>
-            <p className={styles.wordmark}>ORKNUX</p>
+            <div className={styles.brand}>
+              <span className={styles.logoIcon}>
+                <OrknuxMark />
+              </span>
+              <p className={styles.wordmark}>orknux</p>
+            </div>
             <span className={styles.versionBadge}>{version}</span>
           </div>
 
@@ -127,7 +131,7 @@ export function LoginPage({ onSubmit, onResetPassword, version = `v${__APP_VERSI
               <div className={styles.inputContainer}>
                 <input
                   id={usernameId}
-                  className={`${styles.input} ${styles.inputMono}`}
+                  className={styles.input}
                   type="text"
                   name="username"
                   autoComplete="username"

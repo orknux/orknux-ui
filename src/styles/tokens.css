@@ -15,6 +15,16 @@
   color-scheme: dark;
 
   /* Surfaces */
+  /* The sky behind the sign-in page, the same as orknux.ai's: its stars, and the blue wash. */
+  --sky-star-1: rgba(160,195,255,.9);
+  --sky-star-2: rgba(170,200,255,.7);
+  --sky-star-3: rgba(190,210,255,.5);
+  --sky-star-4: rgba(255,255,255,.55);
+  --sky-star-5: rgba(255,255,255,.75);
+  --sky-star-6: rgba(255,255,255,.95);
+  --sky-wash-strong: rgba(111, 152, 214, 0.22);
+  --sky-wash-soft: rgba(79, 127, 196, 0.15);
+  --sky-dot: #4f7fc4;
   --color-bg: #09090b;
   --color-surface: #121214;
   --color-surface-raised: #18181b;
