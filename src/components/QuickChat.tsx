@@ -15,6 +15,7 @@ import helpIcon from '../assets/circle-help.svg';
 import scanIcon from '../assets/scan-search.svg';
 import { Markdown } from './Markdown';
 import { CopyButton } from './CopyButton';
+import { ResizeHandle, useDragSize, useWindowHeight } from './DragSize';
 import { PAGES } from '../navigation';
 import styles from './QuickChat.module.css';
 import { t, tf } from '../i18n';
@@ -311,6 +312,20 @@ export function QuickChat({ workspacePath, userName }: QuickChatProps) {
    * centred on the button and either can move with the window's size.
    */
   const panel = useRef<HTMLElement>(null);
+  /*
+   * Dragged from the two edges away from its corner, as it is anchored to the
+   * button. A table in an answer needs more room than a question does, and which
+   * is asked is somebody's own habit, so it is remembered.
+   */
+  const windowTall = useWindowHeight();
+  const [windowWide, setWindowWide] = useState(() => window.innerWidth);
+  useEffect(() => {
+    const seen = () => setWindowWide(window.innerWidth);
+    window.addEventListener('resize', seen);
+    return () => window.removeEventListener('resize', seen);
+  }, []);
+  const panelWidth = useDragSize({ storageKey: 'orknux.quickChat.width', initial: 380, min: 320, max: windowWide - 48, edge: 'left' });
+  const panelHeight = useDragSize({ storageKey: 'orknux.quickChat.height', initial: 460, min: 300, max: windowTall - 140, edge: 'top' });
   const launcher = useRef<HTMLButtonElement>(null);
 
   /*
@@ -365,7 +380,62 @@ export function QuickChat({ workspacePath, userName }: QuickChatProps) {
   return (
     <>
       {open && (
-        <section ref={panel} className={styles.panel} aria-label={t('Quick chat')}>
+        <section
+          ref={panel}
+          className={styles.panel}
+          aria-label={t('Quick chat')}
+          style={{ width: panelWidth.size, height: panelHeight.size }}
+          data-testid="quick-chat-panel"
+        >
+          <ResizeHandle
+            orientation="vertical"
+            className={styles.resizeLeft}
+            label={t('Width of the quick chat')}
+            valueNow={panelWidth.size}
+            valueMin={320}
+            valueMax={windowWide - 48}
+            title={t('Drag to change the width; double-click to put it back')}
+            dragging={panelWidth.dragging}
+            handlers={panelWidth.handlers}
+          />
+          <ResizeHandle
+            orientation="horizontal"
+            className={styles.resizeTop}
+            label={t('Height of the quick chat')}
+            valueNow={panelHeight.size}
+            valueMin={300}
+            valueMax={windowTall - 140}
+            title={t('Drag to change the height; double-click to put it back')}
+            dragging={panelHeight.dragging}
+            handlers={panelHeight.handlers}
+          />
+          {/* Both at once, from the corner a window is usually taken by. Decoration to a keyboard, which has the two above. */}
+          <div
+            className={styles.resizeCorner}
+            aria-hidden="true"
+            data-testid="quick-chat-resize-corner"
+            title={t('Drag to resize; double-click to put it back')}
+            onPointerDown={(event) => {
+              panelWidth.handlers.onPointerDown(event);
+              panelHeight.handlers.onPointerDown(event);
+            }}
+            onPointerMove={(event) => {
+              panelWidth.handlers.onPointerMove(event);
+              panelHeight.handlers.onPointerMove(event);
+            }}
+            onPointerUp={(event) => {
+              panelWidth.handlers.onPointerUp(event);
+              panelHeight.handlers.onPointerUp(event);
+            }}
+            onPointerCancel={(event) => {
+              panelWidth.handlers.onPointerCancel(event);
+              panelHeight.handlers.onPointerCancel(event);
+            }}
+            onDoubleClick={() => {
+              panelWidth.reset();
+              panelHeight.reset();
+            }}
+          />
           <header className={styles.header}>
             <span className={styles.title}>{t('Ask AI')}</span>
             <button type="button" className={styles.close} onClick={() => setOpen(false)} aria-label={t('Close')}>

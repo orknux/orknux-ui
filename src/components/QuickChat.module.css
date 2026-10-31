@@ -359,3 +359,34 @@
   font-size: var(--text-xs);
   color: var(--color-text-secondary);
 }
+
+/* The edges away from the corner the panel is anchored to. Laid over its border, thin, so nothing inside moves for them. */
+.resizeLeft,
+.resizeTop,
+.resizeCorner {
+  position: absolute;
+  z-index: 2;
+}
+
+.resizeLeft {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 8px;
+}
+
+.resizeTop {
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 8px;
+}
+
+.resizeCorner {
+  top: 0;
+  left: 0;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+  touch-action: none;
+}

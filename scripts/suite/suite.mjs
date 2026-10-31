@@ -83,6 +83,12 @@ export const TESTS = [
     /* Turns the preference off and back on; every answer is drawn from a stubbed stream. */
   },
   {
+    name: 'quick-chat-resize-check',
+    what: 'the quick chat dragged bigger from its left edge, top edge or corner, anchored to the button, remembered, and kept on the window',
+    needs: ['workspace'],
+    /* It sets the workspace's quick-chat model and puts it back; no model is asked. */
+  },
+  {
     name: 'quick-chat-copy-check',
     what: "the quick chat's copy button shows only while the pointer is on its message, and leaves no blank row in a one-word question",
     needs: ['workspace'],
