@@ -75,6 +75,16 @@ opened beside what you are doing.
   **Ctrl+PageDown** and **Ctrl+PageUp**, which go round from the last tab to the
   first. The last two are yours to change: **Next Tab Shortcut** and **Previous
   Tab Shortcut** on Preferences.
+- **Splitting a window**: drag a tab to the edge of a pane to give it a pane of
+  its own on that side, as often and in whichever directions you like; the part
+  of the pane it would take lights up. Dropped on another pane's tabs or the
+  middle of its page, it joins that pane. Drag the line between two panes to
+  resize them, double-click it to even them out. A pane closes with its last tab.
+  A pane narrower than 900 pixels draws its page smaller rather than squeezing it.
+- **Moving between windows**: **Alt+Right** and **Alt+Left** go to the next and
+  previous pane, and on through any other windows of the app. They are yours to
+  change: **Next Window Shortcut** and **Previous Window Shortcut** on Preferences.
+  With only one pane and one window open, the keys stay back and forward.
 - **A new window**: right-click a link into Orknux and choose **Open link in new
   window**, or **Shift**+click it. **Copy link address** is there too. A window opened from a page with unsaved work
   asks before that work is left behind.

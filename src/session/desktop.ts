@@ -1,4 +1,4 @@
-import { nextTabShortcut, onTabShortcuts, previousTabShortcut } from './shortcut';
+import { nextTabShortcut, nextWindowShortcut, onTabShortcuts, previousTabShortcut, previousWindowShortcut } from './shortcut';
 
 /**
  * What the desktop app's preload puts on a page of the interface, and nothing
@@ -12,6 +12,8 @@ import { nextTabShortcut, onTabShortcuts, previousTabShortcut } from './shortcut
  */
 interface DesktopBridge {
   tabShortcuts(next: string, previous: string): void;
+  /** Absent on an app older than this page: the server updates itself, and the app it runs in need not have. */
+  windowShortcuts?(next: string, previous: string): void;
   recordingKeys(on: boolean): void;
 }
 
@@ -24,11 +26,14 @@ export function inDesktopApp(): boolean {
   return bridge() !== null;
 }
 
-/** Hands the app the tab shortcuts now and on every change. */
+/** Hands the app the tab and window shortcuts now and on every change. */
 export function shareTabShortcuts(): void {
   const app = bridge();
   if (app === null) return;
-  const share = () => app.tabShortcuts(nextTabShortcut(), previousTabShortcut());
+  const share = () => {
+    app.tabShortcuts(nextTabShortcut(), previousTabShortcut());
+    app.windowShortcuts?.(nextWindowShortcut(), previousWindowShortcut());
+  };
   share();
   onTabShortcuts(share);
 }

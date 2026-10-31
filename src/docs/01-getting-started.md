@@ -297,7 +297,7 @@ Node**, **Undo**, **Redo**, **Duplicate Node**, **Publish** and **Voice Mute**,
 which mutes your microphone in voice mode and is `Alt`+`M` unless you choose
 another; the workflow canvas's **Cut Nodes**, **Copy Nodes**, **Paste Nodes**,
 **Rectangle Select** and **Joint Tool**; the image editor's tools; and **Find**,
-**Zoom In**, **Zoom Out**, **Arrange**, **Next Tab** and **Previous Tab**. Each
+**Zoom In**, **Zoom Out**, **Arrange**, **Next Tab**, **Previous Tab**, **Next Window** and **Previous Window**. Each
 is changed by
 pressing the keys you want rather than by picking from a list, because which
 keys are free depends on your browser and your machine and not on this

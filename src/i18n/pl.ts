@@ -175,6 +175,10 @@ export const PL: Record<string, string> = {
   "Magic select all": "Magiczne zaznaczenie całości",
   "Magic Select All Shortcut": "Skrót magicznego zaznaczenia całości",
   // The desktop app's tab keys.
+  "Next Window Shortcut": "Skrót do następnego okna",
+  "Previous Window Shortcut": "Skrót do poprzedniego okna",
+  "Moves to the next split pane or window in the desktop app, from the last back to the first. With only one open, the keys are left to the page.": "Przechodzi do następnego panelu podziału lub okna w aplikacji desktopowej, z ostatniego z powrotem do pierwszego. Gdy otwarte jest tylko jedno, klawisze działają na stronie.",
+  "Moves to the previous split pane or window in the desktop app, from the first back to the last. With only one open, the keys are left to the page.": "Przechodzi do poprzedniego panelu podziału lub okna w aplikacji desktopowej, z pierwszego z powrotem do ostatniego. Gdy otwarte jest tylko jedno, klawisze działają na stronie.",
   "Next Tab Shortcut": "Skrót do następnej karty",
   "Previous Tab Shortcut": "Skrót do poprzedniej karty",
   "Moves to the next tab in the desktop app, from the last back to the first; Ctrl+Tab always does too.": "Przechodzi do następnej karty w aplikacji desktopowej, z ostatniej z powrotem do pierwszej; Ctrl+Tab działa zawsze.",

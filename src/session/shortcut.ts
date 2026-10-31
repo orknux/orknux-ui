@@ -24,6 +24,8 @@ const MAGIC_LASSO_KEY = 'orknux.magicLassoShortcut';
 const MAGIC_ALL_KEY = 'orknux.magicAllShortcut';
 const NEXT_TAB_KEY = 'orknux.nextTabShortcut';
 const PREVIOUS_TAB_KEY = 'orknux.previousTabShortcut';
+const NEXT_WINDOW_KEY = 'orknux.nextWindowShortcut';
+const PREVIOUS_WINDOW_KEY = 'orknux.previousWindowShortcut';
 
 /** What opens the palette when nothing has been chosen. */
 export const DEFAULT_SHORTCUT = 'Ctrl+Q';
@@ -211,6 +213,15 @@ export const DEFAULT_NEXT_TAB_SHORTCUT = 'Ctrl+PageDown';
 export const DEFAULT_PREVIOUS_TAB_SHORTCUT = 'Ctrl+PageUp';
 
 /**
+ * The desktop app's next and previous window, when nothing has been chosen -
+ * each split pane counts as one, and so does each window of the app. Alt and the
+ * arrows are a browser's back and forward, and still are wherever there is only
+ * one window to be in: the app takes them only when there is somewhere to go.
+ */
+export const DEFAULT_NEXT_WINDOW_SHORTCUT = 'Alt+ArrowRight';
+export const DEFAULT_PREVIOUS_WINDOW_SHORTCUT = 'Alt+ArrowLeft';
+
+/**
  * The image editor's own tools - the rail down the canvas's left, the brush's
  * width, and the blur's three shapes - when nothing has been chosen.
  *
@@ -328,6 +339,8 @@ const magicLasso = remembered(MAGIC_LASSO_KEY, DEFAULT_MAGIC_LASSO_SHORTCUT);
 const magicAll = remembered(MAGIC_ALL_KEY, DEFAULT_MAGIC_ALL_SHORTCUT);
 const nextTab = remembered(NEXT_TAB_KEY, DEFAULT_NEXT_TAB_SHORTCUT);
 const previousTab = remembered(PREVIOUS_TAB_KEY, DEFAULT_PREVIOUS_TAB_SHORTCUT);
+const nextWindow = remembered(NEXT_WINDOW_KEY, DEFAULT_NEXT_WINDOW_SHORTCUT);
+const previousWindow = remembered(PREVIOUS_WINDOW_KEY, DEFAULT_PREVIOUS_WINDOW_SHORTCUT);
 
 export function paletteShortcut(): Shortcut {
   return palette.get();
@@ -617,6 +630,30 @@ export function usePreviousTabShortcut(): Shortcut {
   return previousTab.use();
 }
 
+export function nextWindowShortcut(): Shortcut {
+  return nextWindow.get();
+}
+
+export function setNextWindowShortcut(next: Shortcut): void {
+  nextWindow.set(next);
+}
+
+export function useNextWindowShortcut(): Shortcut {
+  return nextWindow.use();
+}
+
+export function previousWindowShortcut(): Shortcut {
+  return previousWindow.get();
+}
+
+export function setPreviousWindowShortcut(next: Shortcut): void {
+  previousWindow.set(next);
+}
+
+export function usePreviousWindowShortcut(): Shortcut {
+  return previousWindow.use();
+}
+
 /**
  * What opens Find in a document, in the editor and the view: Ctrl+F, the
  * browser's own find, which the page then keeps from opening - its find cannot
@@ -665,14 +702,10 @@ export function useImageEditorShortcuts(): Record<ImageEditorShortcut, Shortcut>
   return held;
 }
 
-/** Called whenever either tab shortcut changes; what `desktop.ts` passes on to the app. */
+/** Called whenever a tab or window shortcut changes; what `desktop.ts` passes on to the app. */
 export function onTabShortcuts(listener: () => void): () => void {
-  const one = nextTab.subscribe(listener);
-  const two = previousTab.subscribe(listener);
-  return () => {
-    one();
-    two();
-  };
+  const stop = [nextTab, previousTab, nextWindow, previousWindow].map((one) => one.subscribe(listener));
+  return () => stop.forEach((one) => one());
 }
 
 /** One key, named as somebody would read it rather than as the browser sends it. */

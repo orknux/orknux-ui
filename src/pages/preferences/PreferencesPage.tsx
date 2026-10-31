@@ -112,6 +112,14 @@ import {
   DEFAULT_NEXT_TAB_SHORTCUT,
   DEFAULT_PREVIOUS_TAB_SHORTCUT,
   nextTabShortcut,
+  nextWindowShortcut,
+  previousWindowShortcut,
+  setNextWindowShortcut,
+  setPreviousWindowShortcut,
+  useNextWindowShortcut,
+  usePreviousWindowShortcut,
+  DEFAULT_NEXT_WINDOW_SHORTCUT,
+  DEFAULT_PREVIOUS_WINDOW_SHORTCUT,
   previousTabShortcut,
   setNextTabShortcut,
   setPreviousTabShortcut,
@@ -159,6 +167,8 @@ type ShortcutKey =
   | 'magicAll'
   | 'nextTab'
   | 'previousTab'
+  | 'nextWindow'
+  | 'previousWindow'
   | 'find'
   | ImageEditorShortcut;
 
@@ -223,6 +233,8 @@ const SHORTCUTS: { key: ShortcutKey; stored: () => string; store: (next: string)
   { key: 'magicAll', stored: magicAllShortcut, store: setMagicAllShortcut },
   { key: 'nextTab', stored: nextTabShortcut, store: setNextTabShortcut },
   { key: 'previousTab', stored: previousTabShortcut, store: setPreviousTabShortcut },
+  { key: 'nextWindow', stored: nextWindowShortcut, store: setNextWindowShortcut },
+  { key: 'previousWindow', stored: previousWindowShortcut, store: setPreviousWindowShortcut },
   { key: 'find', stored: findShortcut, store: setFindShortcut },
   ...IMAGE_EDITOR_SHORTCUTS.map((name) => ({
     key: name,
@@ -284,6 +296,10 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
   const nextTabKey = shortcutDrafts.nextTab ?? storedNextTab;
   const storedPreviousTab = usePreviousTabShortcut();
   const previousTabKey = shortcutDrafts.previousTab ?? storedPreviousTab;
+  const storedNextWindow = useNextWindowShortcut();
+  const nextWindowKey = shortcutDrafts.nextWindow ?? storedNextWindow;
+  const storedPreviousWindow = usePreviousWindowShortcut();
+  const previousWindowKey = shortcutDrafts.previousWindow ?? storedPreviousWindow;
   const storedImageEditor = useImageEditorShortcuts();
   const storedFind = useFindShortcut();
   const findKey = shortcutDrafts.find ?? storedFind;
@@ -339,6 +355,8 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
     | 'magicAll'
     | 'nextTab'
     | 'previousTab'
+    | 'nextWindow'
+    | 'previousWindow'
     | 'find'
     | ImageEditorShortcut
     | null
@@ -403,6 +421,8 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
       else if (recording === 'magicAll') draftShortcut('magicAll', said);
       else if (recording === 'nextTab') draftShortcut('nextTab', said);
       else if (recording === 'previousTab') draftShortcut('previousTab', said);
+      else if (recording === 'nextWindow') draftShortcut('nextWindow', said);
+      else if (recording === 'previousWindow') draftShortcut('previousWindow', said);
       else if (inImageEditor(recording)) draftShortcut(recording, said);
       else draftShortcut('format', said);
       setRecording(null);
@@ -1577,18 +1597,39 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
               );
             })}
 
-            {inDesktopApp() && (['nextTab', 'previousTab'] as const).map((which) => {
-              const label = which === 'nextTab' ? t('Next Tab Shortcut') : t('Previous Tab Shortcut');
-              const key = which === 'nextTab' ? nextTabKey : previousTabKey;
-              const fallback = which === 'nextTab' ? DEFAULT_NEXT_TAB_SHORTCUT : DEFAULT_PREVIOUS_TAB_SHORTCUT;
+            {inDesktopApp() && (['nextTab', 'previousTab', 'nextWindow', 'previousWindow'] as const).map((which) => {
+              const { label, hint, key, fallback } = {
+                nextTab: {
+                  label: t('Next Tab Shortcut'),
+                  hint: t('Moves to the next tab in the desktop app, from the last back to the first; Ctrl+Tab always does too.'),
+                  key: nextTabKey,
+                  fallback: DEFAULT_NEXT_TAB_SHORTCUT,
+                },
+                previousTab: {
+                  label: t('Previous Tab Shortcut'),
+                  hint: t('Moves to the previous tab in the desktop app, from the first back to the last; Ctrl+Shift+Tab always does too.'),
+                  key: previousTabKey,
+                  fallback: DEFAULT_PREVIOUS_TAB_SHORTCUT,
+                },
+                nextWindow: {
+                  label: t('Next Window Shortcut'),
+                  hint: t('Moves to the next split pane or window in the desktop app, from the last back to the first. With only one open, the keys are left to the page.'),
+                  key: nextWindowKey,
+                  fallback: DEFAULT_NEXT_WINDOW_SHORTCUT,
+                },
+                previousWindow: {
+                  label: t('Previous Window Shortcut'),
+                  hint: t('Moves to the previous split pane or window in the desktop app, from the first back to the last. With only one open, the keys are left to the page.'),
+                  key: previousWindowKey,
+                  fallback: DEFAULT_PREVIOUS_WINDOW_SHORTCUT,
+                },
+              }[which];
               return (
                 <div className={styles.setting} key={which}>
                   <span className={styles.labelWithHint}>
                     <span className={styles.settingLabel} id={`${which}-shortcut`}>{label}</span>
                     <FieldHint label={label}>
-                      {which === 'nextTab'
-                        ? t('Moves to the next tab in the desktop app, from the last back to the first; Ctrl+Tab always does too.')
-                        : t('Moves to the previous tab in the desktop app, from the first back to the last; Ctrl+Shift+Tab always does too.')}
+                      {hint}
                     </FieldHint>
                   </span>
                   <div className={styles.options}>
