@@ -59,16 +59,18 @@
 }
 
 /*
- * The name, or the prompt cut short: one line, never wider than half the bar.
- * Laid out at a few letters and grown into the room the bar has left, so a
- * long name is cut short rather than pushing the buttons onto a second row -
- * and is never squeezed past those few letters, where it used to vanish.
+ * The name, or the prompt cut short: one line.
+ * Laid out at a few letters, because a bar that wraps decides on what it lays
+ * out and not on what could shrink - at its full width a long name pushed the
+ * buttons onto a second row. Grown from there into the room the bar has left,
+ * so it is cut short only where it must, and never squeezed past those few
+ * letters, where it used to vanish. As wide as the name and no wider: without
+ * that it grew across the bar, leaving what follows it stranded mid-way.
  */
-/* As wide as the name and no wider: it grew to half the bar, leaving what follows it stranded mid-way. */
 .toolbarTitle {
-  flex: 0 1 auto;
+  flex: 1 1 3em;
   min-width: 3em;
-  max-width: 50%;
+  max-width: max-content;
   overflow: hidden;
   color: var(--color-text-primary);
   font-weight: 500;

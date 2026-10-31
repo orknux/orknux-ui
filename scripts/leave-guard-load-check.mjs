@@ -47,7 +47,12 @@
  */
 import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
 
-const { browser, page, graphql } = await open({ viewport: { width: 1600, height: 1000 } });
+/*
+ * Wide enough that no fixture's line wraps. Monaco draws a wrapped line as two
+ * view-lines, so the code column reads a wrap as a line break nobody wrote, and
+ * since the function editor gave the chat a column the code has less room.
+ */
+const { browser, page, graphql } = await open({ viewport: { width: 2000, height: 1000 } });
 
 /* ----------------------------------------------------------------- fixture */
 

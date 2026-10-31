@@ -226,7 +226,7 @@ try {
   );
   check(!(await wouldAsk()), 'and the page has nothing to lose: the browser would let the tab close');
 
-  await page.getByRole('link', { name: 'Functions', exact: true }).first().click();
+  await page.getByTestId('function-back').click();
   await page.waitForTimeout(800);
   check(!(await asking()), 'and leaving it asks nothing');
 

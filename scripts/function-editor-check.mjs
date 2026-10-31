@@ -177,6 +177,8 @@ try {
   const copies = page.locator('[data-testid$="-chat-message-copy"]');
   record((await copies.count()) >= 2, `every message of the chat has a copy button (${await copies.count()})`);
   await copies.first().click();
+  // Said once the clipboard has answered, which is a moment after the press.
+  await page.getByText('Copied').first().waitFor({ timeout: 5_000 }).catch(() => undefined);
   record((await page.getByText('Copied').count()) === 1, 'and pressing one says it copied');
 } finally {
   await graphql(`mutation($w: ID!, $id: ID) { setWorkspaceQuickChatModel(workspaceId: $w, modelId: $id) { id } }`, { w: WORKSPACE, id: had.quickChatModelId });

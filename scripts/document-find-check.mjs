@@ -42,6 +42,8 @@ const active = () => page.locator('.ProseMirror-active-search-match').first().bo
 await page.locator('[data-testid="document-prose"] > p').first().click();
 // Find steps on from the caret, as a word processor's does: from the very start, the first match is the first.
 await page.keyboard.press('Control+Home');
+// The editor hears of the caret from the browser's selectionchange, a moment after the key: focus leaving before that strands it.
+await page.waitForTimeout(200);
 await page.keyboard.press('Control+f');
 await page.getByTestId('document-find').waitFor({ timeout: 3_000 }).catch(() => undefined);
 record(await page.getByTestId('document-find-input').evaluate((one) => one === document.activeElement).catch(() => false), 'Ctrl+F opens Find, with the box ready to type in');
