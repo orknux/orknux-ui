@@ -349,7 +349,7 @@ const READ = () =>
       return found === undefined ? null : found.textContent.replace(word, '').trim();
     };
     const caption =
-      boxes.map((one) => one.textContent.trim()).find((text) => ['Listening', 'Thinking', 'Speaking'].includes(text)) ??
+      boxes.map((one) => one.textContent.trim()).find((text) => ['Listening', 'Thinking', 'Speaking', 'Preparing speech'].includes(text)) ??
       null;
     return {
       at: Date.now(),
@@ -466,11 +466,11 @@ record(
   `it never said Speaking before there was sound (${early.length} such moments across ${seen.length})`,
 );
 const waited = seen.filter(
-  (one) => one.answeredAt !== null && one.playedAt === null && one.caption === 'Thinking',
+  (one) => one.answeredAt !== null && one.playedAt === null && one.caption === 'Preparing speech',
 );
 record(
   waited.length > 0,
-  `and it did say Thinking across the gap between the answer arriving and the sound starting ` +
+  `and it did say Preparing speech across the gap between the answer arriving and the sound starting ` +
     `(${waited.length} moments)`,
 );
 

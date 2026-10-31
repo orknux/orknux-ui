@@ -4070,6 +4070,12 @@ export const TESTS = [
      */
   },
   {
+    name: 'voice-answered-check',
+    what: 'In voice mode the end of an answer goes to speech and the panel listens again without waiting for what follows on the stream, and it says Preparing speech while the audio is made',
+    needs: ['workspace'],
+    /* Makes two models and a chat and removes them; puts the turn-taking back. */
+  },
+  {
     name: 'voice-cancel-waiting-check',
     what: 'In voice mode, Cancel takes back the message waiting for the next turn and the turn in flight goes on; Send now stops that turn and sends the message after the stop',
     needs: ['workspace'],

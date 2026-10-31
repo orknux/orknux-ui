@@ -92,6 +92,9 @@ export interface VoiceModeProps {
    *
    * `settled` says the text so far ends on a whole utterance with more still
    * to come - a line the agent wrote before its calls - so it is read at once.
+   * `over` says the answer is complete, ahead of the promise, which also waits
+   * for what follows an answer (naming the chat): the turn is over for the
+   * panel from there, and what is left of the request is not its to stop.
    *
    * `signal` is this turn's, and it is aborted when the turn is cut short. It
    * has to reach the request rather than be checked around it: this panel used
@@ -99,7 +102,7 @@ export interface VoiceModeProps {
    * turn still in flight when the next thing is said - and a bill for every
    * word of an answer nobody heard. Issue #299.
    */
-  onSay: (text: string, onProgress: (soFar: string, settled?: boolean) => void, signal: AbortSignal) => Promise<string>;
+  onSay: (text: string, onProgress: (soFar: string, settled?: boolean, over?: boolean) => void, signal: AbortSignal) => Promise<string>;
   /**
    * Asks the last question again and resolves with the second answer.
    *
@@ -108,7 +111,7 @@ export interface VoiceModeProps {
    * chat. Optional, so a panel opened somewhere with nothing to ask again is
    * simply never asked to.
    */
-  onAgain?: (onProgress: (soFar: string, settled?: boolean) => void, signal: AbortSignal) => Promise<string>;
+  onAgain?: (onProgress: (soFar: string, settled?: boolean, over?: boolean) => void, signal: AbortSignal) => Promise<string>;
   onClose: () => void;
   /**
    * Told whenever listening becomes thinking becomes speaking.
@@ -325,6 +328,8 @@ export function VoiceMode({
   ref,
 }: VoiceModeProps) {
   const [phase, setPhase] = useState<VoicePhase>('listening');
+  /** Words have gone to the speech model and no sound has come back yet: thinking, to the phase, but not to the person. */
+  const [preparing, setPreparing] = useState(false);
   /*
    * The same thing the level watcher can read. Issue #342.
    *
@@ -530,6 +535,7 @@ export function VoiceMode({
       if (!starting.again) setSaid(starting);
       setError(null);
       setPhase('thinking');
+      setPreparing(false);
 
       reading.current?.stop();
       // Whatever the last turn was still asking, in case it ended without
@@ -540,8 +546,14 @@ export function VoiceMode({
       const say = readAloud(
         workspaceId,
         {
+          onPreparing: () => {
+            if (live.current && mine === turn.current) setPreparing(true);
+          },
           onStart: () => {
-            if (live.current && mine === turn.current) setPhase('speaking');
+            if (live.current && mine === turn.current) {
+              setPreparing(false);
+              setPhase('speaking');
+            }
           },
           onProgress: (part) => {
             if (live.current && mine === turn.current) setHeard(part);
@@ -551,7 +563,10 @@ export function VoiceMode({
           },
           // The agent said what it is doing and went back to doing it: thinking again until it next speaks.
           onPause: () => {
-            if (live.current && mine === turn.current) setPhase('thinking');
+            if (live.current && mine === turn.current) {
+              setPreparing(false);
+              setPhase('thinking');
+            }
           },
           onFailure: (reason) => {
             if (live.current && mine === turn.current) setError(reason);
@@ -563,11 +578,17 @@ export function VoiceMode({
       setHeard(null);
 
       void (async () => {
+        let answered = false;
         try {
           // Handed over and returned at once: the reading queues and plays on its own, and never holds the turn back.
-          const watch = (soFar: string, settled?: boolean) => {
+          const watch = (soFar: string, settled?: boolean, over?: boolean) => {
             if (!live.current || mine !== turn.current) return;
-            say.push(soFar, false, settled === true);
+            if (over === true) {
+              answered = true;
+              // Nothing left to stop: cutting in from here stops the reading, and a next turn leaves the request to finish.
+              if (asking.current === asked) asking.current = null;
+            }
+            say.push(soFar, over === true, settled === true);
           };
           /*
            * Asking again is the same turn with a different door into the model.
@@ -578,7 +599,7 @@ export function VoiceMode({
           const answer = starting.again
             ? await (againSender.current?.(watch, asked.signal) ?? Promise.resolve(''))
             : await sender.current(starting.text, watch, asked.signal);
-          if (!live.current || mine !== turn.current) return;
+          if (!live.current || mine !== turn.current || answered) return;
           // Whatever is left, punctuated or not: the end of an answer often is
           // not a sentence. An answer that was empty ends the turn here too.
           say.push(answer, true);
@@ -588,7 +609,8 @@ export function VoiceMode({
           // it. The panel is already listening again — that is what the press
           // asked for — and a red line under it would report the interruption
           // as a fault.
-          if (asked.signal.aborted) return;
+          // Nor did one whose answer was already whole, which only lost the news of what came after it.
+          if (asked.signal.aborted || answered) return;
           setError(cause instanceof Error ? cause.message : t('That turn did not work.'));
           say.stop();
           // A turn that failed is not a reason to stop listening — the next one
@@ -976,6 +998,7 @@ export function VoiceMode({
     asking.current = null;
     queued.current = null;
     setWaiting(null);
+    setPreparing(false);
     busy.current = false;
     return Promise.resolve(stopped);
   }
@@ -1059,7 +1082,9 @@ export function VoiceMode({
       : phase === 'listening'
         ? 'Listening'
         : phase === 'thinking'
-          ? 'Thinking'
+          ? preparing
+            ? t('Preparing speech')
+            : 'Thinking'
           : 'Speaking';
 
   return (
@@ -1146,7 +1171,9 @@ export function VoiceMode({
           ? t('Speak — it answers when you stop.')
           : phase === 'speaking'
             ? t('Tap the circle to cut in.')
-            : t('Working out what to say.')}
+            : preparing
+              ? t('The answer is being turned into sound.')
+              : t('Working out what to say.')}
       </p>
 
       <div className={styles.said}>

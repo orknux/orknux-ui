@@ -1571,6 +1571,8 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   const voiceFiles = useRef<{ text: string; ids: string[] } | null>(null);
   /** The spoken turns not yet finished here: one cut short for the next overlaps it for a moment. */
   const voiceTurns = useRef(0);
+  /** Which spoken turn is the newest, for what an older one hears after the next has begun. */
+  const voiceTurnNow = useRef(0);
   /**
    * What this workspace has decided about how a turn ends, or nothing.
    *
@@ -2021,7 +2023,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    */
   async function handleVoiceTurn(
     text: string,
-    onProgress: (soFar: string, settled?: boolean) => void,
+    onProgress: (soFar: string, settled?: boolean, over?: boolean) => void,
     signal: AbortSignal,
   ): Promise<string> {
     if (currentId === null) return '';
@@ -2045,6 +2047,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     thinkingSoFar.current = '';
     setSending(true);
     voiceTurns.current += 1;
+    const mine = (voiceTurnNow.current += 1);
 
     let answer = '';
     let failure: string | null = null;
@@ -2078,7 +2081,11 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
           ...watchWorking(voiced),
           // A sound the agent plays goes into the panel's speaker queue, ahead of the answer it reads.
           onPlay: (sound) => voiceControls.current?.play(sound.url),
-          onDone: (spend) => keepThinkingOnAnswer(spend),
+          onAnswered: () => voiced.over(),
+          // A next turn may have begun while this one was named, and the last message is that one's.
+          onDone: (spend) => {
+            if (mine === voiceTurnNow.current) keepThinkingOnAnswer(spend);
+          },
           onError: (reason) => {
             failure = reason;
           },
@@ -2092,6 +2099,8 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
       if (failure !== null) throw new Error(failure);
       // The turn ended out of sight: what the server kept is the answer.
       if (!heard) await fetchChatMessages(currentId).then(setMessages).catch(() => undefined);
+      // A server too old to have said so, and in any case before the list below is waited for.
+      voiced.over();
       drewPicture.current = false;
       await loadSessions(currentId);
     } finally {
@@ -2716,7 +2725,7 @@ ${named}`;
    * nobody is looking at.
    */
   async function handleVoiceAgain(
-    onProgress: (soFar: string, settled?: boolean) => void,
+    onProgress: (soFar: string, settled?: boolean, over?: boolean) => void,
     signal: AbortSignal,
   ): Promise<string> {
     if (currentId === null) return '';
@@ -2727,6 +2736,8 @@ ${named}`;
 
     setError(null);
     setSending(true);
+    voiceTurns.current += 1;
+    const mine = (voiceTurnNow.current += 1);
     if (unanswered) {
       // Nothing to keep as a take: an empty answer under the question, filled as it streams.
       setWorking(NOTHING_YET);
@@ -2754,7 +2765,10 @@ ${named}`;
         },
         ...watchWorking(voiced),
         onPlay: (sound) => voiceControls.current?.play(sound.url),
-        onDone: (spend) => keepThinkingOnAnswer(spend),
+        onAnswered: () => voiced.over(),
+        onDone: (spend) => {
+          if (mine === voiceTurnNow.current) keepThinkingOnAnswer(spend);
+        },
         onError: (reason) => {
           failure = reason;
         },
@@ -2762,6 +2776,7 @@ ${named}`;
       }, signal, true);
       if (failure !== null) throw new Error(failure);
       if (!heard) await fetchChatMessages(currentId).then(setMessages).catch(() => undefined);
+      voiced.over();
       await loadSessions(currentId);
     } catch (cause) {
       /*
@@ -2782,7 +2797,8 @@ ${named}`;
        * already said it is sending. Clearing it here would clear that, and the
        * *Waiting for Gemma…* under the turn would go out while it was waiting.
        */
-      if (!signal.aborted) setSending(false);
+      voiceTurns.current -= 1;
+      if (voiceTurns.current === 0) setSending(false);
     }
     return voiced.text();
   }

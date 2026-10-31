@@ -638,6 +638,8 @@ export const PL: Record<string, string> = {
   "Finished": "Zakończono",
   "Waiting": "Oczekiwanie",
   "Send now": "Wyślij teraz",
+  "Preparing speech": "Przygotowywanie mowy",
+  "The answer is being turned into sound.": "Odpowiedź jest zamieniana na dźwięk.",
   "Working…": "Pracuję…",
   "Looking…": "Szukam…",
   "Checking…": "Sprawdzam…",

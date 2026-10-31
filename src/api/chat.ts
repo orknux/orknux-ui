@@ -551,6 +551,12 @@ export interface ChatStreamHandlers {
    * conversation.
    */
   onCompacted?: (held: { replaced: number; kept: number; tokens: number; summary: string }) => void;
+  /**
+   * The answer is complete and saved. Naming the chat may still hold `onDone`
+   * back by a model call, so whoever is waiting on the words waits on this.
+   * Older servers do not send it.
+   */
+  onAnswered?: () => void;
   onDone: (spend: ChatSpend) => void;
   onError: (reason: string) => void;
   /**
@@ -955,6 +961,7 @@ async function read(
     else if (frame.event === 'said' && payload.text !== undefined) handlers.onSaid?.(payload.text);
     else if (frame.event === 'personRead' && payload.text !== undefined) handlers.onPersonRead?.(payload.text);
     else if (frame.event === 'titleFailed' && payload.reason !== undefined) handlers.onTitleFailed?.(String(payload.reason));
+    else if (frame.event === 'answered') handlers.onAnswered?.();
     else if (frame.event === 'titling') handlers.onTitling?.();
     else if (frame.event === 'titled' && payload.title !== undefined) handlers.onTitled?.(String(payload.title));
     else if (frame.event === 'session' && payload.id !== undefined) handlers.onSession?.(String(payload.id));

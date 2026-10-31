@@ -26,12 +26,14 @@ export interface VoicedTurn {
   said: (text: string) => void;
   /** The answer so far, from its beginning. */
   answered: (soFar: string) => void;
+  /** The answer is complete: whatever is left of it is read now. Said once, however often it is called. */
+  over: () => void;
   /** Everything to read for the turn, once it is over. */
   text: () => string;
 }
 
 /** Hands `onProgress` the text to read so far, and whether it ends on a whole utterance. */
-export function voicedTurn(onProgress: (soFar: string, settled?: boolean) => void): VoicedTurn {
+export function voicedTurn(onProgress: (soFar: string, settled?: boolean, over?: boolean) => void): VoicedTurn {
   /** Handed over already, and never to change. */
   let sealed = '';
   /** The lines read so far, as compared against the answer. */
@@ -39,6 +41,7 @@ export function voicedTurn(onProgress: (soFar: string, settled?: boolean) => voi
   let answer = '';
   /** Where in the answer the part not yet sealed starts. */
   let answerFrom = 0;
+  let ended = false;
 
   const join = (before: string, after: string) => (before === '' ? after : after === '' ? before : `${before}\n\n${after}`);
   const current = (over: boolean) => join(sealed, unrepeated(answer.slice(answerFrom), lines, over));
@@ -56,6 +59,11 @@ export function voicedTurn(onProgress: (soFar: string, settled?: boolean) => voi
     answered(soFar) {
       answer = soFar;
       onProgress(current(false), false);
+    },
+    over() {
+      if (ended) return;
+      ended = true;
+      onProgress(current(true), false, true);
     },
     text: () => current(true),
   };

@@ -122,6 +122,8 @@ export interface Reading {
 }
 
 export interface Listener {
+  /** Called when words are handed to the speech model while nothing is sounding yet: the wait before `onStart`. */
+  onPreparing?: () => void;
   /** Called once, when audio actually begins - not when it was asked for. */
   onStart?: () => void;
   /** Called when the last of the answer has been played, and not when it is stopped. */
@@ -403,6 +405,7 @@ export function readAloud(
       settledLast = settled;
       pending.push(...parts);
       total += parts.reduce((sum, part) => sum + part.length, 0);
+      if (!started) listener.onPreparing?.();
       void drain();
     },
     play(url) {
