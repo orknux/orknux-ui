@@ -81,6 +81,7 @@ opened beside what you are doing.
   middle of its page, it joins that pane. Drag the line between two panes to
   resize them, double-click it to even them out. A pane closes with its last tab.
   A pane narrower than 900 pixels draws its page smaller rather than squeezing it.
+- **Splitting from a tab**: right-click a tab and choose **Split horizontally**, one above the other, or **Split vertically**, side by side. A tab alone in its pane opens its page again in the new pane.
 - **Moving between windows**: **Alt+Right** and **Alt+Left** go to the next and
   previous pane, and on through any other windows of the app. They are yours to
   change: **Next Window Shortcut** and **Previous Window Shortcut** on Preferences.
