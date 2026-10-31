@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import type { SessionUser } from '../../api/session';
-import { setChatAvatarShown, setChatCostShown, setMyLanguage, setMyTimeZone, setUserEmail, setUserEmailNotifications } from '../../api/users';
+import { setChatAvatarShown, setChatCostShown, setChatSpeedShown, setMyLanguage, setMyTimeZone, setUserEmail, setUserEmailNotifications } from '../../api/users';
 import moonIcon from '../../assets/moon.svg';
 import sunIcon from '../../assets/sun.svg';
 import { AccessTokens } from '../../components/AccessTokens';
@@ -528,6 +528,9 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
   const [avatarShown, setAvatarShown] = useState(session.chatAvatarShown !== false);
   const [savedAvatar, setSavedAvatar] = useState(session.chatAvatarShown !== false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [speedShown, setSpeedShown] = useState(session.chatSpeedShown !== false);
+  const [savedSpeed, setSavedSpeed] = useState(session.chatSpeedShown !== false);
+  const [speedError, setSpeedError] = useState<string | null>(null);
 
   const [savedTheme, setSavedTheme] = useState<Theme>(currentTheme);
   const [accent, setAccent] = useState<Accent>(currentAccent);
@@ -544,6 +547,7 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
     notify !== savedNotify,
     costShown !== savedCost,
     avatarShown !== savedAvatar,
+    speedShown !== savedSpeed,
     zone !== savedZone,
     theme !== savedTheme,
     accent !== savedAccent,
@@ -592,6 +596,17 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
         setSavedAvatar(held.chatAvatarShown);
       } catch (cause) {
         setAvatarError(cause instanceof Error ? cause.message : t('Could not save that.'));
+        failed = true;
+      }
+    }
+    if (speedShown !== savedSpeed) {
+      setSpeedError(null);
+      try {
+        const held = await setChatSpeedShown(speedShown);
+        setSpeedShown(held.chatSpeedShown);
+        setSavedSpeed(held.chatSpeedShown);
+      } catch (cause) {
+        setSpeedError(cause instanceof Error ? cause.message : t('Could not save that.'));
         failed = true;
       }
     }
@@ -827,6 +842,40 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
               {avatarError !== null && (
                 <p className={styles.error} role="alert">
                   {avatarError}
+                </p>
+              )}
+            </div>
+
+            <div className={styles.setting}>
+              <span className={styles.labelWithHint}>
+                <span className={styles.settingLabel} id="chat-speed">{t('Speed in Chat')}</span>
+                <FieldHint label={t('Speed in Chat')}>
+                  <p>{t('Shows how fast the model is writing, in tokens a second, beside the tokens under a chat. Marked ~ while it is an estimate.')}</p>
+                </FieldHint>
+              </span>
+              <div className={styles.options} role="radiogroup" aria-labelledby="chat-speed">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={speedShown}
+                  disabled={saving}
+                  className={speedShown ? styles.optionCurrent : styles.option}
+                  onClick={() => setSpeedShown(true)}
+                  data-testid="chat-speed-on"
+                >{t('On')}</button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={!speedShown}
+                  disabled={saving}
+                  className={speedShown ? styles.option : styles.optionCurrent}
+                  onClick={() => setSpeedShown(false)}
+                  data-testid="chat-speed-off"
+                >{t('Off')}</button>
+              </div>
+              {speedError !== null && (
+                <p className={styles.error} role="alert">
+                  {speedError}
                 </p>
               )}
             </div>

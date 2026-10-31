@@ -77,6 +77,12 @@ export const TESTS = [
     /* Signs nobody in and changes nothing. */
   },
   {
+    name: 'chat-speed-check',
+    what: "the model's writing speed right of the tokens under a chat: live and marked ~ while it arrives, the provider's figure when done, and absent for somebody who turned it off",
+    needs: ['workspace'],
+    /* Turns the preference off and back on; every answer is drawn from a stubbed stream. */
+  },
+  {
     name: 'quick-chat-copy-check',
     what: "the quick chat's copy button shows only while the pointer is on its message, and leaves no blank row in a one-word question",
     needs: ['workspace'],

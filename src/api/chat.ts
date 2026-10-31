@@ -526,6 +526,10 @@ export interface ChatStreamHandlers {
    * second, from the moment writing starts until the call is made.
    */
   onWriting?: (writing: Writing) => void;
+  /** Characters the model has just produced, of any kind: what the live speed is worked out from. */
+  onProduced?: (chars: number) => void;
+  /** The speed the provider itself measured, heard just before `onDone`; null where it said none. */
+  onMeasured?: (perSecond: number | null) => void;
   onCall: (call: { at: number; tool: string; arguments: string }) => void;
   /** And what that lookup gave back. */
   onCalled: (answer: { at: number; result: string; failed: boolean; link: ItemLink | null }) => void;
@@ -867,6 +871,7 @@ async function read(
   handlers: ChatStreamHandlers,
   heard: Heard = { position: 0, skip: 0, ended: false, idle: false },
 ): Promise<void> {
+  let writingSoFar = 0;
   await readEventStream(response, (frame) => {
     if (frame.event === 'idle') heard.idle = true;
     if (!CONTROL_FRAMES.has(frame.event)) {
@@ -889,6 +894,7 @@ async function read(
       thinkingMillis?: number;
       inputTokens?: number;
       outputTokens?: number;
+      generatedPerSecond?: number;
       cost?: number | null;
       reason?: string;
       title?: string;
@@ -912,8 +918,13 @@ async function read(
     if (payload === null) return;
 
     if (frame.event === 'following') handlers.onFollowing?.();
-    else if (frame.event === 'chunk' && payload.text !== undefined) handlers.onChunk(payload.text);
-    else if (frame.event === 'thinking' && payload.text !== undefined) handlers.onThinking(payload.text);
+    else if (frame.event === 'chunk' && payload.text !== undefined) {
+      handlers.onProduced?.(payload.text.length);
+      handlers.onChunk(payload.text);
+    } else if (frame.event === 'thinking' && payload.text !== undefined) {
+      handlers.onProduced?.(payload.text.length);
+      handlers.onThinking(payload.text);
+    }
     else if (frame.event === 'thought' && payload.text !== undefined) handlers.onThought?.(payload.text, Number(payload.millis ?? 0));
     else if (frame.event === 'drew' && payload.markdown !== undefined) handlers.onDrew(payload.markdown);
     else if (frame.event === 'play' && payload.url !== undefined) {
@@ -953,6 +964,9 @@ async function read(
         promptProcessed: payload.processed ?? 0,
       });
     } else if (frame.event === 'writing' && payload.chars !== undefined) {
+      // Counted from the start of each call, so a smaller number is a new call rather than a step back.
+      handlers.onProduced?.(payload.chars >= writingSoFar ? payload.chars - writingSoFar : payload.chars);
+      writingSoFar = payload.chars;
       handlers.onWriting?.({ tool: payload.tool ?? null, chars: payload.chars });
     }
     else if (frame.event === 'call' && payload.at !== undefined) {
@@ -969,6 +983,7 @@ async function read(
         link: payload.link ?? null,
       });
     } else if (frame.event === 'done') {
+      handlers.onMeasured?.(payload.generatedPerSecond ?? null);
       handlers.onDone({
         millis: payload.millis ?? 0,
         thinkingMillis: payload.thinkingMillis ?? 0,

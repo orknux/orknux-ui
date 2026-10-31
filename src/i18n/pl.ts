@@ -2515,6 +2515,10 @@ export const PL: Record<string, string> = {
 
   // --- what an answer cost ---------------------------------------------------------
   "Answer Cost": "Koszt odpowiedzi",
+  "Speed in Chat": "Szybkość w czacie",
+  "Shows how fast the model is writing, in tokens a second, beside the tokens under a chat. Marked ~ while it is an estimate.": "Pokazuje, jak szybko model pisze, w tokenach na sekundę, obok tokenów pod czatem. Znak ~ oznacza wartość szacunkową.",
+  "How fast the model wrote, as it measured it": "Jak szybko model pisał, według jego własnego pomiaru",
+  "How fast the model is writing, estimated from what has arrived": "Jak szybko model pisze, oszacowane na podstawie tego, co dotarło",
   "Avatar in Chat": "Awatar w czacie",
   "Draws your avatar beside what you said, as the agent's is drawn beside its answers.": "Rysuje twój awatar obok tego, co napisałeś, tak jak awatar agenta obok jego odpowiedzi.",
   "Puts what an answer cost beside how long it took, on the answer just given.": "Pokazuje koszt odpowiedzi obok czasu, jaki zajęła, przy właśnie udzielonej odpowiedzi.",

@@ -111,6 +111,7 @@ import { copyText } from '../../components/clipboard';
 import { OpenDefinitionIcon } from '../../components/OpenDefinitionIcon';
 import { ChatWidgets } from '../../components/ChatWidgets';
 import { actOnChatWidget, fetchChatWidgets, removeChatWidget, type ChatWidget } from '../../api/widgets';
+import { SpeedMeter, speedText } from './speedMeter';
 import styles from './ChatPage.module.css';
 import { t, tf } from '../../i18n';
 import { ChatEffort } from './ChatEffort';
@@ -346,6 +347,25 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   /** Where to put the caret once a completed word has been drawn into the box. */
   const caretAfter = useRef<number | null>(null);
   const [sending, setSending] = useState(false);
+  /** The model's writing speed: live and estimated during a turn, what the provider measured after one where it said. */
+  const [speed, setSpeed] = useState<{ perSecond: number; measured: boolean } | null>(null);
+  const speedMeter = useRef(new SpeedMeter());
+  const speedSettled = useRef(false);
+  // Read twice a second during a turn, so it falls away when the model stops to run a tool.
+  useEffect(() => {
+    if (!sending) return undefined;
+    const reading = window.setInterval(() => {
+      // The turn's own figure is in; the turn only has to finish closing.
+      if (speedSettled.current) return;
+      const perSecond = speedMeter.current.current(Date.now());
+      setSpeed(perSecond === null ? null : { perSecond, measured: false });
+    }, 500);
+    return () => window.clearInterval(reading);
+  }, [sending]);
+  // Another chat's speed is not this one's.
+  useEffect(() => {
+    setSpeed(null);
+  }, [currentId]);
 
   /*
    * The chat's widgets, read when it opens and again when a turn ends - a turn
@@ -2085,9 +2105,18 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    */
   function watchWorking(voiced?: VoicedTurn): Pick<
     ChatStreamHandlers,
-    'onThinking' | 'onThought' | 'onDrew' | 'onFiled' | 'onWidgets' | 'onSaid' | 'onPersonRead' | 'onSession' | 'onTitleFailed' | 'onTitling' | 'onTitlingAbandoned' | 'onTitled' | 'onWriting' | 'onCall' | 'onCalled' | 'onCompacting' | 'onCompacted'
+    'onProduced' | 'onMeasured' | 'onThinking' | 'onThought' | 'onDrew' | 'onFiled' | 'onWidgets' | 'onSaid' | 'onPersonRead' | 'onSession' | 'onTitleFailed' | 'onTitling' | 'onTitlingAbandoned' | 'onTitled' | 'onWriting' | 'onCall' | 'onCalled' | 'onCompacting' | 'onCompacted'
   > {
+    speedMeter.current = new SpeedMeter();
+    speedSettled.current = false;
+    setSpeed(null);
     return {
+      onProduced: (chars) => speedMeter.current.add(chars, Date.now()),
+      onMeasured: (perSecond) => {
+        speedSettled.current = true;
+        const overall = perSecond ?? speedMeter.current.overall();
+        setSpeed(overall === null ? null : { perSecond: overall, measured: perSecond !== null });
+      },
       onThinking: (piece) => {
         // Mirrored into a ref as well as into state, because `onDone` has to
         // read the whole of it to put it on the message and cannot see a state
@@ -3508,6 +3537,8 @@ ${named}`;
         ? tf('{tokens} and {pictures}', { tokens: spentPart, pictures: drawnPart })
         : (spentPart ?? drawnPart);
 
+  const speedShown = session.chatSpeedShown !== false ? speed : null;
+
   /** Sent and not begun: the last turn is still empty and nothing has been looked up on the way. */
   const waitingNow = sending && messages[messages.length - 1]?.content === '' && !anyWorking(working);
   const waitingLine = (
@@ -4506,9 +4537,20 @@ ${named}`;
           {errorBanner}
           {passingBanner}
 
-          {spent !== null && (
-            <p className={styles.spent} title={t('What this chat has read and written, all of it')}>
-              {spent}
+          {(spent !== null || speedShown !== null) && (
+            <p className={styles.spent}>
+              {spent !== null && <span title={t('What this chat has read and written, all of it')}>{spent}</span>}
+              {spent !== null && speedShown !== null && ' · '}
+              {speedShown !== null && (
+                <span
+                  data-chat-speed=""
+                  title={speedShown.measured
+                    ? t('How fast the model wrote, as it measured it')
+                    : t('How fast the model is writing, estimated from what has arrived')}
+                >
+                  {speedText(speedShown.perSecond, speedShown.measured)}
+                </span>
+              )}
             </p>
           )}
           {/* What the agent keeps live in this chat - timers, stopwatches - just above where the person writes. */}

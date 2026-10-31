@@ -31,6 +31,8 @@ export interface SessionUser {
   chatCostShown?: boolean;
   /** Whether a chat draws their avatar beside what they said; true until turned off on Preferences. */
   chatAvatarShown?: boolean;
+  /** Whether a chat shows how fast the model is writing, beside the tokens; true until turned off on Preferences. */
+  chatSpeedShown?: boolean;
   /** Whether Preferences offers them access tokens of their own - internal users only. Issue #2. */
   tokensAllowed?: boolean;
 }

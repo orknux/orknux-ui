@@ -35,6 +35,8 @@ export interface AppUser {
   chatCostShown: boolean;
   /** Whether their chats draw their avatar beside what they said. */
   chatAvatarShown: boolean;
+  /** Whether their chats show how fast the model is writing. */
+  chatSpeedShown: boolean;
   type: UserType;
   roles: RoleRef[];
   /** False for anybody the identity provider defines. */
@@ -48,7 +50,7 @@ export interface AppUser {
 }
 
 const USER_FIELDS =
-  'id username displayName email emailChosen emailNotifications chatCostShown chatAvatarShown language timeZone type roles { id name } ' +
+  'id username displayName email emailChosen emailNotifications chatCostShown chatAvatarShown chatSpeedShown language timeZone type roles { id name } ' +
   'editable hasPassword lastSignedInAt lastModifiedAt lastModifiedBy';
 
 /** A token, as it is listed: never its secret, which is shown once. */
@@ -154,6 +156,15 @@ export async function setChatCostShown(shown: boolean): Promise<AppUser> {
     { shown },
   );
   return data.setChatCostShown;
+}
+
+/** Turns the speed beside the tokens in your own chats on or off; yours only, as the cost line is. */
+export async function setChatSpeedShown(shown: boolean): Promise<AppUser> {
+  const data = await graphql<{ setChatSpeedShown: AppUser }>(
+    `mutation ($shown: Boolean!) { setChatSpeedShown(shown: $shown) { ${USER_FIELDS} } }`,
+    { shown },
+  );
+  return data.setChatSpeedShown;
 }
 
 /** Turns your avatar beside what you said in your own chats on or off; yours only, as the cost line is. */
