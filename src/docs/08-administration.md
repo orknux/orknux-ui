@@ -402,7 +402,7 @@ What this installation allows, for every workspace in it.
   storage and the same size limit.
 
 Under **Chat** too are the numbers that bound a conversation with a model:
-**Tool Rounds** (100), **Note Length** and **Notes Per Conversation** for what an
+**Tool Rounds** (5000), **Note Length** and **Notes Per Conversation** for what an
 agent writes to itself, **Empty Answer Retries** and **Unusable Reply
 Retries**, **Model Answer Time Limit** (an hour), how often the *Writing…* line
 is updated and how long it is believed, **Reading Progress Shown After** for a
@@ -901,7 +901,7 @@ of its own here - boxes, watchers, bulkheads, HTTP tools - that chapter says mor
 | Setting | Default | Range | What it does |
 |---|---|---|---|
 | **Chat** | On |  | Whether this installation has a chat at all; see *Settings*, above. |
-| **Tool Rounds** | 100 rounds | 2-10,000 | A round is one call to the model: it answers, or it asks for tools and what it asks for is run and handed back. An agent that has not answered by the last one is stopped, because a model talking to itself is billed for every round. This is the number every agent follows; one whose work is longer can be given its own on its page. |
+| **Tool Rounds** | 5000 rounds | 2-10,000 | A round is one call to the model: it answers, or it asks for tools and what it asks for is run and handed back. An agent that has not answered by the last one is stopped, because a model talking to itself is billed for every round. This is the number every agent follows; one whose work is longer can be given its own on its page. |
 | **Rename Chats Every** | 20 exchanges | 0-1,000 | A chat is named by a model after its first exchange, and named again from its latest messages after this many more. 0 names it once. A title somebody typed is never replaced. |
 | **Chat Title Time Limit** | 30 seconds | 1-600 | How long the workspace's companion model has to name a chat. Past it, or when it fails, the chat's own model names it. |
 | **Completion Context** | 6 messages | 0-50 | How many of the chat’s latest messages the completion model is shown, so a suggestion reads as a reply. |

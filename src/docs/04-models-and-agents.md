@@ -435,7 +435,7 @@ the nearest wins:
 1. the agent's own number, on this page;
 2. the workspace's, under **Workspace Settings → Agents**, for every agent of
    that workspace that has no number of its own;
-3. the installation's, **Tool Rounds** in Admin Settings - 100 unless changed.
+3. the installation's, **Tool Rounds** in Admin Settings - 5000 unless changed.
 
 **Progress messages.** How much the agent writes while it is still working - the
 short messages that reach whoever asked before its answer does. In a Slack
@@ -529,7 +529,7 @@ decided it did. The **Watchers** skill is **Always** for every agent, so each
 conversation begins with the agent loading it: one extra call, for an agent
 that then knows to wait for something with a watcher rather than by guessing.
 
-**Tool Rounds** - how many rounds of calling tools one turn may take - is 100 on
+**Tool Rounds** - how many rounds of calling tools one turn may take - is 5000 on
 a fresh installation, in Admin Settings and on an agent, and goes up to 10000.
 It was 8. An installation that saved its own number keeps it, and one relying
 on the default gets 100 unless `ORKNUX_CHAT_MAX_ROUNDS` says otherwise.
