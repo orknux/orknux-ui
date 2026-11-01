@@ -61,7 +61,17 @@ export async function reachesTheServer(read, want, what) {
 
 /** The page shows [want] within a few seconds, without a reload. */
 export async function reachesTheTab(page, want, what) {
-  const seen = await page.waitForFunction(want, null, { timeout: 12_000 }).then(() => true).catch(() => false);
+  /*
+   * Asked from here rather than handed to waitForFunction: that evals a string
+   * inside the page, the page's script-src refuses eval, and the refusal read as
+   * a tab that never moved.
+   */
+  const started = Date.now();
+  let seen = false;
+  while (!seen && Date.now() - started < 12_000) {
+    seen = await page.evaluate(want);
+    if (!seen) await new Promise((wake) => setTimeout(wake, 250));
+  }
   record(seen, `${what}, in the other tab without a reload`);
 }
 

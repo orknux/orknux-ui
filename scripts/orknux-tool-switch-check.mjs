@@ -37,25 +37,31 @@ await page.goto(`${BASE}/workspace/${WORKSPACE}/agents/${agent.id}/settings`, { 
 record(await drawn(page, "the agent's page"), "the agent's page is on screen");
 record(await row().waitFor({ timeout: 20_000 }).then(() => true).catch(() => false), `the ${TOOL} row is drawn`);
 
-record((await reads()) === 'always', `granted, it reads Always (${await reads()})`);
+// An orknux_ tool starts at Offer since 9f1c90f6: under a tool limit, sixty tools carried on every turn were sixty too many.
+record((await reads()) === 'offer', `granted, it reads Offer (${await reads()})`);
 record(!(await state().isDisabled()), 'and it can be pressed');
 await state().click();
-record((await reads()) === 'hide', `one press hides it (${await reads()})`);
+record((await reads()) === 'always', `one press marks it Always (${await reads()})`);
 await state().click();
-record((await reads()) === 'offer', `a second press offers it (${await reads()})`);
+record((await reads()) === 'hide', `a second press hides it (${await reads()})`);
+await state().click();
+record((await reads()) === 'offer', `a third offers it (${await reads()})`);
 
 /* Offer: granted, not carried. */
 await save();
 let back = await held();
 record(back.tools.includes(TOOL), `saved at Offer, the agent still holds ${TOOL}`);
 record(!back.requiredTools.includes(TOOL), 'and it is not marked Always');
-record(back.requiredTools.includes('orknux_workflows'), 'while the other orknux_ tools stay Always');
+record(back.tools.includes('orknux_workflows'), 'while the other orknux_ tools stay held');
 await reload();
 record((await reads()) === 'offer', `and it reads Offer after a reload (${await reads()})`);
 
 /* Offer -> Always -> Hide. */
 await state().click();
 record((await reads()) === 'always', `a press from Offer marks it Always (${await reads()})`);
+await save();
+back = await held();
+record(back.requiredTools.includes(TOOL) && !back.requiredTools.includes('orknux_workflows'), 'saved, the server marks that one Always and no other');
 await state().click();
 record((await reads()) === 'hide', `and one more hides it (${await reads()})`);
 await save();

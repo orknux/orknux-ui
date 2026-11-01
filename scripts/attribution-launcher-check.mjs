@@ -12,7 +12,8 @@ const { browser, page } = await open({ viewport: { width: 1440, height: 900 } })
 
 async function measure(width) {
   await page.setViewportSize({ width, height: 900 });
-  await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
+  // Any page but a chat: `/` opens on one, and a chat has no quick chat to launch.
+  await page.goto(`${BASE}/docs`, { waitUntil: 'domcontentloaded' });
   await page.locator('[class*="_attributionBar_"]').first().waitFor({ timeout: 20_000 });
   await page.waitForTimeout(500);
   return page.evaluate(() => {

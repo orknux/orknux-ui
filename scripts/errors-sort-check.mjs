@@ -59,7 +59,8 @@ try {
       const listed = await oftenSubjects();
       record(sortedBy(listed, true), `what failed most often goes A to Z by What (${listed.join(' | ')})`);
       const pressable = await often.locator('thead th [aria-sort]').count();
-      record(pressable === 4, `and every one of its headings is pressable (${pressable} of 4)`);
+      // What, Source, Times, Last and - since e9b05f2f - the workspaces it failed in.
+      record(pressable === 5, `and every one of its headings is pressable (${pressable} of 5)`);
     }
   }
 } finally {

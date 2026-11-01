@@ -3,27 +3,37 @@
  * the labels' column is as wide as the longest label, where a fixed 160px left
  * "Images" a long way from "On".
  *
- * Read off the workspace's newest research, shown as given images and no web search.
+ * Starts a research of its own and deletes it: the suite's fixture holds none
+ * since the manual's chapters stopped seeding it (v1.2.3). Nothing can answer it
+ * from a runner and nothing needs to - what it was given is said whatever came
+ * of it. Shown as given images and no web search.
  */
 import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1000 } });
-// Any workspace's research will do: the fixture's own may have none.
-let research;
-let where = WORKSPACE;
-const { workspaces: listed } = await graphql('query { workspaces(page: 0, size: 200) { content { id } } }').catch(() => ({ workspaces: { content: [] } }));
-const workspaces = listed?.content ?? [];
-for (const id of [WORKSPACE, ...(workspaces ?? []).map((one) => one.id)]) {
-  const { researches } = await graphql(
-    'query ($w: ID!) { researches(workspaceId: $w, page: 0, size: 1) { content { id } } }',
-    { w: id },
-  ).catch(() => ({ researches: { content: [] } }));
-  research = researches?.content?.[0];
-  if (research !== undefined) {
-    where = id;
-    break;
-  }
-}
+const { researchModes } = await graphql('query ($w: ID!) { researchModes(workspaceId: $w) { id kind } }', { w: WORKSPACE });
+const { workspaceAgents } = await graphql(
+  'query ($w: ID!) { workspaceAgents(workspaceId: $w, page: 0, size: 1) { content { id } } }',
+  { w: WORKSPACE },
+);
+const { startResearch: research } = await graphql(
+  'mutation ($input: StartResearchInput!) { startResearch(input: $input) { id } }',
+  {
+    input: {
+      workspaceId: WORKSPACE,
+      question: `zz what was it given ${Date.now()}`,
+      modeId: researchModes.find((one) => one.kind === 'SHALLOW').id,
+      agentMode: 'SINGLE',
+      agentId: workspaceAgents.content[0].id,
+      language: 'FORMAL',
+      outputFormat: 'PDF',
+      useWebSearch: false,
+      includeImages: false,
+      websitesInclude: ['example.invalid'],
+    },
+  },
+);
+const where = WORKSPACE;
 record(research !== undefined, `a research to open (${research?.id} in workspace ${where})`);
 
 // Given images and no web search, whatever it was really given: two short labels, so the gap is plain to see.
@@ -55,4 +65,5 @@ if (research !== undefined) {
 }
 
 await page.unrouteAll({ behavior: 'ignoreErrors' }).catch(() => {});
+await graphql('mutation ($id: ID!) { deleteResearch(id: $id) }', { id: research.id }).catch(() => undefined);
 await finish(browser);

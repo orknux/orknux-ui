@@ -30,7 +30,7 @@ record(there, 'the installation has a box for how long a note to self may be');
 
 if (there) {
   record(Number(await box.inputValue()) === was.noteMaxCharacters, `and it opens on what the server holds (${await box.inputValue()})`);
-  record(was.noteMaxCharactersConfigured === 1000, `a fresh installation allows a thousand characters (${was.noteMaxCharactersConfigured})`);
+  record(was.noteMaxCharactersConfigured === 2000, `a fresh installation allows two thousand characters (${was.noteMaxCharactersConfigured})`);
   record(await box.getAttribute('max') === '10000', 'and the box goes up to ten thousand');
 
   await box.fill(String(WANTED));

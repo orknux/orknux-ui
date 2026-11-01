@@ -51,7 +51,8 @@ await page.waitForTimeout(600);
 
 /* ------------------------------------------------------- the picker, opened */
 
-const titleBar = page.locator('h1').first().locator('..');
+// The bar the title stands in: the title itself sits a level down, beside what is said about it.
+const titleBar = page.locator('h1').first().locator('xpath=ancestor::header[1]');
 const button = titleBar.locator('button[aria-expanded]').first();
 const named = ((await button.textContent()) ?? '').trim();
 record(named !== '', `the selector names who is answering ("${named}")`);

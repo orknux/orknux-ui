@@ -151,9 +151,10 @@ try {
   // accessible string.
   await form.getByRole('button', { name: `Header ${before + 2} variable`, exact: true }).click();
   /*
-   * Narrowed first, as somebody with a workspace of variables would: the list
-   * opens at the foot of the form, its lower rows sit under the floating save
-   * strip, and the page cannot scroll them out from under it.
+   * Narrowed, as somebody with a workspace of variables would. The field is at
+   * the foot of the form and the page cannot scroll a list out from under the
+   * floating save strip, so the list opens above the field; the click below is
+   * refused by the browser if the strip is over the row.
    */
   await form.locator('[data-field-menu] [role="combobox"]').fill(variableName);
   await form.getByRole('option', { name: new RegExp(variableName) }).first().click();

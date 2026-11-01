@@ -57,7 +57,7 @@ function stylesheets(dir) {
 const BORDERLESS = new Set(['AdminPage.module.css', 'ChatPage.module.css', 'WorkspaceTriggersPage.module.css']);
 
 /** A text button with a label, not a square. Same name, different thing. */
-const NOT_A_SQUARE = new Set(['AdminRolesPage.module.css']);
+const NOT_A_SQUARE = new Set(['AdminRolesPage.module.css', 'WorkspaceMembers.module.css']);
 
 const own = [];
 for (const file of stylesheets(src)) {

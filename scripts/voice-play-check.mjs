@@ -11,6 +11,12 @@
  *   - and on a second turn, stopping the turn stops the sound - the same act
  *     that ends an answer being read, which talking over it reaches too.
  *
+ * The fake microphone starts its file over each time the panel reopens it, which
+ * it does the moment an utterance is handed over - so the "person" speaks for a
+ * second right over the sound, and a workspace's talk-over (default one second,
+ * #342) rightly stops it, sound and answer both. Nobody talks over it here: talk-
+ * over is switched off for the length of this check, and has checks of its own.
+ *
  * The ears, the mouth and the model are stubbed as in voice-queue-check, and
  * the sound is a routed WAV clip, two seconds long, told apart from the speech
  * clips by its length. Whether the server sends the frame, and only to a voice
@@ -171,7 +177,23 @@ await context.addInitScript((soundBytes) => {
 
 /* ----------------------------------------------------------- the fixture */
 
+const VOICE_FIELDS = 'voicePauseEndsTurnMs voiceSpeechOverRoomPercent voiceUnattendedMicrophoneMs voiceBargeInMs voiceBargeInWhileThinking';
+const SET_VOICE = `mutation($w: ID!, $pause: Int, $over: Int, $unattended: Int, $barge: Int, $thinking: Boolean) {
+  setWorkspaceVoiceTurnTaking(workspaceId: $w, pauseEndsTurnMs: $pause, speechOverRoomPercent: $over,
+    unattendedMicrophoneMs: $unattended, bargeInMs: $barge, bargeInWhileThinking: $thinking) { id }
+}`;
+const voiceAs = (held, barge) => ({
+  w: WORKSPACE,
+  pause: held.voicePauseEndsTurnMs,
+  over: held.voiceSpeechOverRoomPercent,
+  unattended: held.voiceUnattendedMicrophoneMs,
+  barge,
+  thinking: held.voiceBargeInWhileThinking,
+});
+let voiceWas;
+
 async function sweep() {
+  if (voiceWas !== undefined) await graphql(SET_VOICE, voiceAs(voiceWas, voiceWas.voiceBargeInMs)).catch(() => undefined);
   const { models } = await graphql(`query($w: ID!) { models(workspaceId: $w) { id name } }`, { w: WORKSPACE });
   const { workspace } = await graphql(`query($id: ID!) { workspace(id: $id) { transcriptionModelId speechModelId } }`, { id: WORKSPACE });
   const mine = models.filter((one) => one.name.startsWith(PREFIX));
@@ -189,6 +211,8 @@ async function sweep() {
 }
 
 await sweep();
+voiceWas = (await graphql(`query($id: ID!) { workspace(id: $id) { ${VOICE_FIELDS} } }`, { id: WORKSPACE })).workspace;
+await graphql(SET_VOICE, voiceAs(voiceWas, 0));
 const { modelProviders } = await graphql(`query($w: ID!) { modelProviders(workspaceId: $w) { id name } }`, { w: WORKSPACE });
 const provider = modelProviders[0];
 if (provider === undefined) {

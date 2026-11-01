@@ -6,7 +6,8 @@
  */
 import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
 
-const { browser, page, graphql } = await open({ viewport: { width: 1920, height: 1000 } });
+// Wide on purpose: a mode's seven nodes run to about 2050px at the editor's smallest zoom, beside its panel, and Plan is the first of them.
+const { browser, page, graphql } = await open({ viewport: { width: 2600, height: 1000 } });
 
 const found = await graphql(
   `query($w: ID!) { workspaceWorkflows(workspaceId: $w, page: 0, size: 5, search: "Research: Shallow", showHidden: true) { content { id name } } }`,
@@ -18,9 +19,11 @@ record(mode !== undefined, `the workspace has its Shallow research mode (${JSON.
 if (mode !== undefined) {
   await page.goto(`${BASE}/workspace/${WORKSPACE}/workflows/${mode.id}/editor`, { waitUntil: 'domcontentloaded' });
   const plan = page.locator('.react-flow__node', { hasText: 'Plan' }).first();
-  await plan.waitFor({ timeout: 60_000 }).catch(() => undefined);
-  await plan.click().catch(() => undefined);
-  await page.waitForTimeout(1500);
+  await plan.waitFor({ timeout: 60_000 });
+  await plan.click({ timeout: 10_000 });
+  // The chips are drawn once the node's mappings have loaded into its panel.
+  await page.waitForFunction(() => document.body.innerText.includes('Run input'), null, { timeout: 15_000 }).catch(() => undefined);
+  await page.waitForTimeout(300);
   const panel = await page.evaluate(() => {
     const text = document.body.innerText;
     return {

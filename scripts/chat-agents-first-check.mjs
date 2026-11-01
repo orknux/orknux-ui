@@ -52,7 +52,7 @@ await page.goto(`${BASE}/chat/${startChat.id}`, { waitUntil: 'domcontentloaded' 
 if (await drawn(page, 'the chat')) {
   await page.locator('#chat-composer').waitFor({ state: 'visible', timeout: 20_000 });
 
-  const button = page.locator('h1').first().locator('..').locator('button[aria-expanded]').first();
+  const button = page.locator('h1').first().locator('xpath=ancestor::header[1]').locator('button[aria-expanded]').first();
   await button.click();
   await page.waitForTimeout(400);
 

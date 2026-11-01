@@ -42,7 +42,15 @@ const across = await boxes();
 record(across.a.x + across.a.w <= across.b.x && across.b.x + across.b.w <= across.c.x,
   `Left to right lays the chain out along the screen, each after the one it is joined from (${JSON.stringify(across)})`);
 record(!overlap(across.a, across.b) && !overlap(across.b, across.c) && !overlap(across.a, across.c), 'with no box over another');
-record((await page.getByTestId('diagram-unsaved').count()) === 1, 'and the change waits to be saved');
+// The editor saves as it goes (9a3cafe5): nobody presses Save, so the laid-out drawing is what the server comes to hold.
+const held = async () => JSON.parse((await graphql('query ($id: ID!) { diagram(id: $id) { document } }', { id: made.id })).diagram.document);
+let saved = await held();
+for (let wait = 0; wait < 40 && saved.nodes.every((one) => one.x === 100); wait += 1) {
+  await page.waitForTimeout(250);
+  saved = await held();
+}
+const at = Object.fromEntries(saved.nodes.map((one) => [one.id, one.x]));
+record(at.a < at.b && at.b < at.c, `and the change saves itself (${JSON.stringify(at)})`);
 
 await page.getByTestId('diagram-arrange').click();
 await page.getByTestId('diagram-arrange-tb').click();

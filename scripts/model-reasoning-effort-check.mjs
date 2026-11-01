@@ -4,10 +4,12 @@
  *
  * Asked for as provider-specific settings, like the image parameters: the
  * server declares what each provider reads (`chatModelParameters`) and the page
- * draws that and nothing else. An Azure OpenAI model gets Temperature, Top P
- * and Reasoning effort; a llama.cpp server behind the OpenAI shape gets the
- * three llama.cpp additions as well; an Ollama model gets Temperature and Top P,
- * because Ollama's `/v1` reads nothing more. Measured on which boxes are in the
+ * draws that and nothing else. An Azure OpenAI or an Ollama model gets
+ * Temperature, Top P and Reasoning effort; a llama.cpp server behind the OpenAI
+ * shape gets the three llama.cpp additions as well, and all of them read a
+ * reasoning effort - ModelChatParametersTest holds the server's half of that,
+ * and a provider that reads none is why the box can be absent at all. Measured
+ * on which boxes are in the
  * DOM, and on what the server holds after Save. Makes its own providers on
  * `.invalid` hosts and removes them, with their models.
  */
@@ -62,13 +64,14 @@ try {
       `it offers default and the four efforts (${offered.join(',')})`,
     );
     record((await chosenOption(page, select)) === '', 'it opens on the default');
-    // Every optional choice on the page names its empty state the same way: Unset.
+    // An optional choice on the page names its empty state: Unset, or Server default on
+    // Tool Calls Per Reply, where nothing sent means the model server decides (37062e20).
     const empties = [];
     for (const one of await page.locator('[data-select]').all()) {
       const empty = (await optionsOffered(page, one)).find((option) => option.value === '');
       if (empty !== undefined) empties.push(empty.label);
     }
-    record(empties.length >= 2 && empties.every((text) => text === 'Unset'), `each optional choice offers Unset (${JSON.stringify(empties)})`);
+    record(empties.length >= 2 && empties.every((text) => text === 'Unset' || text === 'Server default') && empties.includes('Unset'), `each optional choice offers Unset or Server default (${JSON.stringify(empties)})`);
     await chooseOption(page, select, 'high');
     await page.locator('#temperature').fill('0.4');
     await page.getByRole('button', { name: /^Save/ }).first().click();
@@ -88,15 +91,15 @@ try {
   await page.goto(`${BASE}/workspace/${WORKSPACE}/models/${gemma.id}`, { waitUntil: 'domcontentloaded' });
   const onOllama = await drawnSettings('the Ollama model page');
   record(
-    JSON.stringify(onOllama) === JSON.stringify(['temperature', 'top-p']),
-    `the Ollama model draws Temperature and Top P only (${onOllama.join(',')})`,
+    JSON.stringify(onOllama) === JSON.stringify(['temperature', 'top-p', 'reasoning-effort']),
+    `the Ollama model draws Temperature, Top P and Reasoning effort only (${onOllama.join(',')})`,
   );
 
   await page.goto(`${BASE}/workspace/${WORKSPACE}/models/${llama.id}`, { waitUntil: 'domcontentloaded' });
   const onLlama = await drawnSettings('the llama.cpp model page');
   record(
-    JSON.stringify(onLlama) === JSON.stringify(['temperature', 'top-p', 'top-k', 'min-p', 'repeat-penalty']),
-    `a llama.cpp server behind the OpenAI shape draws all five sampling settings and no effort (${onLlama.join(',')})`,
+    JSON.stringify(onLlama) === JSON.stringify(['temperature', 'top-p', 'top-k', 'min-p', 'repeat-penalty', 'reasoning-effort']),
+    `a llama.cpp server behind the OpenAI shape draws all five sampling settings and the effort (${onLlama.join(',')})`,
   );
   if (onLlama.includes('top-k')) {
     await page.locator('#top-k').fill('40');

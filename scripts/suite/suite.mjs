@@ -267,6 +267,8 @@ export const TESTS = [
     name: 'session-ratings-check',
     what: "Admin > Reports: a picker between the reports, no switch on Ratings but a line saying which of Admin Settings' two is off, and a review sent from a chat drawn on the report",
     needs: [],
+    // It flips both ratings switches on Admin Settings, which are the installation's.
+    alone: true,
   },
   {
     name: 'flags-report-check',
@@ -1214,7 +1216,7 @@ export const TESTS = [
     name: 'template-dates-check',
     what: 'the admin list of templates says when each was published and last changed, and sorts by either',
     needs: ['workspace'],
-    // Reads the templates the suite's other checks leave; publishes none.
+    // Publishes two of its own from an agent, and deletes them.
   },
   {
     name: 'template-replace-check',
@@ -2409,7 +2411,7 @@ export const TESTS = [
     name: 'artifact-content-check',
     what: "an artifact's /content address opens the artifact alone, without Orknux around it",
     needs: ['workspace'],
-    /* Read off the workspace's newest artifact with a page to show. */
+    /* Uploads its own artifact, and deletes it. */
   },
 
 
@@ -5015,7 +5017,7 @@ export const TESTS = [
 
   {
     name: 'model-reasoning-effort-check',
-    what: "a chat model's page draws only the sampling and reasoning settings its provider reads - Azure: temperature, top-p, reasoning effort; Ollama: temperature, top-p; a llama.cpp server: all five - and Save stores them",
+    what: "a chat model's page draws only the sampling and reasoning settings its provider reads - Azure and Ollama: temperature, top-p, reasoning effort; a llama.cpp server: all five and the effort - and Save stores them",
     needs: [],
     /* The refusals - a setting the provider does not read, a word off the list - are ModelChatParametersTest's. */
   },

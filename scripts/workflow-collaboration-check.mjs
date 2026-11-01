@@ -63,8 +63,9 @@ try {
   record(room === 0, `and takes no room while it says nothing (${room}px)`);
 
   // Each sees the other.
-  const seen = await second.getByTestId('presence').locator('[data-login]').count().catch(() => 0);
   await first.getByTestId('presence').waitFor({ timeout: 10_000 }).catch(() => undefined);
+  await second.getByTestId('presence').locator('[data-login]').first().waitFor({ timeout: 10_000 }).catch(() => undefined);
+  const seen = await second.getByTestId('presence').locator('[data-login]').count().catch(() => 0);
   record((await first.getByTestId('presence').locator('[data-login]').count()) === 1 && seen === 1, `each tab shows the other is there (${seen})`);
 
   // A pointer moved in one is drawn in the other, with its login.

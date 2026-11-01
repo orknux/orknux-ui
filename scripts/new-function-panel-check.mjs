@@ -54,22 +54,31 @@ try {
   record((await panel.count()) === 0 && (await picker.innerText()).trim() === before, `Cancel closes it and leaves the picker on "${before}"`);
 
   // A taken name is refused in the panel, and the refusal goes with the name.
+  // Both kinds of taken: one this workspace wrote, and one every workspace has because the release embeds it.
   const { workspaceFunctions: present } = await graphql(
-    `query($w: ID!) { workspaceFunctions(workspaceId: $w, size: 1) { content { name } } }`,
+    `query($w: ID!) { workspaceFunctions(workspaceId: $w, size: 200) { content { name scope } } }`,
     { w: WORKSPACE },
   );
-  const taken = present.content[0]?.name;
-  await chooseNew();
-  if (taken !== undefined) {
-    await panel.locator('#new-name').fill(taken);
+  const taken = [
+    present.content.find((one) => one.scope === 'WORKSPACE')?.name,
+    present.content.find((one) => one.scope === 'EMBEDDED')?.name,
+  ].filter((one) => one !== undefined);
+  for (const name of taken) {
+    await chooseNew();
+    await panel.locator('#new-name').fill(name);
     await panel.getByRole('button', { name: 'Create Function' }).click();
     const refusal = panel.locator('[role="alert"]');
     await refusal.waitFor({ timeout: 10_000 }).catch(() => undefined);
-    record((await refusal.count()) === 1 && (await panel.count()) === 1, `a taken name is refused in the panel (${taken})`);
-    await panel.locator('#new-name').fill(FUNCTION);
-    await page.waitForTimeout(150);
-    record((await refusal.count()) === 0, 'and the refusal goes once the name is changed');
+    record((await refusal.count()) === 1 && (await panel.count()) === 1, `a taken name is refused in the panel (${name})`);
+    if ((await panel.count()) === 1) {
+      await panel.locator('#new-name').fill(FUNCTION);
+      await page.waitForTimeout(150);
+      record((await refusal.count()) === 0, 'and the refusal goes once the name is changed');
+      await panel.getByRole('button', { name: 'Cancel' }).click();
+      await page.waitForTimeout(300);
+    }
   }
+  await chooseNew();
 
   // Create: made at once, chosen in the picker, the panel gone.
   await panel.locator('#new-name').fill(FUNCTION);
@@ -129,6 +138,15 @@ try {
     await graphql(`mutation($id: ID!) { removeWorkflow(id: $id) }`, { id: old.id }).catch(() => undefined);
   }
   for (const one of await named(FUNCTION).catch(() => [])) {
+    await graphql(`mutation($id: ID!) { deleteFunction(id: $id) }`, { id: one.id }).catch(() => undefined);
+  }
+  // A server that let a workspace function take an embedded name made one above; it is not to stay.
+  const { workspaceFunctions: left } = await graphql(
+    `query($w: ID!) { workspaceFunctions(workspaceId: $w, size: 200) { content { id name scope } } }`,
+    { w: WORKSPACE },
+  ).catch(() => ({ workspaceFunctions: { content: [] } }));
+  const embedded = new Set(left.content.filter((one) => one.scope === 'EMBEDDED').map((one) => one.name));
+  for (const one of left.content.filter((row) => row.scope === 'WORKSPACE' && embedded.has(row.name))) {
     await graphql(`mutation($id: ID!) { deleteFunction(id: $id) }`, { id: one.id }).catch(() => undefined);
   }
 }

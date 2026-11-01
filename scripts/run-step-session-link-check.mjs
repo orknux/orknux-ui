@@ -66,6 +66,12 @@ const DETAIL = {
   pictures: [],
   speeches: [],
   temporalUrl: null,
+  // What the page reads off every run, whatever its steps: the server always answers them.
+  source: null,
+  parentExecutionId: null,
+  cost: { amount: null, partlyUnpriced: false, sessions: 0 },
+  version: null,
+  parameters: [],
 };
 
 await page.route('**/graphql', async (route) => {

@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 
 import { Link } from 'react-router-dom';
 
@@ -89,6 +89,30 @@ export function FieldPicker({ options, value, onChange, label, labels = FIELD_LA
   const [at, setAt] = useState(0);
   const boxRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  /** Whether the list opens above the box rather than below it. */
+  const [up, setUp] = useState(false);
+
+  /*
+   * Above the box when there is no room for the list below it, as
+   * DefinitionPicker does: the Save strip is fixed over the foot of the window
+   * and the list hangs over the page rather than lengthening it, so a field at
+   * the foot of a form had its rows behind Save with no scrolling them out.
+   * Measured as it opens, before paint, and kept while typing narrows the list.
+   */
+  useLayoutEffect(() => {
+    if (!open) {
+      setUp(false);
+      return;
+    }
+    const trigger = boxRef.current?.getBoundingClientRect();
+    const list = menuRef.current;
+    if (trigger === undefined || list === null) return;
+    const strip = document.querySelector<HTMLElement>('[data-save-bar]')?.getBoundingClientRect();
+    const floor = strip !== undefined && strip.height > 0 ? Math.min(window.innerHeight, strip.top) : window.innerHeight;
+    const below = floor - trigger.bottom;
+    setUp(list.offsetHeight > below && trigger.top > below);
+  }, [open]);
   const listId = useId();
 
   // A field inside an offered object - `trigger.model` under the run's input - is answered by that object, as a placeholder is.
@@ -287,7 +311,7 @@ export function FieldPicker({ options, value, onChange, label, labels = FIELD_LA
       </div>
 
       {open && (
-        <div className={styles.menu} data-field-menu="">
+        <div ref={menuRef} className={up ? `${styles.menu} ${styles.menuUp}` : styles.menu} data-field-menu="" data-opens={up ? 'up' : 'down'}>
           <input
             className={styles.search}
             value={search}

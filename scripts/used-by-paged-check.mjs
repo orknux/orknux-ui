@@ -14,12 +14,13 @@ import { BASE, WORKSPACE, open, record, finish, chooseOption } from './suite/har
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1000 } });
 
 const { workspaceFunctions } = await graphql(
-  `query ($w: ID!) { workspaceFunctions(workspaceId: $w, size: 1) { content { id } } }`,
+  `query ($w: ID!) { workspaceFunctions(workspaceId: $w, size: 200) { content { id scope } } }`,
   { w: WORKSPACE },
 );
-const target = workspaceFunctions.content[0]?.id;
+// A built-in has no Used by: it draws its description and nothing to edit.
+const target = workspaceFunctions.content.find((one) => one.scope !== 'EMBEDDED')?.id;
 if (target === undefined) {
-  record(false, 'the workspace has a function to open');
+  record(false, 'the workspace has a function of its own to open');
   await finish(browser);
 }
 

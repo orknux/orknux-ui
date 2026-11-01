@@ -10,7 +10,7 @@
  *
  * Makes its own document and removes it.
  */
-import { BASE, WORKSPACE, open, record, finish, shot } from './suite/harness.mjs';
+import { BASE, USER, WORKSPACE, open, record, finish, shot } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1600, height: 900 } });
 const stamp = Date.now().toString(36);
@@ -47,7 +47,7 @@ await rows.first().waitFor({ timeout: 8_000 }).catch(() => undefined);
 record(await page.getByTestId('document-history-panel').count() === 1, 'History puts the versions down the right');
 record(await rows.count() === 3, `the live one and the two it replaced (${await rows.count()})`);
 record(await rows.first().getAttribute('data-version') === 'current', 'the live one on top');
-record((await rows.nth(1).innerText()).includes('alice') && await rows.nth(1).getAttribute('data-door') === 'EDITOR', `each says who and which door (${await rows.nth(1).innerText()})`);
+record((await rows.nth(1).innerText()).includes(USER) && await rows.nth(1).getAttribute('data-door') === 'EDITOR', `each says who and which door (${await rows.nth(1).innerText()})`);
 
 // The live version: a paragraph added.
 await rows.first().click();

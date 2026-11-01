@@ -20,15 +20,18 @@ import { BASE, WORKSPACE, WORKFLOW, open, record, finish, autosaved } from './su
 
 const { browser, page } = await open({ viewport: { width: 1440, height: 1100 } });
 
-/** The three boxes that are always there, in the order the panel draws them. */
-const attempts = () => page.locator('input[type="number"]').nth(0);
-const initialWait = () => page.locator('input[type="number"]').nth(1);
-const multiplier = () => page.locator('input[type="number"]').nth(2);
-
-/** And the three behind the word, once it has been pressed. */
-const maximumWait = () => page.locator('input[type="number"]').nth(3);
-const jitter = () => page.locator('input[type="number"]').nth(4);
-const budget = () => page.locator('input[type="number"]').nth(5);
+/**
+ * The three boxes that are always there, and the three behind the word, by the
+ * captions the panel writes over them: the agent's panel draws other numbers now
+ * (a picture's width, say), so a position among them says nothing.
+ */
+const box = (caption) => () => page.locator('label').filter({ has: page.locator(`span:text-is("${caption}")`) }).locator('input[type="number"]');
+const attempts = box('Attempts');
+const initialWait = box('Initial wait');
+const multiplier = box('Multiplier');
+const maximumWait = box('Maximum wait');
+const jitter = box('Jitter');
+const budget = box('Budget');
 
 const more = () => page.getByRole('button', { name: /Ceiling, jitter and budget|Fewer settings/ });
 

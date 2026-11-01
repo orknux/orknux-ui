@@ -4,9 +4,12 @@
  * The conversation spaces its turns 24px apart, and a call read back from a
  * chat's history is one of its items - so six lookups in a row were spread
  * down a screen with a turn's gap between each. A run of calls is now one
- * stack; the turns around it keep their gap.
+ * stack. Since an agent's turn is read back as one message (d0fae578) the answer
+ * under them is that message going on and stands as close; the log's gap is for
+ * what is a new turn, the question after the answer.
  *
- * The conversation is answered here: a question, three calls, an answer.
+ * The conversation is answered here: a question, three calls, an answer, a
+ * second question.
  * Makes one chat of its own and deletes it again.
  */
 import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
@@ -44,6 +47,7 @@ try {
             call('memory_search'),
             call('http_request'),
             said('assistant', 'It is an office cabinet.'),
+            said('user', 'And on the next one?'),
           ],
         },
       },
@@ -57,16 +61,20 @@ try {
   const placed = await page.evaluate(() => {
     const calls = [...document.querySelectorAll('[class*="_call_"]')].filter((el) => el.parentElement?.className.includes('_log_'));
     const boxes = calls.map((el) => el.getBoundingClientRect());
-    const answer = calls.at(-1)?.nextElementSibling?.getBoundingClientRect();
+    const answerEl = calls.at(-1)?.nextElementSibling;
+    const answer = answerEl?.getBoundingClientRect();
+    const next = answerEl?.nextElementSibling?.getBoundingClientRect();
     return {
       count: calls.length,
       between: boxes.slice(1).map((box, at) => Math.round(box.top - boxes[at].bottom)),
       after: answer && boxes.length > 0 ? Math.round(answer.top - boxes.at(-1).bottom) : null,
+      nextTurn: answer && next ? Math.round(next.top - answer.bottom) : null,
     };
   });
   record(placed.count === 3, `the three calls are drawn (${placed.count})`);
   record(placed.between.length === 2 && placed.between.every((gap) => gap <= 8), `calls in a row sit together (${placed.between.join(', ')}px apart)`);
-  record(placed.after !== null && placed.after >= 20, `and the answer after them keeps a turn's gap (${placed.after}px)`);
+  record(placed.after !== null && placed.after <= 8, `the answer under them is the same message going on (${placed.after}px)`);
+  record(placed.nextTurn !== null && placed.nextTurn >= 20, `and the next turn keeps a turn's gap (${placed.nextTurn}px)`);
 } finally {
   await sweep();
 }

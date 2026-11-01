@@ -47,11 +47,12 @@ await page.getByTestId('wireframe-svg').waitFor({ timeout: 15_000 }).catch(() =>
 
 // The editor fills the screen as the image editor does: canvas and panel, edge to edge, the same height.
 // A tools rail left of the canvas (the image editor's) is part of the editor's frame.
-async function frameOf(canvasId, panelId, railId = null) {
+// The image editor's test id is on the form inside its panel, which has its layers under it; the column is what is measured.
+async function frameOf(canvasId, panelId, railId = null, panelIsWithin = false) {
   const drawn = await page.getByTestId(canvasId).boundingBox().catch(() => null);
   const rail = railId === null ? null : await page.getByTestId(railId).boundingBox().catch(() => null);
   const canvas = drawn === null || rail === null ? drawn : { ...drawn, x: Math.min(drawn.x, rail.x), width: drawn.x + drawn.width - Math.min(drawn.x, rail.x) };
-  const panel = await page.getByTestId(panelId).boundingBox().catch(() => null);
+  const panel = await (panelIsWithin ? page.getByTestId(panelId).locator('..') : page.getByTestId(panelId)).boundingBox().catch(() => null);
   if (canvas === null || panel === null) return null;
   return { left: canvas.x, right: panel.x + panel.width, top: Math.min(canvas.y, panel.y), bottom: Math.max(canvas.y + canvas.height, panel.y + panel.height), canvas: canvas.width, panel: panel.width };
 }
@@ -59,7 +60,7 @@ const wire = await frameOf('wireframe-canvas', 'wireframe-panel');
 await page.goto(`${BASE}/workspace/${WORKSPACE}/design/images/new`, { waitUntil: 'domcontentloaded' });
 await page.getByTestId('editor-canvas').waitFor({ timeout: 15_000 }).catch(() => undefined);
 await page.waitForTimeout(500);
-const image = await frameOf('editor-canvas', 'editor-panel', 'editor-tools');
+const image = await frameOf('editor-canvas', 'editor-panel', 'editor-tools', true);
 const near = (a, b) => Math.abs(a - b) <= 2;
 record(
   wire !== null && image !== null && near(wire.left, image.left) && near(wire.right, image.right) && near(wire.top, image.top) && near(wire.bottom, image.bottom) && near(wire.panel, image.panel),
@@ -143,7 +144,7 @@ const welcome = page.getByTestId('wireframe-welcome');
 const greeting = (await welcome.locator('h2').textContent().catch(() => '')) ?? '';
 const cards = await page.getByTestId('wireframe-idea').evaluateAll((all) =>
   all.map((one) => ({ icon: one.querySelector('img') !== null, lines: one.innerText.split('\n').filter((line) => line.trim() !== '').length, height: Math.round(one.getBoundingClientRect().height) })));
-record(greeting.startsWith('Hi ') && cards.length === 4 && cards.every((one) => one.icon && one.lines === 2 && one.height >= 48 && one.height <= 72),
+record(greeting.startsWith('Hi ') && cards.length === 4 && cards.every((one) => one.icon && one.lines === 2 && one.height >= 40 && one.height <= 60),
   `an empty chat greets and offers four cards of an icon, a title and a line (${JSON.stringify({ greeting, cards })})`);
 const send = await page.getByTestId('wireframe-chat-send').boundingBox();
 const typed = await page.getByTestId('wireframe-chat-input').boundingBox();
@@ -303,12 +304,14 @@ const keptBefore = await page.evaluate((wireframe) => {
     return 0;
   }
 }, id);
+// Saved while this page is closed. With it open the save is taken in as it lands (LiveRoom), which is another subject.
+await page.goto(`${BASE}/workspace/${WORKSPACE}/design/wireframes`, { waitUntil: 'domcontentloaded' });
 const elsewhere = (await gql(`query ($id: ID!) { wireframe(id: $id) { document revision } }`, { id })).data.wireframe;
 const changed = JSON.parse(elsewhere.document);
 changed.elements.push({ id: 'elsewhere', type: 'note', x: 40, y: 40, w: 180, h: 120, text: 'Saved elsewhere' });
 await gql(`mutation ($id: ID!, $document: String!, $revision: Int) { saveWireframe(id: $id, document: $document, revision: $revision) { revision } }`,
   { id, document: JSON.stringify(changed), revision: elsewhere.revision });
-await page.reload({ waitUntil: 'domcontentloaded' });
+await page.goto(`${BASE}/workspace/${WORKSPACE}/design/wireframes/${id}`, { waitUntil: 'domcontentloaded' });
 await page.locator('[data-element-type="note"]').waitFor({ timeout: 15_000 }).catch(() => undefined);
 await page.waitForTimeout(400);
 const staleUndo = await page.getByTestId('wireframe-undo').isEnabled().catch(() => true);

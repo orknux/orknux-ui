@@ -245,7 +245,8 @@ try {
   const wanted = `${PREFIX}FromCode${STAMP}`;
   await page.locator('.view-lines').first().click({ position: { x: 40, y: 10 } });
   await page.keyboard.press('ControlOrMeta+a');
-  await page.keyboard.type(`export default async function ${wanted}() {`);
+  // At a very fast typist's pace. With no pause, 3 ms a key, the editor can be put back to the first letter while the rest are still landing.
+  await page.keyboard.type(`export default async function ${wanted}() {`, { delay: 40 });
   // Longer than the pause the editor waits before reading a declaration: it is
   // half-written for most of the time somebody is typing one.
   await page.waitForTimeout(1500);

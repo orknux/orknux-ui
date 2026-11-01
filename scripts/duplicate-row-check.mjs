@@ -3,7 +3,9 @@
  * providers, models, actions, triggers, conditions, objects, skills, tools and memories.
  *
  * One scratch thing of each, made here and named to sort first, so its row is
- * on the first page whatever the list's order. Pressing its Duplicate button
+ * on the first page whatever the list's order. In capitals: SQLite orders a name
+ * by its bytes, so a lowercase `aaa` sorts after every capital, and on a full
+ * page the original was the last row and its copy the first of the next page. Pressing its Duplicate button
  * has to leave a second one in the workspace, under the next free name, and
  * draw it on the list. Everything made is deleted, copies included.
  */
@@ -17,22 +19,22 @@ const listed = (field) => async () =>
 
 const lists = [
   {
-    kind: 'agents', path: 'agents', name: 'aaa dup agent', names: listed('workspaceAgents'),
+    kind: 'agents', path: 'agents', name: 'AAA dup agent', names: listed('workspaceAgents'),
     make: (n) => q(`mutation($w: ID!, $n: String!) { createAgent(input: { workspaceId: $w, name: $n, type: LLM }) { id } }`, { n }),
     remove: (id) => q(`mutation($id: ID!) { deleteAgent(id: $id) }`, { id }),
   },
   {
-    kind: 'actions', path: 'actions', name: 'aaa dup action', names: listed('workspaceActions'),
+    kind: 'actions', path: 'actions', name: 'AAA dup action', names: listed('workspaceActions'),
     make: (n) => q(`mutation($w: ID!, $n: String!) { createAction(input: { workspaceId: $w, name: $n, type: WAIT, subtype: TIME, durationSeconds: 60 }) { id } }`, { n }),
     remove: (id) => q(`mutation($id: ID!) { deleteAction(id: $id) }`, { id }),
   },
   {
-    kind: 'triggers', path: 'triggers', name: 'aaa dup trigger', names: listed('workspaceTriggers'),
+    kind: 'triggers', path: 'triggers', name: 'AAA dup trigger', names: listed('workspaceTriggers'),
     make: (n) => q(`mutation($w: ID!, $n: String!) { createTrigger(input: { workspaceId: $w, name: $n, type: SCHEDULED, cron: "0 2 * * *" }) { id } }`, { n }),
     remove: (id) => q(`mutation($id: ID!) { deleteTrigger(id: $id) }`, { id }),
   },
   {
-    kind: 'conditions', path: 'conditions', name: 'aaa dup condition', names: listed('workspaceConditions'),
+    kind: 'conditions', path: 'conditions', name: 'AAA dup condition', names: listed('workspaceConditions'),
     make: (n) => q(`mutation($w: ID!, $n: String!) { createCondition(input: { workspaceId: $w, name: $n, type: SLACK, property: MESSAGE_AUTHOR, check: IN_LIST, values: ["a@example.com"] }) { id } }`, { n }),
     remove: (id) => q(`mutation($id: ID!) { deleteCondition(id: $id) }`, { id }),
   },
@@ -42,18 +44,18 @@ const lists = [
     remove: (id) => q(`mutation($id: ID!) { deleteObject(id: $id) }`, { id }),
   },
   {
-    kind: 'tools', path: 'tools', name: 'aaa_dup_tool', names: listed('workspaceTools'),
+    kind: 'tools', path: 'tools', name: 'AAA_dup_tool', names: listed('workspaceTools'),
     make: (n) => q(`mutation($w: ID!, $n: String!) { createTool(input: { workspaceId: $w, name: $n }) { id } }`, { n }),
     remove: (id) => q(`mutation($id: ID!) { deleteTool(id: $id) }`, { id }),
   },
   {
-    kind: 'skills', path: 'skills', name: 'aaa dup skill', names: listed('workspaceSkills'),
+    kind: 'skills', path: 'skills', name: 'AAA dup skill', names: listed('workspaceSkills'),
     make: (n) => q(`mutation($w: ID!, $n: String!) { createSkill(input: { workspaceId: $w, name: $n }) { id } }`, { n }),
     remove: (id) => q(`mutation($id: ID!) { deleteSkill(id: $id) }`, { id }),
   },
 ];
 
-/** Letters only, so `aaa_dup_tool_2` and `aaa dup agent (2)` both read as the scratch one's family. */
+/** Letters only, so `AAA_dup_tool_2` and `AAA dup agent (2)` both read as the scratch one's family. */
 const family = (name) => name.toLowerCase().replace(/[^a-z]/g, '');
 
 async function sweep(list) {
@@ -125,7 +127,29 @@ if (record(await providerButton.waitFor({ timeout: 20_000 }).then(() => true).ca
 }
 await graphql(`mutation($id: ID!) { removeModelProvider(id: $id) }`, { id: provider.id }).catch(() => undefined);
 
-const catalog = (await q(`mutation($w: ID!) { createMemoryCatalog(workspaceId: $w, name: "aaa dup memories") { id } }`)).createMemoryCatalog;
+/*
+ * A new catalog is granted to the workspace's agents by default, and one that is
+ * granted refuses to be deleted, so the grants go first. Without this the delete
+ * was refused in silence and the name was taken for every run after.
+ */
+const dropCatalog = async (one) => {
+  const { workspaceAgents } = await q(`query($w: ID!) { workspaceAgents(workspaceId: $w, page: 0, size: 200) { content { id name description systemPrompt modelId icon memoryShare maxRounds memoryCatalogs } } }`);
+  for (const agent of workspaceAgents.content.filter((held) => held.memoryCatalogs.includes(one.name))) {
+    // A save is the whole form: what it leaves out of these six is cleared, the model included.
+    const { id, memoryCatalogs, ...rest } = agent;
+    await graphql(`mutation($id: ID!, $input: UpdateAgentInput!) { updateAgent(id: $id, input: $input) { id } }`, {
+      id,
+      input: { ...rest, memoryCatalogs: memoryCatalogs.filter((name) => name !== one.name) },
+    });
+  }
+  await graphql(`mutation($id: ID!) { deleteMemoryCatalog(id: $id) }`, { id: one.id });
+};
+for (const old of (await q(`query($w: ID!) { memoryCatalogs(workspaceId: $w) { id name } }`)).memoryCatalogs.filter((one) => one.name === 'aaa dup memories')) {
+  await dropCatalog(old);
+}
+const modelsHeld = async () => (await q(`query($w: ID!) { workspaceAgents(workspaceId: $w, page: 0, size: 200) { content { name modelId } } }`)).workspaceAgents.content.filter((agent) => agent.modelId !== null).map((agent) => agent.name).sort().join();
+const modelsBefore = await modelsHeld();
+const catalog = (await q(`mutation($w: ID!) { createMemoryCatalog(workspaceId: $w, name: "aaa dup memories") { id name } }`)).createMemoryCatalog;
 await graphql(`mutation($c: ID!) { createMemory(input: { catalogId: $c, title: "aaa dup memory", content: "Remember this." }) { id } }`, { c: catalog.id });
 // Opened on its own catalog: which one the page shows first depends on what else the workspace holds.
 await page.goto(`${BASE}/workspace/${W}/memory?catalog=${catalog.id}`, { waitUntil: 'domcontentloaded' });
@@ -138,6 +162,8 @@ if (record(await memoryButton.waitFor({ timeout: 20_000 }).then(() => true).catc
     'memories: the copy is drawn as "(copy)"',
   );
 }
-await graphql(`mutation($id: ID!) { deleteMemoryCatalog(id: $id) }`, { id: catalog.id }).catch(() => undefined);
+await dropCatalog(catalog);
+record(!(await q(`query($w: ID!) { memoryCatalogs(workspaceId: $w) { name } }`)).memoryCatalogs.some((one) => one.name === catalog.name), 'memories: and the scratch catalog is gone again');
+record((await modelsHeld()) === modelsBefore, 'memories: and taking its grants back left every agent its model');
 
 await finish(browser);

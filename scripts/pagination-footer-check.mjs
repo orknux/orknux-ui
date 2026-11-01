@@ -222,6 +222,10 @@ const LISTS = [
   { file: 'RatingsReport.tsx', path: null, title: 'Reports', unit: 'reviews', sourceOnly: true, column: null },
   // The Errors report beside it, one failed run, agent or quick chat a row.
   { file: 'ErrorsReport.tsx', path: null, title: 'Reports', unit: 'errors', sourceOnly: true, column: null },
+  // The Flags report: one answer somebody flagged a row.
+  { file: 'FlagsReport.tsx', path: null, title: 'Reports', unit: 'flags', sourceOnly: true, column: null },
+  // Research is its own word in the singular; empty until somebody has run one, as CI's fixture is.
+  { file: 'ResearchPage.tsx', path: null, title: 'Research', unit: 'research', sourceOnly: true, column: null },
   { file: 'WorkspaceSchedulesPage.tsx', path: null, title: 'Schedules', unit: 'schedules', sourceOnly: true, column: null },
   { file: 'AdminBoxPage.tsx', path: null, title: 'Box', unit: 'sessions', sourceOnly: true, column: null },
   {

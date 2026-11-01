@@ -146,7 +146,13 @@ const readOrder = await page.evaluate((said) => {
 record(readOrder.join(',') === 'first,between,person', `once read, it is drawn where the agent read it, after the call made in between (${readOrder.join(',')})`);
 
 await page.evaluate(() => window.__midturn.release?.());
-await page.getByText('Blue it is.').first().waitFor({ timeout: 10_000 }).catch(() => {});
+/*
+ * Taken the moment it is drawn. The stream is this file's and the server stored
+ * none of it, so the thread read back as the turn ends rightly holds no such
+ * answer, and a look any later finds it gone.
+ */
+const finished = await page.getByText('Blue it is.').first().waitFor({ timeout: 10_000 }).then(() => true).catch(() => false);
+record(finished, 'and the turn still finishes');
 // A call that has returned shows its status beside its time, both at the row's end - not halfway along the row.
 const statusGaps = await page.locator('[data-testid="call-line"]').evaluateAll((lines) => lines.map((line) => {
   const when = line.querySelector('[data-call-when]');
@@ -155,7 +161,6 @@ const statusGaps = await page.locator('[data-testid="call-line"]').evaluateAll((
   return Math.round(when.getBoundingClientRect().left - state.getBoundingClientRect().right);
 }).filter((gap) => gap !== null));
 record(statusGaps.length > 0 && statusGaps.every((gap) => gap >= 0 && gap <= 24), `a returned call's status sits beside its time (${JSON.stringify(statusGaps)}px apart)`);
-record((await page.getByText('Blue it is.').count()) > 0, 'and the turn still finishes');
 
 /*
  * Coming back to a running turn. The thread holds the read message already, and

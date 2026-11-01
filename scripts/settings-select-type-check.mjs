@@ -6,8 +6,11 @@
 import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1000 } });
-const { diagrams } = await graphql(`query($w: ID!) { diagrams(workspaceId: $w) { id } }`, { w: WORKSPACE }).catch(() => ({ diagrams: [] }));
-const diagram = diagrams?.[0];
+// Its own: the suite's fixture holds no diagram since the manual's chapters stopped seeding it (v1.2.3).
+const { createDiagram: diagram } = await graphql(
+  'mutation ($w: ID!, $n: String!) { createDiagram(workspaceId: $w, name: $n) { id } }',
+  { w: WORKSPACE, n: `zzSelectType ${Date.now()}` },
+);
 record(diagram !== undefined, `a diagram to open the settings of (${diagram?.id})`);
 
 if (diagram !== undefined) {
@@ -34,4 +37,5 @@ if (diagram !== undefined) {
   record(widths.select >= 240 && widths.select < widths.field / 2, `and as wide as its words, not the page (${JSON.stringify(widths)})`);
 }
 
+await graphql('mutation ($id: ID!) { deleteDiagram(id: $id) }', { id: diagram.id }).catch(() => undefined);
 await finish(browser);

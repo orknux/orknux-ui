@@ -105,7 +105,8 @@ await composer.evaluate((box) => {
 });
 await page.waitForTimeout(1_000);
 const after = await page.locator('[class*="_attachment_"]').count();
-record(uploads.length === 1, `a pasted picture is uploaded, both in one request (${uploads.length} requests)`);
+/* One file a request, since f2dcc7ab: a request is then never larger than its file, which is what the server's multipart cap is sized for. */
+record(uploads.length === 2, `both pasted pictures are uploaded, one request each (${uploads.length} requests)`);
 record(after > before, `and it is drawn as an attachment, as an uploaded one is (${before} then ${after})`);
 
 /* A picture on its own is a message: Send is offered with nothing typed. */
@@ -121,7 +122,7 @@ await composer.evaluate((box) => {
   box.dispatchEvent(new ClipboardEvent('paste', { clipboardData: transfer, bubbles: true, cancelable: true }));
 });
 await page.waitForTimeout(300);
-record(uploads.length === 1, `pasting text uploads nothing (${uploads.length} requests)`);
+record(uploads.length === 2, `pasting text uploads nothing (${uploads.length} requests, the pictures' two)`);
 record((await composer.inputValue()) === draft, 'and the page does not take it over');
 
 await finish(browser);

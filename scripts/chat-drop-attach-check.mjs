@@ -92,9 +92,10 @@ try {
   await target.dispatchEvent('dragover', { dataTransfer: documents });
   await target.dispatchEvent('drop', { dataTransfer: documents });
   await page.waitForTimeout(800);
+  // One file per request, which is what the server's multipart cap is sized for (uploadAttachments).
   record(
-    uploaded === 2 && JSON.stringify(carried[1]) === JSON.stringify(['notes.pdf', 'log.txt']),
-    `a PDF and a text file dropped together go up in one upload (${JSON.stringify(carried[1])})`,
+    uploaded === 3 && JSON.stringify(carried.slice(1)) === JSON.stringify([['notes.pdf'], ['log.txt']]),
+    `a PDF and a text file dropped together both go up, one request each (${JSON.stringify(carried.slice(1))})`,
   );
   const composer = page.locator('form').filter({ has: page.getByPlaceholder(/Type a message/) });
   const shown = await composer.innerText();

@@ -521,10 +521,64 @@ const IN_THE_OPEN = [
     why: "who is observing this issue, which is the list's own contents",
   },
   {
-    file: 'src/components/QuickChat.tsx',
-    says: 'It can look things up in this workspace',
+    file: 'src/components/CompletionSwitch.tsx',
+    says: 'No completion model is set for this workspace, so nothing can be suggested.',
     because: 'status',
-    why: 'an empty conversation, saying what the assistant may do here',
+    why: "why the switch just pressed did nothing: the workspace's state, and the button beside it is the way out",
+  },
+  {
+    file: 'src/components/CompletionSwitch.tsx',
+    says: 'This sets the Completion Model of the whole workspace',
+    because: 'error',
+    why: 'a warning in the dialog that does it: this one choice reaches everybody in the workspace. Behind a (?) it would be read after the press, if at all',
+  },
+  {
+    file: 'src/components/PdfReader.tsx',
+    says: 'This file could not be read as a PDF.',
+    because: 'error',
+    why: 'the reader failing, in the place the pages would have been',
+  },
+  {
+    file: 'src/pages/design/DocumentSide.tsx',
+    says: 'This document links to no other',
+    because: 'status',
+    why: "the Mentions list with nothing in it, which is the list's own contents",
+  },
+  {
+    file: 'src/pages/explore/DiagramSettingsPage.tsx',
+    says: 'What agents may do with it',
+    because: 'label',
+    why: "the field's own name, with its choices under it; it explains nothing",
+  },
+  {
+    file: 'src/pages/workspace/FunctionEditorPage.tsx',
+    says: 'Brought by Orknux itself; it cannot be edited here.',
+    because: 'status',
+    why: 'the state of the function on show, and why a built-in\'s page has no editor on it',
+  },
+  {
+    file: 'src/pages/workspace/FunctionEditorPage.tsx',
+    says: 'This function takes no arguments.',
+    because: 'status',
+    why: "a built-in's parameter list with nothing in it",
+  },
+  {
+    file: 'src/pages/workspace/ProviderSettingsPage.tsx',
+    says: 'Extend the tool list with loaded tools',
+    because: 'label',
+    why: "the switch's own name; what it does is behind the (?) beside it",
+  },
+  {
+    file: 'src/pages/workspace-settings/AdminWorkspaceSettings.tsx',
+    says: 'No workspaces chosen; this workspace reads none.',
+    because: 'status',
+    why: 'the list of workspaces this one reads, with nothing in it, and what that comes to',
+  },
+  {
+    file: 'src/pages/workspace-settings/SearchSettings.tsx',
+    says: 'Also compose a short answer over the results',
+    because: 'label',
+    why: "the checkbox's own label; what it does is behind the (?) beside it",
   },
   {
     file: 'src/pages/admin/AdminNetworkingPage.tsx',
@@ -1102,7 +1156,8 @@ function ownText(src, from, to) {
         .replace(/\s+/g, ' ')
         .trim(),
     )
-    .filter(Boolean);
+    /* What a fragment walk can hand back between two arms of a ternary is code, not words anybody reads. */
+    .filter((run) => run !== '' && !/[!=]==|\) : /.test(run));
 }
 
 /** Every block of prose the interface prints in the open, out of the source. */

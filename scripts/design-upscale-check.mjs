@@ -43,8 +43,14 @@ const dataUrl = await page.evaluate(() => {
   pen.fillRect(0, 0, 200, 100);
   return canvas.toDataURL('image/png');
 });
-PICTURE.url = dataUrl;
 const PNG = Buffer.from(dataUrl.split(',')[1], 'base64');
+/*
+ * Served from here rather than as the data: URL itself: Export fetches the
+ * picture, as it would one the server holds, and the server's content policy
+ * rightly lets a page fetch nothing but its own origin.
+ */
+PICTURE.url = '/zz-design-upscale-grey.png';
+await page.route('**/zz-design-upscale-grey.png', (route) => route.fulfill({ contentType: 'image/png', body: PNG }));
 
 // The archive is the server's to write - its test holds the format - so here it is bytes that pass through.
 const ARCHIVE = Buffer.from('PK zz an archive');

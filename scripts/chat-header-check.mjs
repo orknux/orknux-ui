@@ -93,7 +93,7 @@ const named = (await title.textContent())?.trim() ?? '';
  * workspace switcher first, 63px higher up, and the check then reports the
  * header as two rows when it is one - a locator failing as a layout failure.
  */
-const titleBar = page.locator('h1').first().locator('..');
+const titleBar = page.locator('h1').first().locator('xpath=ancestor::header[1]');
 const picker = titleBar.locator('button[aria-expanded]').first();
 const titleBox = await title.boundingBox();
 const pickerBox = await picker.boundingBox();

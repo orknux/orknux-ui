@@ -12,7 +12,7 @@
  * The modes, the list and the start are answered in the browser, so nothing
  * runs; the models are the server's own, made here where there are none.
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption, optionsArrived, optionsOffered } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1000 } });
 const stamp = Date.now();
@@ -50,6 +50,8 @@ await page.route('**/graphql', async (route) => {
   const body = route.request().postDataJSON() ?? {};
   const query = body.query ?? '';
   if (query.includes('researchModes(')) return route.fulfill({ json: { data: { researchModes: MODES } } });
+  // Whether this workspace holds a search key is not the subject: Start waits on that as well.
+  if (query.includes('researchSearchReady')) return route.fulfill({ json: { data: { researchSearchReady: true } } });
   if (query.includes('researches(')) {
     return route.fulfill({ json: { data: { researches: { content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 } } } });
   }
@@ -80,6 +82,16 @@ async function pick(modeId) {
   record(now === modeId, `${name} is picked (${now})`);
 }
 
+/*
+ * An agent for each step, since 4929f8ec: only that way of working has a Reviewer
+ * to choose, and it is what Start can be held up waiting for. Planner and Writer
+ * are chosen, the Reviewer is left for the mode with no Review step not to ask.
+ */
+await chooseOption(page, dialog.locator('#research-agent-mode'), 'PER_STEP');
+await optionsArrived(page, dialog.locator('#research-planner'), 2);
+await chooseOption(page, dialog.locator('#research-planner'), (await optionsOffered(page, dialog.locator('#research-planner'))).find((one) => one.value !== '').value);
+await chooseOption(page, dialog.locator('#research-writer'), (await optionsOffered(page, dialog.locator('#research-writer'))).find((one) => one.value !== '').value);
+
 // --- a mode with a Review step ----------------------------------------------------
 await pick('919191');
 record(await box.isEnabled(), 'on a mode with a Review step, Review can be ticked');
@@ -87,6 +99,8 @@ if (!(await box.isChecked())) await box.check();
 record(await box.isChecked(), 'and is ticked as it was left');
 record(await dialog.locator('[data-reviewer]').isVisible().catch(() => false), 'with the reviewer to choose');
 record((await dialog.locator('[data-review-hint]').count()) === 0, 'and nothing beside it to explain');
+await dialog.locator('textarea#research-question').fill(`zz unreviewable check ${stamp}`);
+record(await dialog.getByRole('button', { name: /^Start$/ }).isDisabled(), 'and Start waits for that reviewer');
 
 // --- a mode without -----------------------------------------------------------------
 await pick('929292');
@@ -107,7 +121,6 @@ record(said === SENTENCE, `which says why in one sentence (${said})`);
 await page.locator('[role="note"] button[aria-label^="Close"]').click({ timeout: 2_000 }).catch(() => undefined);
 
 // --- and Start ------------------------------------------------------------------------
-await dialog.locator('textarea#research-question').fill(`zz unreviewable check ${stamp}`);
 const start = dialog.getByRole('button', { name: /^Start$/ });
 record(await start.isEnabled(), 'Start does not wait for a reviewer the mode cannot have');
 await start.click().catch(() => undefined);

@@ -44,10 +44,11 @@ const LINES = Array.from({ length: 120 }, (unused, index) => `Line ${index + 1} 
 const CONTENT = LINES.join('\n');
 
 const { llmSessions } = await graphql(
-  `query($id: ID!) { llmSessions(workspaceId: $id, page: 0, size: 5) { content { id key } } }`,
+  `query($id: ID!) { llmSessions(workspaceId: $id, page: 0, size: 50) { content { id key } } }`,
   { id: WORKSPACE },
 );
-const session = llmSessions.content[0] ?? null;
+// Not a research's: its page draws the plan above the pad, so the room left says nothing about the editor.
+const session = llmSessions.content.find((one) => !one.key.startsWith('research:')) ?? null;
 if (session === null) {
   record(
     false,
