@@ -34,9 +34,10 @@ const publish = async (suffix) =>
 const remove = async () => {
   for (const id of mine) await graphql('mutation($id: ID!) { deleteComponentTemplate(id: $id) }', { id }).catch(() => undefined);
 };
-const mine = [await publish('older')];
+// Named so that A to Z, the list's own order, is the wrong answer: a sort has to have happened.
+const mine = [await publish('a older')];
 await page.waitForTimeout(1100); // A second apart, or the two dates are the same to whatever orders them.
-mine.push(await publish('newer'));
+mine.push(await publish('b newer'));
 
 await page.goto(`${BASE}/admin/templates`, { waitUntil: 'domcontentloaded' });
 record(await drawn(page, 'the templates list'), 'the templates list opens');
@@ -64,16 +65,19 @@ const head = await updated.boundingBox();
 const lefts = await updatedCells.evaluateAll((all) => all.map((one) => one.getBoundingClientRect().left));
 record(head !== null && lefts.every((left) => Math.abs(left - head.x) < 6), 'the dates sit under their heading');
 
-/* Newest first: pressed until the server's newest is on top. */
-const { componentTemplates } = await graphql('{ componentTemplates { name lastModifiedAt } }');
-const newest = [...componentTemplates].sort((a, b) => b.lastModifiedAt.localeCompare(a.lastModifiedAt))[0].name;
-let top = '';
-for (let press = 0; press < 2 && top !== newest; press += 1) {
+/*
+ * Newest first, read off this check's own two. Templates belong to the
+ * installation and other checks publish them beside this one, so "the server's
+ * newest" can be a row published after this list was drawn: then no order puts
+ * it on top, and the second press turned a correct list round.
+ */
+let order = [];
+for (let press = 0; press < 2 && order[0] !== `${name} b newer`; press += 1) {
   await updated.click();
   await page.waitForTimeout(300);
-  top = (await page.locator('[data-template-name]').first().innerText()).trim();
+  order = (await page.locator('[data-template-name]').allInnerTexts()).map((one) => one.trim()).filter((one) => one.startsWith(name));
 }
-record(top === newest, `sorting by Updated puts the most recently changed first (${top})`);
+record(order[0] === `${name} b newer` && order[1] === `${name} a older`, `sorting by Updated puts the most recently changed first (${order.join(', ')})`);
 
 await remove();
 await finish(browser);

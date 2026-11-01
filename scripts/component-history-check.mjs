@@ -77,9 +77,15 @@ try {
 
     // Newest first, so the top row is what the second save replaced.
     await rows.first().getByRole('button').click();
-    const shown = await history.locator('[data-json-diff]').innerText({ timeout: 10_000 });
-    record(shown.includes("'first'"), 'opening it shows the code that version held');
-    record(!shown.includes("'second'"), 'and not the code that replaced it');
+    /*
+      Waited for, because Monaco draws its lines after the box exists: read at
+      once, the box can be there and empty, which is not the wrong code.
+    */
+    const diff = history.locator('[data-json-diff]');
+    await diff.locator('.view-line', { hasText: 'first' }).first().waitFor({ timeout: 10_000 }).catch(() => {});
+    const shown = await diff.innerText({ timeout: 10_000 });
+    record(shown.includes('first'), 'opening it shows the code that version held');
+    record(!shown.includes('second'), 'and not the code that replaced it');
 
     await page.screenshot({ path: shot('component-history.png'), fullPage: true });
 

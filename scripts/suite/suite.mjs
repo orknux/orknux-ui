@@ -865,6 +865,12 @@ export const TESTS = [
     name: 'docs-search-typing-check',
     what: 'searching the manual on a CPU four times slower: every letter at once, no task over 200 ms while typing, pausing or choosing, and a chosen hit lands on a marked word',
     needs: [],
+    /*
+     * It measures how long the page's own tasks take, on a slowed CPU. Beside
+     * other browsers on a CI runner that also measures them: choosing a result
+     * took 222, 355 and 423 ms across three runs, and passes on a quiet machine.
+     */
+    alone: true,
   },
   {
     name: 'mcp-draft-check-check',
