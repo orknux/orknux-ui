@@ -863,7 +863,7 @@ export const TESTS = [
   },
   {
     name: 'docs-search-typing-check',
-    what: 'searching the manual on a CPU four times slower: every letter at once, no task over 200 ms while typing or pausing, none over 500 ms arriving at a result, and a chosen hit lands on a marked word',
+    what: 'searching the manual on a CPU four times slower: every letter at once, no task over 200 ms while typing or pausing, none over a second arriving at a result, and a chosen hit lands on a marked word',
     needs: [],
     /*
      * It measures how long the page's own tasks take, on a slowed CPU. Beside

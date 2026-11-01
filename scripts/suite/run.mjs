@@ -9,6 +9,7 @@
  *   docker exec orknux-ui-dev-1 node scripts/suite/run.mjs --in-order
  *   docker exec orknux-ui-dev-1 node scripts/suite/run.mjs --any-workspace
  *   docker exec orknux-ui-dev-1 node scripts/suite/run.mjs --jobs 4
+ *   docker exec orknux-ui-dev-1 node scripts/suite/run.mjs --once
  *
  * Against the shipped image rather than the dev server - the way CI runs it -
  * reach it as localhost and not as host.docker.internal: Chromium trusts the
@@ -317,21 +318,33 @@ console.log(`${chosen.length} checks against ${process.env.ORKNUX_UI_URL ?? 'htt
 const done = [];
 let stoppedAt = null;
 
-/** One check's line, and everything it said when it failed. */
+const quoted = (output) =>
+  output
+    .split('\n')
+    .map((line) => `      | ${line}`)
+    .join('\n');
+
+/**
+ * One check's line, and everything it said when it failed.
+ *
+ * A second go (`result.first` is the first) is marked `[again]`, and a pass on
+ * it still prints what the first go said: that output is the only record of
+ * the race, and a green line that hid it would be the receipt this suite's
+ * notes warn against.
+ */
 function report(result, worker) {
   const seconds = `${(result.took / 1000).toFixed(1)}s`;
   const verdict = result.code === 0 ? 'PASS' : 'FAIL';
   // The worker is named only where there is more than one, so a single-job run
   // prints exactly the line it always printed.
-  const whose = shards.length === 0 ? '' : `[${worker + 1}] `;
+  const whose = result.first !== undefined ? '[again] ' : shards.length === 0 ? '' : `[${worker + 1}] `;
   console.log(`${verdict}  ${whose}${result.test.name.padEnd(26)} ${seconds.padStart(7)}  ${result.test.what}`);
-  if (result.code !== 0) {
-    console.log(
-      result.output
-        .split('\n')
-        .map((line) => `      | ${line}`)
-        .join('\n'),
-    );
+  if (result.first !== undefined && result.code === 0) {
+    console.log('      | passed on a second attempt, by itself. The first time it said:');
+    console.log(quoted(result.first.output));
+  } else if (result.code !== 0) {
+    if (result.first !== undefined) console.log('      | failed twice, the second time by itself. It said:');
+    console.log(quoted(result.output));
   }
 }
 
@@ -422,6 +435,61 @@ async function worker(at) {
 
 await Promise.all(Array.from({ length: Math.min(jobs, chosen.length) }, (_unused, at) => worker(at)));
 
+/* ------------------------------------------------------------- a second go */
+
+/**
+ * A check that failed is run once more, by itself, after everything else.
+ *
+ * The header says what a person does with a failure here: run it again once
+ * to be sure, because the machine can still be busy. On a CI runner it always
+ * is - the server, two browsers and this process on four cores - and four
+ * runs of the whole suite came back red on two or three checks each, a
+ * different handful every time, none of which failed twice. At that rate the
+ * suite is a coin: five hundred and seventy-eight checks that each fail one
+ * run in three hundred come back all green about one run in seven, however
+ * sound each of them is.
+ *
+ * So the runner does what the person would have done, and says so. The check
+ * runs again with nothing beside it, and a pass on that go is reported as
+ * exactly that: `[again]` in its line, the first go's output under it, its
+ * name in the summary, and a <flakyFailure> in the JUnit file holding what
+ * the first go said - the element surefire writes for the same thing. What
+ * it is not is a pass like the others. A check that needed a second go has a
+ * race in it, and the list at the end is the list of what to look at next;
+ * it is kept short by being printed, not by being hidden.
+ *
+ * Only when a few failed. Past MOST_SECOND_GOES the build is broken rather
+ * than the machine busy, and running the breakage twice costs more than it
+ * tells. Not under `--fail-fast`, whose whole point is the first answer. And
+ * `--once` switches it off, for somebody measuring how often a check fails -
+ * which is what a check on that list needs next.
+ */
+const MOST_SECOND_GOES = 8;
+const once = argv.includes('--once');
+/** The checks that passed only on their second go. */
+const secondGoes = [];
+
+const firstFailed = done.filter((result) => result.code !== 0);
+const secondGoesDue = !once && stoppedAt === null && firstFailed.length > 0 && firstFailed.length <= MOST_SECOND_GOES;
+if (secondGoesDue) {
+  console.log(`\n${firstFailed.length} failed. Each runs once more, by itself, in case the machine was busy.\n`);
+  // The first worker's copy of the fixture, and a keeper of its own for the
+  // workflow, since the workers' keepers went with them.
+  const keeper = await workflowKeeper(shards.length === 0 ? process.env : { ...process.env, ...shards[0] });
+  for (const first of firstFailed) {
+    const again = await run(first.test, 0);
+    try {
+      if (await keeper.restore()) again.output += '\n(the fixture workflow was put back as it was)\n';
+    } catch (unkept) {
+      again.output += `\nThe fixture workflow could not be put back: ${unkept.message}\n`;
+    }
+    again.first = first;
+    done[done.indexOf(first)] = again;
+    if (again.code === 0) secondGoes.push(again);
+    report(again, 0);
+  }
+}
+
 /* ---------------------------------------------------------------- the report */
 
 const failed = done.filter((result) => result.code !== 0);
@@ -449,12 +517,21 @@ const xml = [
   )}">`,
   ...done.map((result) => {
     const open = `  <testcase classname="orknux-ui.suite" name="${escape(result.test.name)}" time="${seconds(result.took)}">`;
-    if (result.code === 0) return `${open}</testcase>`;
-    return [
-      open,
-      `    <failure message="${escape(result.test.what)}">${escape(result.output)}</failure>`,
-      '  </testcase>',
-    ].join('\n');
+    if (result.code === 0 && result.first === undefined) return `${open}</testcase>`;
+    // A pass on the second go is a <flakyFailure>, as surefire writes one: the
+    // case passed, and here is what the first go said.
+    if (result.code === 0) {
+      return [
+        open,
+        `    <flakyFailure message="passed on a second attempt: ${escape(result.test.what)}">${escape(result.first.output)}</flakyFailure>`,
+        '  </testcase>',
+      ].join('\n');
+    }
+    const said =
+      result.first === undefined
+        ? result.output
+        : `--- first attempt ---\n${result.first.output}\n--- second attempt, by itself ---\n${result.output}`;
+    return [open, `    <failure message="${escape(result.test.what)}">${escape(said)}</failure>`, '  </testcase>'].join('\n');
   }),
   '</testsuite>',
   '',
@@ -482,6 +559,14 @@ writeFileSync(
 );
 
 console.log(`\n${done.length - failed.length} of ${done.length} passed.`);
+if (secondGoes.length > 0) {
+  console.log(
+    `${secondGoes.length} of those only on a second attempt, which is a race to look at: ${secondGoes.map((result) => result.test.name).join(', ')}`,
+  );
+}
+if (!once && stoppedAt === null && firstFailed.length > MOST_SECOND_GOES) {
+  console.log(`${firstFailed.length} failed, which is more than a busy machine explains, so none was run again.`);
+}
 const skipped = chosen.length - done.length;
 if (skipped > 0) {
   console.log(`Stopped at ${stoppedAt}: ${skipped} not run. Drop --fail-fast for the whole list.`);

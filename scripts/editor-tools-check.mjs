@@ -172,6 +172,13 @@ try {
     for (let at = 1; at <= 6; at += 1) {
       await page.mouse.move(start.x + at * stride, start.y, { steps: 1 });
       await page.waitForTimeout(16);
+      /*
+       * Not read after the last move. A let-go more than 60 ms after the hand
+       * last moved is a let-go from rest (dragSway's STILL_AFTER_MS) and is
+       * not thrown at all; the read is a round trip to the page, and on a busy
+       * machine that round trip is what pushed the let-go past the limit.
+       */
+      if (at === 6) break;
       const lean = (await drawnNow()).lean;
       if (lean !== null && (leaned === null || lean < leaned)) leaned = lean;
     }
@@ -182,9 +189,24 @@ try {
     await page.waitForTimeout(1500);
     return { leaned, slid: Math.round(after.x - let_go.x) };
   };
+  /*
+   * How far it slides comes from the speed the page measured, and a stalled
+   * runner stretches a quick move into a slow one - or, held more than 60 ms
+   * between the last move and the let-go, into no throw at all. So a fair go:
+   * three, taking the node back between them, and the verdict says which go
+   * it was. A slide that ignores speed fails all three.
+   */
   const gentle = await flick('slide', 8);
-  const quick = await flick('slide', 40);
-  record(quick.slid > gentle.slid * 2 && gentle.slid >= 0, `a quicker move slides further (${gentle.slid}px slow, ${quick.slid}px quick)`);
+  let quick = await flick('slide', 40);
+  let goes = 1;
+  for (; goes < 3 && quick.slid <= gentle.slid * 2; goes += 1) {
+    await flick('off', -40);
+    quick = await flick('slide', 40);
+  }
+  record(
+    quick.slid > gentle.slid * 2 && gentle.slid >= 0,
+    `a quicker move slides further (${gentle.slid}px slow, ${quick.slid}px quick${goes > 1 ? `, on go ${goes}` : ''})`,
+  );
   const jelly = await flick('jelly');
   record(jelly.leaned !== null && jelly.leaned < -0.2 && Math.abs(jelly.slid) < 2, `Jelly in Preferences wobbles and stops where it is let go (${JSON.stringify(jelly)})`);
   const off = await flick('off');

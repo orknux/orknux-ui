@@ -254,7 +254,16 @@ record(
 
 const sounding = await until((now) => now.playing >= 1, 15_000);
 record(sounding !== null, 'the line is played');
-record(sounding?.caption === 'Speaking', `the panel says Speaking over the line, not Thinking (${sounding?.caption})`);
+/*
+ * Waited for over the clip rather than read once. The clip is an audio element
+ * and the caption is React state: play() is called and Speaking is drawn a frame
+ * or two later (VoiceMode's onStart), which on a busy machine is after the read
+ * above saw the clip playing - the panel still said Preparing speech, which this
+ * reads as no caption at all. The bug this is for, Thinking said over the line
+ * for as long as the tool ran, never says Speaking at all and still fails here.
+ */
+const captioned = await until((now) => now.caption === 'Speaking', 3_000);
+record(captioned !== null, `the panel says Speaking over the line, not Thinking (${captioned?.caption ?? (await caption())})`);
 const said = await page.evaluate(() => {
   const line = document.querySelector('[data-said]');
   return { text: line?.textContent ?? '', inThought: line?.closest('[data-thought]') !== null && line !== null };

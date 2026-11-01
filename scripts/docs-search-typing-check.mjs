@@ -23,11 +23,15 @@ const LONGEST_TASK_MS = 200;
  * The longest choosing a result may take, at that speed. Arriving at a page is
  * the browser laying out and painting what it had skipped until then: a trace of
  * the longest task holds no script, only about 5,000 objects of one page of the
- * manual. That took 134 ms here and 218 to 423 ms on CI runners, which are slower
- * before they are slowed, so it never met the limit above. The freeze this guards
- * against is drawing the whole manual, which is seconds, and stays well over this.
+ * manual. That took 134 ms here and 205 to 423 ms on CI runners, which are slower
+ * before they are slowed, so it met the limit above in about one run in three;
+ * capped to three quarters of a core here it reached 693 ms. It is the runner's
+ * number, not the page's. The freeze this guards against - the whole manual laid
+ * out, measured here by forcing every page visible - is over 4,000 ms a task at
+ * this speed and fails the typing limit before it ever reaches this one, so a
+ * second is a quarter of the regression and twice the worst healthy run.
  */
-const LONGEST_ARRIVAL_MS = 500;
+const LONGEST_ARRIVAL_MS = 1000;
 const CHOOSING = 'choosing the last result';
 
 const { browser, page } = await open({ viewport: { width: 1440, height: 900 } });
