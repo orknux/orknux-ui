@@ -1519,6 +1519,33 @@ button.attachmentName {
   content: '';
 }
 
+/* What the note offers where the workspace holds a model to choose: the one act in it, so it reads as a button. */
+.voiceSet {
+  display: block;
+  margin-top: var(--space-8);
+  padding: var(--space-4) var(--space-8);
+  border: 1px solid var(--color-accent-brand);
+  border-radius: var(--radius-4);
+  background: var(--color-accent-brand);
+  color: var(--color-bg);
+  font: inherit;
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.voiceSet:hover {
+  filter: brightness(1.1);
+}
+
+/* Where the note was: above the button, since the chat's bar is at the foot of the window. */
+.voiceUnavailable .voiceModels {
+  top: auto;
+  bottom: 100%;
+  margin-top: 0;
+  margin-bottom: var(--space-8);
+}
+
 .voiceButton {
   display: flex;
   flex-shrink: 0;

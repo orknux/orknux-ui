@@ -276,6 +276,17 @@
   gap: var(--space-4);
 }
 
+/* The way forward, beside Cancel's way out. */
+.waitingActions .sendWaiting {
+  background: var(--color-accent-brand);
+  border-color: var(--color-accent-brand);
+  color: var(--color-bg);
+}
+
+.waitingActions .sendWaiting:hover {
+  filter: brightness(1.1);
+}
+
 .cancelWaiting {
   padding: 0 var(--space-8);
   background: none;

@@ -1193,7 +1193,7 @@ export function VoiceMode({
                 {/* Stops the turn in flight, so the answer to this comes instead of after it. */}
                 <button
                   type="button"
-                  className={styles.cancelWaiting}
+                  className={`${styles.cancelWaiting} ${styles.sendWaiting}`}
                   onClick={sendWaitingNow}
                   data-voice-send-waiting=""
                 >

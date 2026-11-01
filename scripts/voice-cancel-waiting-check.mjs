@@ -317,6 +317,8 @@ const waits = await until((now) => (now.waiting ?? '').includes(INSTEAD), 'the m
 record(waits !== null, 'a message typed during a long turn waits');
 const sendNow = page.locator('[data-voice-send-waiting]');
 record((await sendNow.count()) === 1, 'with a Send now beside the Cancel');
+const sendFill = await sendNow.evaluate((one) => getComputedStyle(one).backgroundColor);
+record(sendFill !== 'rgba(0, 0, 0, 0)' && sendFill !== 'transparent', `and it is the one in colour (${sendFill})`);
 const box = (selector) => page.locator(selector).boundingBox();
 const [nowBox, cancelBox, boxBox] = [
   await box('[data-voice-send-waiting]'),

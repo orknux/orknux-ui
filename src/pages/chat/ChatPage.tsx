@@ -68,6 +68,10 @@ import { CHUNKING_DEFAULT, readAloud } from '../../components/readAloud';
 import type { Reading, SpeechChunking } from '../../components/readAloud';
 import { transcribe } from '../../api/transcription';
 import { fetchWorkspace } from '../../api/workspaces';
+import type { Workspace } from '../../api/workspaces';
+import { fetchModels } from '../../api/models';
+import type { Model } from '../../api/models';
+import { VoiceModelDialog } from '../../components/VoiceModelDialog';
 import { fetchWorkspaceAgents } from '../../api/agents';
 import type { Agent } from '../../api/agents';
 import { fetchChatReviews, fetchSessionReviewsOffered } from '../../api/ratings';
@@ -922,6 +926,8 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   );
   const agents: Agent[] = agentCatalogue.items;
 
+  /* Read this chat again as if it had just been opened: the refresh button, and a voice turn left running. */
+  const [readAgain, setReadAgain] = useState(0);
   /*
    * What the open chat holds.
    *
@@ -994,7 +1000,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     // `followAnswer` is a plain function of this render; what it reads is
     // refs and setters, so the one made by the render that opened the chat is
     // as good as any later one.
-  }, [currentId]);
+  }, [currentId, readAgain]);
 
   /*
    * An answer still being written in a chat somebody has just left: followed
@@ -1525,6 +1531,24 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   /** Whether the "why not" note under a voice button that cannot start is open. */
   const [voiceWhy, setVoiceWhy] = useState(false);
   const voiceWhyClosing = useRef<number | null>(null);
+  /* Choosing voice mode's missing models from its note: open until it is answered, wherever the pointer goes. */
+  const [voiceSetting, setVoiceSetting] = useState(false);
+  const [voiceModels, setVoiceModels] = useState<Model[]>([]);
+  const voiceAdministered = cachedWorkspaces()?.find((one) => one.id === workspaceId)?.administered === true;
+  useEffect(() => {
+    if (!voiceWhy || !voiceAdministered || (hears && reads) || workspaceId === null) return;
+    let abandoned = false;
+    fetchModels(workspaceId)
+      .then((found) => { if (!abandoned) setVoiceModels(found); })
+      .catch(() => { if (!abandoned) setVoiceModels([]); });
+    return () => { abandoned = true; };
+  }, [voiceWhy, voiceAdministered, hears, reads, workspaceId]);
+  const hearingModels = hears ? [] : voiceModels.filter((model) => model.kind === 'TRANSCRIPTION');
+  const readingModels = reads ? [] : voiceModels.filter((model) => model.kind === 'SPEECH');
+  const voiceModelsSaved = (held: Workspace) => {
+    setHears(held.transcriptionModelId != null);
+    setReads(held.speechModelId != null);
+  };
   /** Whether the workspace shows when each message was sent. Issue #323. */
   const [showTimestamps, setShowTimestamps] = useState(false);
   /**
@@ -1544,6 +1568,9 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    * so it is offered only where the workspace has set both models.
    */
   const [voice, setVoice] = useState(false);
+  /* Read by a turn when its reading is cut, which is after the render that closed the panel. */
+  const voiceOn = useRef(false);
+  voiceOn.current = voice;
   /*
    * Which of the three things voice mode is doing, so the button can say so.
    *
@@ -2021,6 +2048,18 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    * question, then nothing at all, then a whole answer — and the one screen
    * saying the model was working was the one nobody was looking at.
    */
+  /**
+   * A spoken turn whose reading the panel cut by closing, on the chat still open.
+   *
+   * Closing stops nothing (#615): the server goes on, and this page had stopped
+   * listening, which left the question over an empty answer with no word that
+   * anything was happening until a reload. Switching chat was never affected,
+   * because opening one reads and follows it; this is the same thing done here.
+   */
+  function pickUpLeftVoiceTurn(id: string, signal: AbortSignal) {
+    if (signal.aborted && !voiceOn.current && openChat.current === id) setReadAgain((was) => was + 1);
+  }
+
   async function handleVoiceTurn(
     text: string,
     onProgress: (soFar: string, settled?: boolean, over?: boolean) => void,
@@ -2103,6 +2142,9 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
       voiced.over();
       drewPicture.current = false;
       await loadSessions(currentId);
+    } catch (cause) {
+      pickUpLeftVoiceTurn(currentId, signal);
+      throw cause;
     } finally {
       // A turn cut short for the next one ends after that one began, and the next one is still going.
       voiceTurns.current -= 1;
@@ -2789,6 +2831,7 @@ ${named}`;
        * spoken.
        */
       if (!signal.aborted) fetchChatMessages(currentId).then(setMessages).catch(() => undefined);
+      pickUpLeftVoiceTurn(currentId, signal);
       throw cause;
     } finally {
       /*
@@ -3900,6 +3943,21 @@ ${named}`;
                   <OpenDefinitionIcon />
                 </Link>
               )}
+              {/* Not in voice mode: the panel owns the turn there, and reading again would cut its stream. */}
+              <button
+                type="button"
+                className={styles.iconButton}
+                disabled={voice}
+                onClick={() => {
+                  setReadAgain((was) => was + 1);
+                  void loadSessions(current.id);
+                }}
+                title={t('Refresh this chat')}
+                aria-label={t('Refresh this chat')}
+                data-testid="chat-refresh"
+              >
+                <img src={refreshCwIcon} alt="" width={14} height={14} />
+              </button>
               <button
                 type="button"
                 className={styles.iconButton}
@@ -4913,7 +4971,11 @@ ${named}`;
                 chat-effort-check measures the order and the gaps.
               */}
               {current !== null && (
-                <ChatEffort chatId={current.id} answeredBy={`${current.agentId ?? ''}:${current.modelId ?? ''}`} />
+                <ChatEffort
+                  chatId={current.id}
+                  answeredBy={`${current.agentId ?? ''}:${current.modelId ?? ''}`}
+                  fresh={current.lastMessageAt === null}
+                />
               )}
               {current.agentId !== null && (
                 <ChatModeSwitch
@@ -4960,11 +5022,11 @@ ${named}`;
                   }}
                   // A moment's grace, so a pointer that slips off the edge on its way to the link can come back.
                   onMouseLeave={() => {
-                    voiceWhyClosing.current = window.setTimeout(() => setVoiceWhy(false), 300);
+                    if (!voiceSetting) voiceWhyClosing.current = window.setTimeout(() => setVoiceWhy(false), 300);
                   }}
                   onFocus={() => setVoiceWhy(true)}
                   onBlur={(event) => {
-                    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setVoiceWhy(false);
+                    if (!voiceSetting && !event.currentTarget.contains(event.relatedTarget as Node | null)) setVoiceWhy(false);
                   }}
                 >
                   <button
@@ -4978,19 +5040,42 @@ ${named}`;
                   >
                     <img src={audioLinesIcon} alt="" width={16} height={16} data-keeps-colour />
                   </button>
-                  {voiceWhy && (
+                  {voiceSetting && workspaceId !== null && (
+                    <VoiceModelDialog
+                      workspaceId={workspaceId}
+                      hearing={hearingModels}
+                      reading={readingModels}
+                      className={styles.voiceModels}
+                      onSaved={voiceModelsSaved}
+                      onClose={() => {
+                        setVoiceSetting(false);
+                        setVoiceWhy(false);
+                      }}
+                    />
+                  )}
+                  {voiceWhy && !voiceSetting && (
                     <span className={styles.voiceWhy} role="tooltip" id="voice-why">
                       {!hears && !reads
                         ? t('Voice mode needs a transcription model and a speech model, and this workspace has neither.')
                         : !hears
                           ? t('Voice mode needs a transcription model to hear you, and this workspace has none.')
                           : t('Voice mode needs a speech model to answer aloud, and this workspace has none.')}{' '}
-                      {cachedWorkspaces()?.find((one) => one.id === workspaceId)?.administered === true ? (
+                      {voiceAdministered ? (
                         <Link to={`/workspace/${workspaceId}/settings#${hears ? 'speech-model' : 'transcription-model'}`}>
                           {t('Choose one in workspace settings')}
                         </Link>
                       ) : (
                         t('A workspace admin chooses them in workspace settings.')
+                      )}
+                      {voiceAdministered && (hearingModels.length > 0 || readingModels.length > 0) && (
+                        <button
+                          type="button"
+                          className={styles.voiceSet}
+                          onClick={() => setVoiceSetting(true)}
+                          data-testid="voice-models-set"
+                        >
+                          {t('Set voice models')}
+                        </button>
                       )}
                     </span>
                   )}

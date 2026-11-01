@@ -36,13 +36,6 @@
   cursor: default;
 }
 
-/* A word chosen for this chat, as against the model's own. */
-.pillSet {
-  border-color: var(--color-accent-brand);
-  background: var(--color-accent-brand-soft);
-  color: var(--color-text-primary);
-}
-
 .pillLabel {
   line-height: 1;
 }

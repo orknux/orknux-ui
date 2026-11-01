@@ -15,6 +15,7 @@ const { browser, page, graphql } = await open({ viewport: { width: 1440, height:
 const PREFIX = 'zz voice unavailable';
 // Whether the workspace, as the page reads it, has chosen to hide the button - flipped for the last half.
 let hideVoice = false;
+let lastWorkspace = {};
 
 const sweep = async () => {
   const { chatSessions } = await graphql(
@@ -47,7 +48,27 @@ try {
       Object.values(node).forEach(strip);
     };
     strip(body);
+    lastWorkspace = body.data?.workspace ?? lastWorkspace;
     return route.fulfill({ response: answered, json: body });
+  });
+
+  const sent = {};
+  const model = (id, kind) => ({ ...template, id, name: `Voice ${kind}`, kind });
+  let template = null;
+  await page.route('**/graphql', async (route) => {
+    const body = route.request().postData() ?? '';
+    const field = ['setWorkspaceTranscriptionModel', 'setWorkspaceSpeechModel'].find((one) => body.includes(`${one}(`));
+    if (field !== undefined) {
+      const { modelId } = JSON.parse(body).variables;
+      sent[field] = modelId;
+      return route.fulfill({ json: { data: { [field]: { ...lastWorkspace, transcriptionModelId: sent.setWorkspaceTranscriptionModel ?? null, speechModelId: sent.setWorkspaceSpeechModel ?? null } } } });
+    }
+    if (!body.includes('query Models(')) return route.fallback();
+    const answered = await route.fetch();
+    const json = await answered.json();
+    template = json.data.models[0] ?? { id: '0', name: '', kind: 'CHAT', providerId: '0', providerName: 'Voice' };
+    json.data.models = [...json.data.models.filter((one) => one.kind !== 'TRANSCRIPTION' && one.kind !== 'SPEECH'), model('9001', 'TRANSCRIPTION'), model('9002', 'SPEECH')];
+    return route.fulfill({ response: answered, json });
   });
 
   await page.goto(`${BASE}/chat/${started.startChat.id}`, { waitUntil: 'domcontentloaded' });
@@ -75,9 +96,41 @@ try {
   await page.waitForURL(/\/settings/, { timeout: 10_000 }).catch(() => undefined);
   record(page.url().includes(`/workspace/${WORKSPACE}/settings#transcription-model`), `the link opens workspace settings there (${page.url()})`);
 
+  /*
+   * Set from the note, with neither model on the server touched: the workspace's
+   * models and the two saves are answered by the route above, and what was sent is what is read.
+   */
+  await page.goBack({ waitUntil: 'domcontentloaded' });
+  await off.waitFor({ timeout: 20_000 });
+  await off.hover();
+  const set = page.getByTestId('voice-models-set');
+  const offered = await set.waitFor({ timeout: 5_000 }).then(() => true).catch(() => false);
+  record(offered, 'an administrator is offered the models right in the note');
+  if (offered) {
+    await set.click();
+    const dialog = page.getByTestId('voice-models-dialog');
+    await dialog.waitFor({ timeout: 5_000 });
+    await page.mouse.move(5, 5);
+    await page.waitForTimeout(500);
+    record((await dialog.count()) === 1, 'choosing stays open when the pointer leaves');
+    record(/whole workspace/.test((await dialog.textContent()) ?? ''), 'and says it is the whole workspace\'s setting');
+    const box = await dialog.boundingBox();
+    const bar = await off.boundingBox();
+    record(box.y + box.height <= bar.y && box.y >= 0, `and sits above the button, whole (${Math.round(box.y)} to ${Math.round(box.y + box.height)}, the button at ${Math.round(bar.y)})`);
+    record(await page.getByTestId('voice-models-confirm').isDisabled(), 'nothing can be set before something is chosen');
+    await page.locator('#voice-transcription-model').click();
+    await page.getByRole('option', { name: /Voice TRANSCRIPTION/ }).click();
+    await page.locator('#voice-speech-model').click();
+    await page.getByRole('option', { name: /Voice SPEECH/ }).click();
+    await page.getByTestId('voice-models-confirm').click();
+    const live = await page.getByRole('button', { name: 'Enter voice mode' }).waitFor({ timeout: 5_000 }).then(() => true).catch(() => false);
+    record(sent.setWorkspaceTranscriptionModel === '9001' && sent.setWorkspaceSpeechModel === '9002', `both choices are saved to the workspace (${JSON.stringify(sent)})`);
+    record(live, 'and voice mode comes on without a reload');
+    record((await page.getByTestId('voice-unavailable').count()) === 0, 'with the note gone');
+  }
+
   // A workspace that chose to hide it gets no button at all, drawn off or otherwise.
   hideVoice = true;
-  await page.goBack({ waitUntil: 'domcontentloaded' });
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.getByPlaceholder(/Type a message/).waitFor({ timeout: 20_000 });
   await page.waitForTimeout(1500);

@@ -599,7 +599,7 @@ export const TESTS = [
   },
   {
     name: 'voice-unavailable-check',
-    what: 'voice mode stays on the chat bar without a speech model, drawn off, its note naming the missing model and linking to settings',
+    what: 'voice mode stays on the chat bar without a speech model, drawn off, its note naming the missing model, linking to settings and setting the models there and then',
     needs: ['workspace'],
   },
   {
@@ -4095,7 +4095,7 @@ export const TESTS = [
   },
   {
     name: 'voice-leave-check',
-    what: 'In voice mode, switching chat while the model thinks asks for no interrupt, and pressing the circle does',
+    what: 'In voice mode, switching chat while the model thinks asks for no interrupt, and pressing the circle does; leaving on the same chat picks the answer up, and Refresh reads the chat again',
     needs: ['workspace'],
     /* Makes two models and two chats and removes them. Issue #615. */
   },

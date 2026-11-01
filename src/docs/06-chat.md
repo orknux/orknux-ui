@@ -110,8 +110,8 @@ workflow's agent node. They are never looked up as skills.
 Approve, Keep planning and Reject under it](/screens/chat-plan.png)
 
 The switch beside the reasoning-effort button, before the microphone, sets how
-this chat's agent works. It is per chat, and each row says what it means when
-you point at it:
+this chat's agent works. A new chat starts in **Auto**. It is per chat, and each
+row says what it means when you point at it:
 
 | Mode | What the agent may do |
 | --- | --- |

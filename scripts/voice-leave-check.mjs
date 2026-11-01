@@ -56,7 +56,7 @@ const MICROPHONE = silentMicrophone(join(tmpdir(), 'orknux-voice-leave.wav'));
 
 /** The stubs: every answer thinks for twenty seconds, and an interrupt is noted rather than sent. */
 function stubs() {
-  window.__leave = { sent: 0, aborted: 0, interrupted: [], micAt: null };
+  window.__leave = { sent: 0, aborted: 0, interrupted: [], micAt: null, running: false, followed: 0 };
   const asked = navigator.mediaDevices?.getUserMedia?.bind(navigator.mediaDevices);
   if (asked !== undefined) {
     navigator.mediaDevices.getUserMedia = async (constraints) => {
@@ -91,6 +91,13 @@ function stubs() {
         },
       });
       return new Response(body, { status: 200, headers: { 'content-type': 'text/event-stream' } });
+    }
+    // The turn the server went on with, once somebody asks after it.
+    if (window.__leave.running && /\/api\/chats\/[^/]+\/follow$/.test(address)) {
+      window.__leave.running = false;
+      window.__leave.followed += 1;
+      const frames = [`event: following\ndata: {}\n\n`, `event: chunk\ndata: ${JSON.stringify({ text: 'Picked up after leaving.' })}\n\n`, 'event: done\ndata: {"millis":10}\n\n'];
+      return new Response(frames.join(''), { status: 200, headers: { 'content-type': 'text/event-stream' } });
     }
     if (/\/api\/workspaces\/[^/]+\/speech/.test(address)) {
       return new Response(new ArrayBuffer(0), { status: 200, headers: { 'content-type': 'audio/wav' } });
@@ -243,5 +250,33 @@ record(
   `switching chat while it thinks asks for no interrupt, so the answer is finished and kept (${JSON.stringify(left.interrupted)})`,
 );
 await page.screenshot({ path: shot('voice-leave.png') });
+
+/* ---- leaving the panel, on the same chat ---- */
+
+if ((await page.locator('aside[aria-label="Voice mode"]').count()) === 0) await page.click('button[aria-label="Enter voice mode"]');
+await page.waitForTimeout(800);
+record(await ask('Now leave me here?'), 'a question is being thought about, in this chat');
+await page.evaluate(() => { window.__leave.running = true; });
+await page.click('button[aria-label="Leave voice mode"]');
+const picked = await page.getByText('Picked up after leaving.').waitFor({ timeout: 10_000 }).then(() => true).catch(() => false);
+const closed = await state();
+record(closed.followed === 1, `leaving voice mode on the chat asks after the running turn (${closed.followed})`);
+record(picked, 'and the answer is drawn in the chat, without a reload');
+record(closed.interrupted.length === left.interrupted.length, 'having stopped nothing');
+
+/* ---- the refresh button ---- */
+
+const askedAgain = [];
+page.on('request', (one) => { if ((one.postData() ?? '').includes('chatMessages(')) askedAgain.push(one.url()); });
+const refresh = page.getByTestId('chat-refresh');
+await page.waitForTimeout(500);
+await refresh.click();
+await page.waitForTimeout(1_000);
+record(askedAgain.length >= 1, `Refresh reads the chat again (${askedAgain.length})`);
+const titleBar = await refresh.evaluate((one) => one.parentElement.getAttribute('class'));
+record(/titleActions/.test(titleBar ?? ''), 'and it sits in the title bar\'s tools');
+await page.click('button[aria-label="Enter voice mode"]');
+await page.waitForTimeout(500);
+record(await refresh.isDisabled(), 'in voice mode it is off, since the panel owns the turn');
 
 await clean();

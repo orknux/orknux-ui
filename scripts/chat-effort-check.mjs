@@ -122,10 +122,27 @@ try {
   record((await pill.innerText()).trim() === 'Medium', `and the control says so (${(await pill.innerText()).trim()})`);
   record((await menu.count()) === 0, 'and the menu closes');
 
+  /* ---- remembered: a chat with nothing said yet starts on it ---- */
+  record((await pill.innerText()).trim() === 'Medium' && (await pill.locator('img[src*="chevron"]').count()) === 1, 'the word is drawn with a chevron');
+  record((await page.evaluate(() => localStorage.getItem('orknux.chat.effort'))) === 'medium', 'and the pick is remembered');
+  held = null;
+  sent.length = 0;
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await pill.waitFor({ timeout: 20_000 }).catch(() => undefined);
+  await page.waitForTimeout(600);
+  record(sent.length === 1 && sent[0].effort === 'medium' && (await pill.innerText()).trim() === 'Medium', `a chat with nothing said in it starts on the remembered word (${JSON.stringify(sent)})`);
+  sent.length = 0;
+  await pill.click();
+  await page.getByTestId('chat-effort-menu').getByRole('menuitemradio', { name: 'High' }).click();
+  await page.waitForTimeout(400);
+  sent.length = 0;
+  held = 'high';
+
   await pill.click();
   await page.getByTestId('chat-effort-menu').getByRole('menuitemradio', { name: 'Model default' }).click();
   await page.waitForTimeout(400);
-  record(sent.length === 2 && sent[1].effort === null, `Model default sends no effort (${JSON.stringify(sent[1])})`);
+  record(sent.length === 1 && sent[0].effort === null, `Model default sends no effort (${JSON.stringify(sent[0])})`);
+  record((await page.evaluate(() => localStorage.getItem('orknux.chat.effort'))) === null, 'and is what is remembered from then on');
 
   /* ---- a model that takes none ---- */
   levels = [];

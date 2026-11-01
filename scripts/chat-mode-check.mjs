@@ -56,6 +56,10 @@ try {
   chatId = (await graphql(`mutation($input: StartChatInput!) { startChat(input: $input) { id } }`, {
     input: { workspaceId: WORKSPACE, title: `${PREFIX} ${Date.now()}`, agentId: agent.id },
   })).startChat.id;
+  const started = (await graphql(`query($id: ID!) { chatSession(id: $id) { mode } }`, { id: chatId })).chatSession.mode;
+  record(started === 'AUTO', `a new chat starts in Auto (${started})`);
+  // The rest walks the list from its top.
+  await graphql(`mutation($id: ID!) { setChatMode(id: $id, mode: DEFAULT) { mode } }`, { id: chatId });
 
   await page.route('**/graphql', async (route) => {
     const body = route.request().postDataJSON() ?? {};
@@ -106,7 +110,7 @@ try {
   /* ---- the product's own list, not a native one ---- */
   const kind = await select.evaluate((one) => ({ tag: one.tagName, role: one.getAttribute('role') }));
   record(kind.tag === 'BUTTON' && kind.role === 'combobox', `the switch is the application's own list, not a native select (${JSON.stringify(kind)})`);
-  record((await select.getAttribute('data-chat-mode')) === 'DEFAULT', 'a new chat is in Default');
+  record((await select.getAttribute('data-chat-mode')) === 'DEFAULT', 'a chat in Default says so');
 
   // Drawn as the effort pill beside it is: the same height, outline and type.
   await page.getByTestId('chat-effort').waitFor({ timeout: 10_000 }).catch(() => undefined);
