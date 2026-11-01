@@ -302,11 +302,11 @@ await page.unroute('**/api/attachments/**');
 /* ------------------------------------------------------------------ tidying */
 
 /*
- * Back off again. It is a person's own preference and this check is signed in as
- * a person; leaving it on would be this check deciding what somebody's chat
- * looks like from now on.
+ * Back to the default, on. It is a person's own preference and this check is
+ * signed in as a person; leaving it off would be this check deciding what
+ * somebody's chat looks like from now on, and chat-cost-check starts from on.
  */
-await graphql(`mutation { setChatCostShown(shown: false) { chatCostShown } }`).catch(() => undefined);
+await graphql(`mutation { setChatCostShown(shown: true) { chatCostShown } }`).catch(() => undefined);
 await sweep();
 
 await finish(browser);

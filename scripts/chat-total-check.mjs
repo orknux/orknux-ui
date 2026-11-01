@@ -147,7 +147,7 @@ record(
 
 /* ------------------------------------------------------------------ tidy up */
 
-await graphql(`mutation { setChatCostShown(shown: false) { chatCostShown } }`);
+await graphql(`mutation { setChatCostShown(shown: true) { chatCostShown } }`);
 for (const id of [spoken, silent]) {
   await graphql(`mutation ($id: ID!) { deleteChat(id: $id) }`, { id });
 }

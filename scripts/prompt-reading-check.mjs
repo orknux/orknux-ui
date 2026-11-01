@@ -178,6 +178,6 @@ await page.goto(`${BASE}/chat`, { waitUntil: 'domcontentloaded' });
 await page.waitForFunction(() => document.querySelector('[class*="_spent"]') !== null, null, { timeout: 15_000 }).catch(() => {});
 const total = await page.evaluate(() => (document.querySelector('[class*="_spent"]')?.textContent ?? '').trim());
 record(total.includes('16,471,429 tokens (15,900,000 cached)'), `the chat's total says how much of it was cached (${total})`);
-await graphql(`mutation { setChatCostShown(shown: false) { chatCostShown } }`).catch(() => null);
+await graphql(`mutation { setChatCostShown(shown: true) { chatCostShown } }`).catch(() => null);
 
 await finish(browser);

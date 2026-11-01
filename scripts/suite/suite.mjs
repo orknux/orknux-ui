@@ -4456,6 +4456,8 @@ export const TESTS = [
     name: 'chat-cost-check',
     what: 'the switch that puts what an answer cost beside how long it took, off until it is turned on',
     needs: ['session'],
+    // It turns the shared account's preference off and on, under whoever is reading the cost line.
+    alone: true,
     /*
      * The other half of #227. The number is the server's and `ChatCostTest`
      * pins it - onto the answer, added up over an agent's rounds, costed at the
