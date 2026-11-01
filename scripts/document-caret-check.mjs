@@ -35,6 +35,8 @@ const focused = () => page.evaluate(() => document.activeElement?.getAttribute('
 const empty = await make(`Caret empty ${stamp}`);
 let sheet = await openAt(empty);
 await page.mouse.click(sheet.x + sheet.width / 2, sheet.y + sheet.height / 2);
+// Nobody's fingers are as quick as this script's: on a busy runner its first letters went out before the press had landed.
+await page.getByTestId('document-prose').and(page.locator(':focus')).waitFor({ timeout: 5_000 }).catch(() => {});
 await page.keyboard.type('Typed mid-sheet');
 await page.waitForTimeout(300);
 record(await focused() === 'document-prose', `a press in the middle of an empty sheet focuses the editor (${await focused()})`);

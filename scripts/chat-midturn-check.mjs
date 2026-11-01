@@ -154,12 +154,17 @@ await page.evaluate(() => window.__midturn.release?.());
 const finished = await page.getByText('Blue it is.').first().waitFor({ timeout: 10_000 }).then(() => true).catch(() => false);
 record(finished, 'and the turn still finishes');
 // A call that has returned shows its status beside its time, both at the row's end - not halfway along the row.
-const statusGaps = await page.locator('[data-testid="call-line"]').evaluateAll((lines) => lines.map((line) => {
-  const when = line.querySelector('[data-call-when]');
-  const state = when?.previousElementSibling;
-  if (!when || !state || !state.hasAttribute('data-running')) return null;
-  return Math.round(when.getBoundingClientRect().left - state.getBoundingClientRect().right);
-}).filter((gap) => gap !== null));
+// Polled: the answer can be drawn a moment before the calls are redrawn as returned.
+let statusGaps = [];
+for (let look = 0; look < 30 && statusGaps.length === 0; look += 1) {
+  statusGaps = await page.locator('[data-testid="call-line"]').evaluateAll((lines) => lines.map((line) => {
+    const when = line.querySelector('[data-call-when]');
+    const state = when?.previousElementSibling;
+    if (!when || !state || !state.hasAttribute('data-running')) return null;
+    return Math.round(when.getBoundingClientRect().left - state.getBoundingClientRect().right);
+  }).filter((gap) => gap !== null));
+  if (statusGaps.length === 0) await page.waitForTimeout(100);
+}
 record(statusGaps.length > 0 && statusGaps.every((gap) => gap >= 0 && gap <= 24), `a returned call's status sits beside its time (${JSON.stringify(statusGaps)}px apart)`);
 
 /*

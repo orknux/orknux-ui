@@ -90,22 +90,20 @@ record(run?.marks?.some((mark) => mark.type === 'textStyle' && mark.attrs?.color
 await openIt();
 record(await colourOf('warning') === 'rgb(192, 0, 0)', `after a reload the word is still red (${await colourOf('warning')})`);
 
-// The palette's Default takes the colour off again.
-await select('warning');
-await page.getByTestId('document-colour').click();
-await page.getByTestId('document-colour-default').click();
-await page.waitForTimeout(300);
-record(await colourOf('warning') === null, 'Default colour takes it off');
-await page.keyboard.press('Control+z');
-await page.waitForTimeout(300);
-
-// The exports carry it.
+// The exports carry what was saved. Read before Default colour below: an autosave after that would be right to lose it.
 const pdf = await context.request.get(`${BASE}/api/documents/${id}/export/pdf`);
 record(pdf.ok() && (await pdf.body()).subarray(0, 4).toString() === '%PDF', `the PDF export is written (${pdf.status()})`);
 const odt = await context.request.get(`${BASE}/api/documents/${id}/export/odt`);
 const odtBytes = await odt.body();
 const odtColour = entry(odtBytes, 'content.xml')?.includes('fo:color="#c00000"') ?? false;
 record(odt.ok() && odtColour, `the ODT's content.xml holds the colour (${odt.status()})`);
+
+// The palette's Default takes the colour off again.
+await select('warning');
+await page.getByTestId('document-colour').click();
+await page.getByTestId('document-colour-default').click();
+await page.waitForTimeout(300);
+record(await colourOf('warning') === null, 'Default colour takes it off');
 
 await graphql('mutation ($id: ID!) { deleteDocument(id: $id) }', { id });
 await finish(browser);
