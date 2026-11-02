@@ -66,3 +66,17 @@
   font: inherit;
   font-size: var(--text-sm);
 }
+
+/* The catalog being looked at, with its rename and delete, under the subtitle. */
+.catalogLine {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: 28px;
+}
+
+.catalogHeading {
+  font-weight: 500;
+  font-size: var(--text-lg);
+  color: var(--color-text-primary);
+}

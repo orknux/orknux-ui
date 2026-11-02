@@ -19,6 +19,10 @@ import rail from '../workspace/WorkspaceMemoryPage.module.css';
 import table from '../workspace/CatalogueTable.module.css';
 import styles from './DesignSheetsPage.module.css';
 import { dataUrl } from './DocumentImportMenu';
+import sheetIcon from '../../assets/file-spreadsheet.svg';
+import { moveSheet } from '../../api/designCatalogs';
+import { ALL_CATALOGS, DesignCatalogActions, DesignCatalogRail, useDesignCatalogs } from '../../components/DesignCatalogRail';
+import { MoveToCatalog } from '../../components/MoveToCatalog';
 
 export interface DesignSheetsPageProps {
   session: SessionUser;
@@ -30,7 +34,8 @@ const sheetPath = (workspaceId: string, id: string) => `/workspace/${workspaceId
 /**
  * The workspace's sheets, in Design beside its documents: a row for each, the
  * one worked on last first. New makes an empty one and opens it; Import makes
- * one from a workbook or a CSV, read on the server, formulas and all.
+ * one from a workbook or a CSV, read on the server, formulas and all. Filed in
+ * catalogs down the left, as Design's images, wireframes and videos are.
  */
 export function DesignSheetsPage({ session, onSignOut }: DesignSheetsPageProps) {
   const { workspaceId = '' } = useParams();
@@ -43,12 +48,16 @@ export function DesignSheetsPage({ session, onSignOut }: DesignSheetsPageProps) 
   const [removing, setRemoving] = useState<Sheet | null>(null);
   const [hunting, setHunting] = useState('');
   const picker = useRef<HTMLInputElement | null>(null);
+  /** The sheet catalogs down the left, and the one being looked at. */
+  const catalog = useDesignCatalogs(workspaceId, 'SHEET');
+  /** Read again after something changes which catalog a sheet is in. */
+  const [reads, setReads] = useState(0);
   const sought = hunting.trim().toLowerCase();
   const shown = sheets === null || sought === '' ? sheets : sheets.filter((sheet) => sheet.name.toLowerCase().includes(sought));
 
   async function load() {
     try {
-      setSheets(await fetchSheets(workspaceId));
+      setSheets(await fetchSheets(workspaceId, catalog.filter));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not load the sheets.'));
     }
@@ -57,7 +66,7 @@ export function DesignSheetsPage({ session, onSignOut }: DesignSheetsPageProps) 
   useEffect(() => {
     if (workspaceId === '') return;
     let left = false;
-    fetchSheets(workspaceId)
+    fetchSheets(workspaceId, catalog.filter)
       .then((found) => {
         if (!left) setSheets(found);
       })
@@ -67,14 +76,14 @@ export function DesignSheetsPage({ session, onSignOut }: DesignSheetsPageProps) 
     return () => {
       left = true;
     };
-  }, [workspaceId]);
+  }, [workspaceId, catalog.filter, reads]);
 
   async function make() {
     if (busy) return;
     setBusy(true);
     setError(null);
     try {
-      const made = await createSheet(workspaceId, t('Untitled sheet'));
+      const made = await createSheet(workspaceId, t('Untitled sheet'), undefined, catalog.fileIn);
       navigate(sheetPath(workspaceId, made.id));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not make the sheet.'));
@@ -91,7 +100,7 @@ export function DesignSheetsPage({ session, onSignOut }: DesignSheetsPageProps) 
       setImporting({ done: at, of: files.length });
       try {
         await refuseOversized([file]);
-        await importSheet(workspaceId, file.name, await dataUrl(file));
+        await importSheet(workspaceId, file.name, await dataUrl(file), undefined, catalog.fileIn);
       } catch (cause) {
         failed.push(cause instanceof Error ? `${file.name} (${cause.message})` : file.name);
       }
@@ -99,6 +108,7 @@ export function DesignSheetsPage({ session, onSignOut }: DesignSheetsPageProps) 
     setImporting(null);
     if (failed.length > 0) setError(tf('Could not import {names}', { names: failed.join(', ') }));
     await load();
+    void catalog.reload();
   }
 
   async function rename() {
@@ -123,10 +133,35 @@ export function DesignSheetsPage({ session, onSignOut }: DesignSheetsPageProps) 
       onSignOut={onSignOut}
       sidebar={<WorkspaceSidebar workspaceId={workspaceId} />}
     >
+      <div className={rail.split}>
+      <DesignCatalogRail
+        workspaceId={workspaceId}
+        kind="SHEET"
+        catalogs={catalog.catalogs}
+        selected={catalog.selected}
+        onSelect={catalog.select}
+        onChanged={catalog.reload}
+        title={t('SHEET CATALOGS')}
+        allLabel={t('All sheets')}
+        allIcon={sheetIcon}
+      />
+      <section className={rail.panel}>
       <header className={table.header}>
         <div className={table.titleGroup}>
           <h1 className={table.title}>{t('Sheets')}</h1>
           <p className={table.subtitle}>{t('Spreadsheets of cells and formulas, filled in by hand or by a model, in this workspace.')}</p>
+          <div className={styles.catalogLine}>
+            <span className={styles.catalogHeading} data-testid="design-catalog-heading">
+              {catalog.current?.name ?? t('All sheets')}
+            </span>
+            <DesignCatalogActions
+              workspaceId={workspaceId}
+              kind="SHEET"
+              current={catalog.current}
+              onChanged={catalog.reload}
+              onDeleted={() => catalog.select(ALL_CATALOGS)}
+            />
+          </div>
         </div>
         <div className={styles.actions}>
           <button
@@ -230,6 +265,19 @@ export function DesignSheetsPage({ session, onSignOut }: DesignSheetsPageProps) 
               >
                 <img src={penIcon} alt="" width={14} height={14} />
               </button>
+              {catalog.catalogs !== null && (
+                <MoveToCatalog
+                  name={sheet.name}
+                  catalogs={catalog.catalogs}
+                  currentCatalogId={sheet.catalogId}
+                  className={rail.iconButton}
+                  move={(target) => moveSheet(sheet.id, target)}
+                  onMoved={async () => {
+                    setReads((n) => n + 1);
+                    await catalog.reload();
+                  }}
+                />
+              )}
               <button
                 type="button"
                 className={rail.iconButton}
@@ -244,6 +292,8 @@ export function DesignSheetsPage({ session, onSignOut }: DesignSheetsPageProps) 
           </div>
         ))}
       </div>
+      </section>
+      </div>
 
       <ConfirmDialog
         subject={removing?.name ?? null}
@@ -254,6 +304,7 @@ export function DesignSheetsPage({ session, onSignOut }: DesignSheetsPageProps) 
           await deleteSheet(removing.id);
           setSheets((all) => all?.filter((one) => one.id !== removing.id) ?? all);
           setRemoving(null);
+          void catalog.reload();
         }}
       />
     </AppShell>

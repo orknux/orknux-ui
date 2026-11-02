@@ -1329,6 +1329,15 @@ export const TESTS = [
      */
   },
   {
+    name: 'app-package-update-check',
+    what: 'in the desktop app, a newer package is offered, downloaded and installed from Updates; an older release is going back, and one the server did not come back on says why',
+    needs: [],
+    /*
+     * Read-only: the app is the page's own orknuxDesktop and the download row
+     * the page's own answer, so nothing is downloaded, installed or restarted.
+     */
+  },
+  {
     name: 'server-update-progress-check',
     what: 'an update downloads in the background: a bar of bytes of total, the steps after it, the reason if it fails, and back on the version once restarted',
     needs: [],
@@ -2485,9 +2494,9 @@ export const TESTS = [
   },
   {
     name: 'design-catalogs-check',
-    what: "Images, Wireframes and Videos each have a catalog column with a default nobody made and nobody can delete; a catalog made there is selected, what is imported or made while it is files there and is counted, a catalog holding something refuses deletion saying why, a card's menu moves it to the default, and an emptied catalog is deleted",
+    what: "Images, Wireframes, Videos and Sheets each have a catalog column with a default nobody made and nobody can delete; a catalog made there is selected, what is imported or made while it is files there and is counted, a catalog holding something refuses deletion saying why, a card's menu moves it to the default, and an emptied catalog is deleted",
     needs: ['workspace'],
-    /* Makes its own catalogs, a picture and a wireframe, and removes them. Videos are checked for the column alone: CI has no video model to make one with. */
+    /* Makes its own catalogs, a picture, a wireframe and a sheet, and removes them. Videos are checked for the column alone: CI has no video model to make one with. */
   },
   {
     name: 'wireframe-text-edit-check',

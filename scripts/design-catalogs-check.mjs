@@ -1,12 +1,12 @@
 /**
- * Catalogs on Design's Images, Wireframes and Videos pages, the same column on
+ * Catalogs on Design's Images, Wireframes, Videos and Sheets pages, the same column on
  * each: the default catalog is there without anybody making it and offers no
  * delete; a catalog made through the column is selected and named above the
  * list; what is made or imported while it is selected is filed in it and listed
  * under it, and under the default no more; a catalog holding something refuses
  * to be deleted, in the server's words, and one moved empty again is deleted.
  *
- * Images and wireframes are filed through the page itself - Import, New - and
+ * Images, wireframes and sheets are filed through the page itself - Import, New - and
  * moved through a card's menu. Videos are made by a video model, which CI has
  * none of, so the videos page is checked for the column alone: its default,
  * and making and deleting an empty catalog.
@@ -26,6 +26,7 @@ const PAGES = [
   { kind: 'IMAGE', path: 'images', card: '[data-testid="design-gallery"] figure:not([data-job-status])' },
   { kind: 'WIREFRAME', path: 'wireframes', card: '[data-testid="wireframe-card"]' },
   { kind: 'VIDEO', path: 'videos', card: '[data-testid="video-card"]' },
+  { kind: 'SHEET', path: 'sheets', card: '[data-testid="sheet-row"]' },
 ];
 
 const row = (name) => page.locator(`[data-testid="design-catalog-row"][data-catalog="${name}"]`);
@@ -60,7 +61,7 @@ async function deleteSelected() {
   return null;
 }
 
-const made = { images: [], wireframes: [] };
+const made = { images: [], wireframes: [], sheets: [] };
 
 try {
   for (const one of PAGES) {
@@ -106,6 +107,11 @@ try {
       await page.waitForURL(/\/design\/images\/DESIGN-\d+\/edit$/, { timeout: 20_000 }).catch(() => undefined);
       const picture = /\/(DESIGN-\d+)\/edit$/.exec(page.url())?.[1];
       if (picture !== undefined) made.images.push(picture);
+    } else if (one.kind === 'SHEET') {
+      await page.getByTestId('new-sheet').click();
+      await page.waitForURL(/\/design\/sheets\/\d+$/, { timeout: 20_000 }).catch(() => undefined);
+      const sheet = /\/design\/sheets\/(\d+)$/.exec(page.url())?.[1];
+      if (sheet !== undefined) made.sheets.push(sheet);
     } else {
       await page.getByTestId('new-wireframe').click();
       await page.waitForURL(/\/design\/wireframes\/\d+$/, { timeout: 20_000 }).catch(() => undefined);
@@ -145,6 +151,7 @@ try {
 } finally {
   for (const id of made.images) await graphql('mutation ($id: ID!) { deleteArtifact(id: $id) }', { id }).catch(() => undefined);
   for (const id of made.wireframes) await graphql('mutation ($id: ID!) { deleteWireframe(id: $id) }', { id }).catch(() => undefined);
+  for (const id of made.sheets) await graphql('mutation ($id: ID!) { deleteSheet(id: $id) }', { id }).catch(() => undefined);
 }
 
 await finish(browser);

@@ -1,10 +1,11 @@
 import { graphql } from './client';
 import type { Artifact } from './artifacts';
+import type { Sheet } from './sheets';
 import type { DesignVideo } from './videos';
 import type { Wireframe } from './wireframes';
 
 /** What a Design catalog holds: one table per kind on the server, one set of calls here. */
-export type DesignCatalogKind = 'IMAGE' | 'WIREFRAME' | 'VIDEO';
+export type DesignCatalogKind = 'IMAGE' | 'WIREFRAME' | 'VIDEO' | 'SHEET';
 
 /** A folder of one kind of Design's things. */
 export interface DesignCatalog {
@@ -62,6 +63,15 @@ export async function moveWireframe(id: string, catalogId: string): Promise<Pick
     { id, catalogId },
   );
   return data.moveWireframe;
+}
+
+/** A sheet filed in another catalog. */
+export async function moveSheet(id: string, catalogId: string): Promise<Pick<Sheet, 'id' | 'catalogId'>> {
+  const data = await graphql<{ moveSheet: Pick<Sheet, 'id' | 'catalogId'> }>(
+    `mutation ($id: ID!, $catalogId: ID!) { moveSheet(id: $id, catalogId: $catalogId) { id catalogId } }`,
+    { id, catalogId },
+  );
+  return data.moveSheet;
 }
 
 /** A video, and the versions made of it, filed in another catalog. */

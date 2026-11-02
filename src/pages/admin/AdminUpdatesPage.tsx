@@ -30,6 +30,8 @@ import { shellUser } from '../../session/user';
 import styles from './AdminUpdatesPage.module.css';
 import { t, tf } from '../../i18n';
 import { withScheme } from '../../components/address';
+import { connectedServer, inDesktopApp, packageUpdates } from '../../session/desktop';
+import type { PackageUpdateState } from '../../session/desktop';
 
 export interface AdminUpdatesPageProps {
   session: SessionUser;
@@ -264,11 +266,15 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
           {updates !== null && (
             <p className={styles.subtitle} data-testid="running-version">
               {updates.runningRelease === null
-                ? tf('Running {version}, the image\'s own jar.', { version: updates.runningVersion })
+                ? ownDesktopServer()
+                  ? tf('Running {version}, the jar this app came with.', { version: updates.runningVersion })
+                  : tf('Running {version}, the image\'s own jar.', { version: updates.runningVersion })
                 : tf('Running {version}, from a stored release.', { version: updates.runningVersion })}
             </p>
           )}
         </header>
+
+        <AppPackagePanel />
 
         {error !== null && (
           <p className={styles.error} role="alert">
@@ -281,10 +287,11 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
           </p>
         )}
 
-        {download !== null && updates !== null && (
+        {/* Jar downloads are history once jar updates are off - the desktop app, which updates as a package. */}
+        {download !== null && updates !== null && updates.enabled && (
           <DownloadPanel
             download={download}
-            runningVersion={updates.runningVersion}
+            updates={updates}
             onDismiss={() => {
               void dismissServerReleaseDownload(download.id)
                 .then(() => setDownload(null))
@@ -304,7 +311,8 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
           </p>
         )}
 
-        {updates !== null && !updates.enabled && (
+        {/* The desktop app updates as a whole package, in the panel above: nothing here is "turned off" for it. */}
+        {updates !== null && !updates.enabled && !ownDesktopServer() && (
           <p className={styles.notice} data-testid="updates-disabled">
             {t('Updates are turned off on this installation (ORKNUX_SELF_UPDATE).')}
           </p>
@@ -666,14 +674,26 @@ function stepOf(state: ServerReleaseDownloadState): Step {
  */
 function DownloadPanel({
   download,
-  runningVersion,
+  updates,
   onDismiss,
 }: {
   download: ServerReleaseDownload;
-  runningVersion: string;
+  updates: ServerUpdates;
   onDismiss: () => void;
 }) {
+  const runningVersion = updates.runningVersion;
   const version = download.version ?? t('a jar');
+  /*
+   * Older than what runs is going back, not updating: the official list offers
+   * earlier releases to roll back to, and one was once titled "Updating to 1.2.5"
+   * on a server at 1.2.9.
+   */
+  const goingBack = download.version !== null && compareVersions(download.version, runningVersion) < 0;
+  /*
+   * The release the download stored, where it is still listed: what it says
+   * about itself is why the server came back on something else.
+   */
+  const stored = updates.stored.find((release) => release.id === download.releaseId) ?? null;
   const failed = download.state === 'FAILED';
   const ended = download.state === 'DONE' || failed;
   const back = download.activate && download.state === 'DONE' && download.version === runningVersion;
@@ -712,7 +732,9 @@ function DownloadPanel({
     <div className={styles.download} data-testid="release-download" data-state={download.state}>
       <p className={styles.downloadTitle}>
         {download.activate
-          ? tf('Updating to {version} from {host}', { version, host: download.host })
+          ? goingBack && !back
+            ? tf('Going back to {version} from {host}', { version, host: download.host })
+            : tf('Updating to {version} from {host}', { version, host: download.host })
           : tf('Fetching {version} from {host}', { version, host: download.host })}
       </p>
       <ol className={styles.steps} data-testid="download-steps">
@@ -776,7 +798,7 @@ function DownloadPanel({
           {back
             ? tf('Back on {version}.', { version })
             : download.activate
-              ? t('Chosen. This server was not started by the image, so restart it to run the release.')
+              ? cameBackOn(version, runningVersion, updates.restartable, stored)
               : tf('Stored {version}; press Update beside it below to run it.', { version })}
         </p>
       )}
@@ -784,6 +806,160 @@ function DownloadPanel({
         <div className={styles.row}>
           <button type="button" className={styles.secondary} onClick={onDismiss} data-testid="download-dismiss">
             {t('Dismiss')}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Why a release that was chosen is not what runs, in the words that are true.
+ *
+ * It used to say, whatever had happened, that the server was not started by
+ * the image - which the desktop app's server, restarted by the app, read on
+ * coming back on its own jar after going back to an older release. Outside a
+ * start loop that is the reason; inside one the server did restart, and the
+ * release itself says why it did not run: it failed to start, it was held
+ * back, or it can no longer be started on this database.
+ */
+function cameBackOn(
+  version: string,
+  running: string,
+  restartable: boolean,
+  stored: StoredServerRelease | null,
+): string {
+  if (!restartable) return t('Chosen. This server was not started by the image, so restart it to run the release.');
+  const why = stored?.failure ?? stored?.heldBack ?? stored?.refusal ?? null;
+  return why === null
+    ? tf('{version} was chosen, but the server came back on {running}.', { version, running })
+    : tf('{version} was chosen, but the server came back on {running}: {why}', { version, running, why });
+}
+
+/** Dotted versions as numbers: 1.2.10 is newer than 1.2.9. A suffix after the numbers is ignored. */
+export function compareVersions(a: string, b: string): number {
+  const parts = (v: string) => (v.match(/^\d+(\.\d+)*/)?.[0] ?? '0').split('.').map(Number);
+  const x = parts(a);
+  const y = parts(b);
+  for (let i = 0; i < Math.max(x.length, y.length); i++) {
+    const d = (x[i] ?? 0) - (y[i] ?? 0);
+    if (d !== 0) return d < 0 ? -1 : 1;
+  }
+  return 0;
+}
+
+/** Whether this page is the desktop app's own server, rather than a browser's or a client's remote one. */
+function ownDesktopServer(): boolean {
+  return inDesktopApp() && connectedServer() === null;
+}
+
+/**
+ * The desktop app's own package: a newer one found on orknux.ai,
+ * downloaded and its installer run, the way a driver manager does it. Only in
+ * the app, and only one new enough to offer it; everything is the app's to
+ * decide - which feed, which file, whether this install can update itself -
+ * and this only asks and shows.
+ */
+function AppPackagePanel() {
+  const app = packageUpdates();
+  const [state, setState] = useState<PackageUpdateState | null>(() => app?.state() ?? null);
+
+  useEffect(() => {
+    if (app === null) return;
+    const stop = app.onState(setState);
+    // Asked once on arriving here: one small file, and nothing is downloaded by asking.
+    if (app.state()?.phase === 'idle') app.check();
+    return stop;
+  }, [app]);
+
+  if (app === null || state === null) return null;
+
+  const fraction = state.total > 0 ? Math.min(1, state.transferred / state.total) : state.percent / 100;
+
+  return (
+    <div className={styles.download} data-testid="app-package" data-phase={state.phase}>
+      <p className={styles.downloadTitle}>{tf('This app: Orknux {version}', { version: state.current })}</p>
+
+      {state.phase === 'unavailable' && (
+        <p className={styles.notice} data-testid="app-package-unavailable">
+          {state.reason}
+        </p>
+      )}
+      {(state.phase === 'idle' || state.phase === 'checking') && (
+        <p className={styles.notice}>{t('Asking orknux.ai for a newer package…')}</p>
+      )}
+      {(state.phase === 'current' || state.phase === 'none') && (
+        <div className={styles.row}>
+          <p className={styles.notice} data-testid="app-package-current">
+            {state.phase === 'none' ? t('orknux.ai offers no desktop package yet.') : t('This is the newest package.')}
+          </p>
+          <button type="button" className={styles.secondary} onClick={() => app.check()}>
+            {t('Check again')}
+          </button>
+        </div>
+      )}
+      {state.phase === 'available' && (
+        <>
+          <p className={styles.notice} data-testid="app-package-available">
+            {tf('Orknux {version} is available. Installing it closes Orknux, installs the new package and opens it again.', {
+              version: state.version ?? '',
+            })}
+          </p>
+          {state.notes !== null && state.notes.trim() !== '' && (
+            <div className={styles.changelog}>
+              <Markdown>{state.notes}</Markdown>
+            </div>
+          )}
+          <div className={styles.row}>
+            <button type="button" className={styles.primary} onClick={() => app.install()} data-testid="app-package-install">
+              {tf('Download and install {version}', { version: state.version ?? '' })}
+            </button>
+          </div>
+        </>
+      )}
+      {state.phase === 'downloading' && (
+        <>
+          <ol className={styles.steps}>
+            <li className={styles.step} data-state="current">{t('Downloading')}</li>
+            <li className={styles.step} data-state="pending">{t('Installing')}</li>
+          </ol>
+          <div
+            className={styles.bar}
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={state.total || undefined}
+            aria-valuenow={state.transferred}
+          >
+            <div className={styles.fill} style={{ width: `${(fraction * 100).toFixed(2)}%` }} />
+          </div>
+          <p className={styles.progress}>
+            {state.total > 0
+              ? tf('{received} of {total}', { received: bytes(state.transferred), total: bytes(state.total) })
+              : tf('{received} so far', { received: bytes(state.transferred) })}
+            {state.bytesPerSecond > 0 && ` · ${bytes(state.bytesPerSecond)}/s`}
+          </p>
+        </>
+      )}
+      {state.phase === 'installing' && (
+        <>
+          <ol className={styles.steps}>
+            <li className={styles.step} data-state="done">{t('Downloading')}</li>
+            <li className={styles.step} data-state="current">{t('Installing')}</li>
+          </ol>
+          <p className={styles.notice} role="status" data-testid="app-package-installing">
+            {tf('Orknux {version} is downloaded and checked. Orknux closes now, installs it and opens again.', {
+              version: state.version ?? '',
+            })}
+          </p>
+        </>
+      )}
+      {state.phase === 'failed' && (
+        <div className={styles.row}>
+          <p className={styles.error} role="alert" data-testid="app-package-failed">
+            {state.error}
+          </p>
+          <button type="button" className={styles.secondary} onClick={() => app.check()}>
+            {t('Try again')}
           </button>
         </div>
       )}

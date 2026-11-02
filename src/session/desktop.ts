@@ -18,6 +18,39 @@ interface DesktopBridge {
   /** Absent on an app older than this page, as `windowShortcuts` is. */
   connectedServer?(): string | null;
   disconnect?(): void;
+  /** Absent on an app older than this page, as the others are. */
+  packageUpdate?: PackageUpdateBridge;
+}
+
+/**
+ * Where a newer package of the desktop app stands: the app's own answer, read
+ * and moved by the Updates page. The app decides everything - which feed, which
+ * file, whether this install can update itself - and the page only asks.
+ */
+export interface PackageUpdateState {
+  phase: 'idle' | 'checking' | 'current' | 'none' | 'available' | 'downloading' | 'installing' | 'failed' | 'unavailable';
+  /** This app's version. */
+  current: string;
+  /** The newer package's, once one was found. */
+  version: string | null;
+  notes: string | null;
+  releasedAt: string | null;
+  percent: number;
+  transferred: number;
+  total: number;
+  bytesPerSecond: number;
+  error: string | null;
+  /** Why this install cannot update itself, when the phase is unavailable. */
+  reason: string | null;
+  /** Where to get a package by hand, beside that reason. */
+  releases?: string;
+}
+
+interface PackageUpdateBridge {
+  state(): PackageUpdateState | null;
+  check(): void;
+  install(): void;
+  onState(listener: (state: PackageUpdateState) => void): () => void;
 }
 
 function bridge(): DesktopBridge | null {
@@ -57,4 +90,9 @@ export function connectedServer(): string | null {
 /** Asks the app to leave that server: it asks the person, then starts again at the question of where to connect. */
 export function disconnectFromServer(): void {
   bridge()?.disconnect?.();
+}
+
+/** The desktop app's package updates, or null in a browser and in an app too old to offer them. */
+export function packageUpdates(): PackageUpdateBridge | null {
+  return bridge()?.packageUpdate ?? null;
 }

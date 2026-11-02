@@ -42,6 +42,9 @@ export interface Sheet {
   createdAt: string;
   updatedBy: string;
   updatedAt: string;
+  /** The sheet catalog it is filed in: the default where it was never filed. */
+  catalogId: string;
+  catalogName: string;
 }
 
 /** A sheet with what its cells come to, as the editor opens it. */
@@ -58,7 +61,7 @@ export interface SheetAnswer {
   sheet: SheetWithValues;
 }
 
-const FIELDS = 'id workspaceId name workbook tabCount cellCount revision createdBy createdAt updatedBy updatedAt';
+const FIELDS = 'id workspaceId name workbook tabCount cellCount revision createdBy createdAt updatedBy updatedAt catalogId catalogName';
 const FULL = `${FIELDS} values`;
 
 /** The tab a new sheet, and a tab added to one, is called before anybody names it. */
@@ -98,10 +101,10 @@ export function valuesOf(text: string | null | undefined): WorkbookValues {
 }
 
 /** A workspace's sheets, the one worked on last first. */
-export async function fetchSheets(workspaceId: string): Promise<Sheet[]> {
+export async function fetchSheets(workspaceId: string, catalogId: string | null = null): Promise<Sheet[]> {
   const data = await graphql<{ sheets: Sheet[] }>(
-    `query ($workspaceId: ID!) { sheets(workspaceId: $workspaceId) { ${FIELDS} } }`,
-    { workspaceId },
+    `query ($workspaceId: ID!, $catalogId: ID) { sheets(workspaceId: $workspaceId, catalogId: $catalogId) { ${FIELDS} } }`,
+    { workspaceId, catalogId },
   );
   return data.sheets;
 }
@@ -120,12 +123,12 @@ export async function sheetValues(workspaceId: string, workbook: Workbook): Prom
   return valuesOf(data.sheetValues);
 }
 
-export async function createSheet(workspaceId: string, name: string, workbook?: Workbook): Promise<Sheet> {
+export async function createSheet(workspaceId: string, name: string, workbook?: Workbook, catalogId: string | null = null): Promise<Sheet> {
   const data = await graphql<{ createSheet: Sheet }>(
-    `mutation ($workspaceId: ID!, $name: String!, $workbook: String) {
-       createSheet(workspaceId: $workspaceId, name: $name, workbook: $workbook) { ${FIELDS} }
+    `mutation ($workspaceId: ID!, $name: String!, $workbook: String, $catalogId: ID) {
+       createSheet(workspaceId: $workspaceId, name: $name, workbook: $workbook, catalogId: $catalogId) { ${FIELDS} }
      }`,
-    { workspaceId, name, workbook: workbook === undefined ? null : workbookText(workbook) },
+    { workspaceId, name, workbook: workbook === undefined ? null : workbookText(workbook), catalogId },
   );
   return data.createSheet;
 }
@@ -155,12 +158,18 @@ export async function deleteSheet(id: string): Promise<boolean> {
 }
 
 /** Makes a sheet from a file - .xlsx, .xls, .ods or .csv - sent as a data URL. */
-export async function importSheet(workspaceId: string, filename: string, file: string, name?: string): Promise<Sheet> {
+export async function importSheet(
+  workspaceId: string,
+  filename: string,
+  file: string,
+  name?: string,
+  catalogId: string | null = null,
+): Promise<Sheet> {
   const data = await graphql<{ importSheet: Sheet }>(
-    `mutation ($workspaceId: ID!, $filename: String!, $file: String!, $name: String) {
-       importSheet(workspaceId: $workspaceId, filename: $filename, file: $file, name: $name) { ${FIELDS} }
+    `mutation ($workspaceId: ID!, $filename: String!, $file: String!, $name: String, $catalogId: ID) {
+       importSheet(workspaceId: $workspaceId, filename: $filename, file: $file, name: $name, catalogId: $catalogId) { ${FIELDS} }
      }`,
-    { workspaceId, filename, file, name: name ?? null },
+    { workspaceId, filename, file, name: name ?? null, catalogId },
   );
   return data.importSheet;
 }
