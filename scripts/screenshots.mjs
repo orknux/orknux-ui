@@ -8,9 +8,11 @@
  * command or it never happens.
  *
  * That command is in the other repository, because most of what it does is not
- * a browser. From PowerShell, in a checkout of orknux-server:
+ * a browser. In a checkout of orknux-server - from PowerShell on Windows, or a
+ * shell on Linux:
  *
  *   .\scripts\screenshots.ps1 -Endpoint http://a.model.that/answers
+ *   scripts/screenshots.sh --endpoint http://a.model.that/answers
  *
  * It builds the jar, stands an installation of its own up around it, seeds it,
  * runs this inside its interface container, and takes it all down again. Read
@@ -715,7 +717,9 @@ const SHOTS = [
     name: 'artifacts',
     path: `/workspace/${ws}/artifacts`,
     prepare: async (page) => {
-      await waitForPicture(page, 'img[src*="-pictures/"]');
+      // The list opens on the newest ten, which are the research's documents by now: a search brings the pictures up.
+      await page.getByPlaceholder('Search artifacts').fill('harbour');
+      await waitForPicture(page, 'main img[src*="/api/"]');
     },
   },
   /*
