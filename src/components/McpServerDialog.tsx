@@ -31,6 +31,7 @@ export function McpServerDialog({ open, workspaceId, onClose, onCreated }: McpSe
 
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
+  const [description, setDescription] = useState('');
   const [authType, setAuthType] = useState<AuthType>('API_KEY');
   /** The credential: typed here, or read from a workspace secret. Its own choice. */
   const secret = useSecretField();
@@ -46,6 +47,7 @@ export function McpServerDialog({ open, workspaceId, onClose, onCreated }: McpSe
     if (open && !dialog.open) {
       setName('');
       setAddress('');
+      setDescription('');
       setAuthType('API_KEY');
       secret.clear();
       setHeaders([]);
@@ -97,6 +99,7 @@ export function McpServerDialog({ open, workspaceId, onClose, onCreated }: McpSe
       workspaceId,
       name: name.trim(),
       address: address.trim(),
+      description: description.trim() || undefined,
       authType,
       // One of the two, never both: sending the pair is refused rather than
       // resolved by precedence, and sending neither adds a server with no
@@ -166,6 +169,22 @@ export function McpServerDialog({ open, workspaceId, onClose, onCreated }: McpSe
                 onChange={(event) => setAddress(event.target.value)}
                 onBlur={() => setAddress(withScheme(address))}
                 required
+              />
+            </div>
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="mcp-server-description">{t('Description')}</label>
+            <div className={styles.inputWrapper}>
+              <input
+                id="mcp-server-description"
+                name="serverDescription"
+                className={styles.input}
+                type="text"
+                maxLength={500}
+                placeholder={t("What it is for, e.g. the team's Confluence, read only")}
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
               />
             </div>
           </div>

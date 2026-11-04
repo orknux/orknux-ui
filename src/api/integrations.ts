@@ -125,6 +125,8 @@ export interface McpServer {
   workspaceId: string;
   name: string;
   address: string;
+  /** What it is for, in a sentence; told to an agent beside it. Absent on a server older than the field. */
+  description?: string | null;
   authType: AuthType;
   headers: HttpHeader[];
   /** Whether the server holds a credential of its own. False for one reading a variable. */
@@ -163,7 +165,7 @@ const WORKSPACE_CONNECTION_FIELDS =
   'userTokenSet userTokenVariableId userTokenVariableName userTokenVariableCatalog userTokenVariableMissing ' +
   'smtpPort smtpUsername smtpFrom smtpSecurity status lastCheckMessage lastCheckedAt';
 const MCP_SERVER_FIELDS =
-  'id workspaceId name address authType headers { name value } secretSet ' +
+  'id workspaceId name address description authType headers { name value } secretSet ' +
   'secretVariableId secretVariableName secretVariableCatalog secretVariableMissing ' +
   'reachable lastCheckedAt checkDetail toolCount';
 
@@ -759,6 +761,22 @@ export async function fetchMcpServer(id: string): Promise<McpServer | null> {
   return data.mcpServer;
 }
 
+const CHECK_MCP_SERVER_CHANGES_MUTATION = `
+  mutation CheckMcpServerChanges($id: ID!, $input: UpdateMcpServerInput!) {
+    checkMcpServerChanges(id: $id, input: $input) { reachable detail tools }
+  }
+`;
+
+/**
+ * The settings page's Check while it holds changes not yet saved: the saved
+ * server as the form holds it, a credential left untouched being the stored
+ * one. Nothing is saved or recorded.
+ */
+export async function checkMcpServerChanges(id: string, input: Parameters<typeof updateMcpServer>[1]): Promise<McpServerCheck> {
+  const data = await graphql<{ checkMcpServerChanges: McpServerCheck }>(CHECK_MCP_SERVER_CHANGES_MUTATION, { id, input });
+  return data.checkMcpServerChanges;
+}
+
 const CHECK_MCP_SERVER_DRAFT_MUTATION = `
   mutation CheckMcpServerDraft($input: CreateMcpServerInput!) {
     checkMcpServerDraft(input: $input) { reachable detail tools }
@@ -775,6 +793,7 @@ export async function createMcpServer(input: {
   workspaceId: string;
   name: string;
   address: string;
+  description?: string;
   authType?: AuthType;
   secret?: string;
   /** A workspace secret to read the credential from, instead of a copy here. Not with `secret`. */
@@ -791,6 +810,8 @@ export async function updateMcpServer(
   input: {
     name: string;
     address: string;
+    /** Blank clears it. */
+    description?: string;
     authType?: AuthType;
     secret?: string;
     /** Points the credential at a workspace secret, dropping any copy it held. Not with `secret`. */

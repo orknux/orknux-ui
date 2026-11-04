@@ -122,7 +122,8 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
     return servers.filter(
       (held) =>
         held.name.toLowerCase().includes(looking) ||
-        held.address.toLowerCase().includes(looking),
+        held.address.toLowerCase().includes(looking) ||
+        (held.description ?? '').toLowerCase().includes(looking),
     );
   }, [servers, serverAsked]);
 
@@ -358,10 +359,23 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
             <Link
               className={`${styles.colName} ${styles.serverName} ${styles.openName}`}
               to={`/workspace/${workspaceId}/integrations/servers/${server.id}`}
+              title={server.description ?? undefined}
             >
               {server.name}
             </Link>
-            <span className={`${styles.colGrow} ${styles.address}`}>{server.address}</span>
+            {/*
+              What it is for where somebody wrote it, the address under it; the
+              address alone where nobody did. Whole on hover.
+            */}
+            <span
+              className={`${styles.colGrow} ${styles.serverWhere}`}
+              title={[server.description, server.address].filter(Boolean).join('\n')}
+            >
+              {server.description && (
+                <span className={styles.description} data-server-description="">{server.description}</span>
+              )}
+              <span className={styles.address}>{server.address}</span>
+            </span>
             <span className={`${styles.colMeta} ${styles.meta}`}>
               {authLabel(server.authType, server.secretSet)}
             </span>

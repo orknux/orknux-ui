@@ -201,9 +201,10 @@ try {
   await chooseOption(page, chooser, 'HTTP');
   await page.waitForTimeout(400);
   record((await page.locator('#connection-auth').count()) === 1, 'an HTTP endpoint is still offered an Auth Type');
+  // The override is for a URL that cannot be edited; this one can, right above.
   record(
-    (await page.locator('#connection-url-override').count()) === 1,
-    'and still offered its URL Override',
+    (await page.locator('#connection-url-override').count()) === 0,
+    'and no URL Override beside a URL it can edit',
   );
   await chooseOption(page, chooser, 'SLACK');
   await page.waitForTimeout(400);

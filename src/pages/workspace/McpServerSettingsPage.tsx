@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   authTypeHint, authTypeLabel, secretPlaceholder,
   checkMcpServer,
+  checkMcpServerChanges,
   fetchMcpServer,
   removeMcpServer,
   revealMcpServerSecret,
@@ -47,6 +48,7 @@ function McpServerSettingsView({ session, onSignOut, onDiscard }: McpServerSetti
   const [server, setServer] = useState<McpServer | null>(null);
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
+  const [description, setDescription] = useState('');
   const [authType, setAuthType] = useState<AuthType>('NONE');
   const [headers, setHeaders] = useState<HttpHeader[]>([]);
   /**
@@ -96,6 +98,7 @@ function McpServerSettingsView({ session, onSignOut, onDiscard }: McpServerSetti
         setServer(found);
         setName(found.name);
         setAddress(found.address);
+        setDescription(found.description ?? '');
         setAuthType(found.authType);
         setHeaders(found.headers);
         secret.reset({ stored: found.secretSet, variable: found.secretVariableId });
@@ -163,30 +166,13 @@ function McpServerSettingsView({ session, onSignOut, onDiscard }: McpServerSetti
       setSaved(false);
       return;
     }
-    const sending = secret.sending;
-
     setSaving(true);
     setSaveError(null);
     setSaved(false);
     try {
-      const updated = await updateMcpServer(serverId, {
-        name: name.trim(),
-        address: address.trim(),
-        authType,
-        /*
-         * One of the two, never both. A variable sent drops any copy this
-         * server held and a token sent drops any reference; sending the pair is
-         * refused rather than resolved by precedence, and sending neither is
-         * what says "leave the stored one alone".
-         */
-        ...(sending === null
-          ? {}
-          : 'variable' in sending
-            ? { secretVariableId: sending.variable }
-            : { secret: sending.value }),
-        headers: headers.filter((header) => header.name.trim() !== ''),
-      });
+      const updated = await updateMcpServer(serverId, formInput());
       setServer(updated);
+      setDescription(updated.description ?? '');
       setHeaders(updated.headers);
       secret.reset({ stored: updated.secretSet, variable: updated.secretVariableId });
       setSaved(true);
@@ -197,19 +183,47 @@ function McpServerSettingsView({ session, onSignOut, onDiscard }: McpServerSetti
     }
   }
 
+  /** What the form holds, as a save sends it - and as Check asks with, before it is saved. */
+  function formInput() {
+    const sending = secret.sending;
+    return {
+      name: name.trim(),
+      address: address.trim(),
+      description: description.trim(),
+      authType,
+      /*
+       * One of the two, never both. A variable sent drops any copy this
+       * server held and a token sent drops any reference; sending the pair is
+       * refused rather than resolved by precedence, and sending neither is
+       * what says "leave the stored one alone".
+       */
+      ...(sending === null
+        ? {}
+        : 'variable' in sending
+          ? { secretVariableId: sending.variable }
+          : { secret: sending.value }),
+      headers: headers.filter((header) => header.name.trim() !== ''),
+    };
+  }
+
   /**
    * Asks the server whether it is there, and says what it answered.
    *
-   * What is checked is what is stored, not what is on the screen: a check of an
-   * address somebody has typed but not saved would tell them about a server
-   * that does not exist yet. Saving first is the ordinary thing to do, and the
-   * result says which one it asked.
+   * With what is on the screen. It used to check what was saved, so choosing
+   * API key, pasting the key and pressing Check asked the server without it -
+   * a 401, where the add dialog connected with the same key. Unchanged, the
+   * stored check runs, which also updates the status on the list; changed, the
+   * form is checked and nothing is saved.
    */
   async function handleCheck() {
+    if (changed && secret.unchosen) {
+      setCheck({ reachable: false, detail: t('Choose the workspace secret this server reads its token from.'), tools: null });
+      return;
+    }
     setChecking(true);
     setCheck(null);
     try {
-      setCheck(await checkMcpServer(serverId));
+      setCheck(changed ? await checkMcpServerChanges(serverId, formInput()) : await checkMcpServer(serverId));
     } catch (cause) {
       // A check that could not be made is not a server that is unreachable, but
       // to the person waiting it fails the same way and must still say something.
@@ -233,7 +247,7 @@ function McpServerSettingsView({ session, onSignOut, onDiscard }: McpServerSetti
    * what the page last agreed with the server. Save and Discard are off while
    * there is not.
    */
-  const changed = useDirty({ name, address, authType, headers, sending: secret.sending }, [server]);
+  const changed = useDirty({ name, address, description, authType, headers, sending: secret.sending }, [server]);
 
   return (
     <AppShell
@@ -303,6 +317,22 @@ function McpServerSettingsView({ session, onSignOut, onDiscard }: McpServerSetti
                   onChange={(event) => setAddress(event.target.value)}
                   onBlur={() => setAddress(withScheme(address))}
                   required
+                />
+              </div>
+            </div>
+
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="server-description">{t('Description')}</label>
+              <div className={styles.inputWrapper}>
+                <input
+                  id="server-description"
+                  name="serverDescription"
+                  className={styles.input}
+                  type="text"
+                  maxLength={500}
+                  placeholder={t("What it is for, e.g. the team's Confluence, read only")}
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
                 />
               </div>
             </div>

@@ -436,7 +436,8 @@ try {
     'page: the menu offers the kinds as the dialog does',
   );
   record((await page.locator('#connection-auth').count()) === 1, 'page: a labelled connection keeps the HTTP Auth Type');
-  record((await page.locator('#connection-url-override').count()) === 1, 'page: and the URL Override');
+  // Its URL is the workspace's to edit, so a second box for the same address is not drawn.
+  record((await page.locator('#connection-url-override').count()) === 0, 'page: and no URL Override beside a URL it can edit');
 
   await chooseOption(page, '#connection-type', 'HTTP');
   await page.waitForTimeout(300);

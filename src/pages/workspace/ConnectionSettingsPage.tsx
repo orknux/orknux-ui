@@ -914,7 +914,13 @@ function ConnectionSettingsView({ session, onSignOut, onDiscard }: ConnectionSet
               the other; two of these can, because each is named after the field
               it governs and each has one input under it. See
               components/SecretField.tsx.
+
+              Not drawn for an HTTP connection that authenticates with nothing,
+              as the new-connection dialog does not: a token field under "None"
+              asks for something no request will carry. One already stored stays
+              in view, so it can be seen and cleared.
             */}
+            {(slack || mail || authType !== 'NONE' || secret.stored || secret.variableId !== '') && (
             <SecretField
               id="connection-secret"
               label={secretLabel(kind)}
@@ -937,6 +943,7 @@ function ConnectionSettingsView({ session, onSignOut, onDiscard }: ConnectionSet
                   : null
               }
             />
+            )}
 
             {slack && (
               <SecretField
@@ -1007,8 +1014,13 @@ function ConnectionSettingsView({ session, onSignOut, onDiscard }: ConnectionSet
               * additionally makes it listen. Neither of those is a webhook
               * pointed somewhere else, so there is no Slack connection for
               * which an override here means anything.
+              *
+              * Nor where the URL above is this workspace's to edit: there the
+              * override is a second box for the same address. It is for an
+              * inherited connection, whose URL follows the default's - and one
+              * already set stays in view so it can be cleared.
               */}
-            {!slack && !mail && (
+            {!slack && !mail && (!addressEditable || urlOverride.trim() !== '') && (
             <div className={styles.field}>
               <label className={styles.label} htmlFor="connection-url-override">
                 {t('URL Override')}
