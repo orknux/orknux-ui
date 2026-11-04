@@ -66,6 +66,10 @@ export interface Workspace {
    * not offered.
    */
   quickChatModelId: string | null;
+  /** Whether no model of its own means any chat model the workspace has, rather than none. */
+  quickChatModelAny: boolean;
+  /** Whether Ask AI is offered here, by the workspace's own model or any chat model. */
+  quickChatAvailable: boolean;
   /**
    * The model that suggests how a sentence typed in a chat goes on. Null means
    * nothing is suggested. Issue #649.
@@ -132,6 +136,8 @@ export interface Workspace {
   chatMaxRounds: number | null;
   /** The installation's number, which an empty `chatMaxRounds` falls back to. */
   chatMaxRoundsDefault: number;
+  /** How many asked agents an agent may have working at once when it has no number of its own. */
+  agentMaxSubagentsAtOnceDefault: number;
   /** Rounds of review a reviewed research here gets; null is the installation's. */
   researchReviewRounds: number | null;
   researchReviewRoundsDefault: number;
@@ -235,10 +241,10 @@ export interface Workspace {
 
 const WORKSPACE_FIELDS =
   'id name description roles { id name } adminRoles { id name } administered readsSecrets adminWorkspace ' +
-  'companionModelId transcriptionModelId speechModelId imageModelId quickChatModelId quickChatMayWrite ' +
+  'companionModelId transcriptionModelId speechModelId imageModelId quickChatModelId quickChatModelAny quickChatAvailable quickChatMayWrite ' +
   'completionModelId completionModelDefault completionAvailable completionPauseMillis ' +
   'compactAfterTokens compactionSummaryTokens compactionModelId ' +
-  'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault agentMaxSubagents agentMaxSubagentsDefault chatMaxRounds chatMaxRoundsDefault researchReviewRounds researchReviewRoundsDefault researchFollowUps researchFollowUpsDefault maxToolCallsAtOnce maxToolCallsAtOnceDefault sessionCompactAfterTokens sessionCompactAfterTokensDefault sessionCompactionKeepTurns sessionCompactionKeepTurnsDefault sessionCompactionSummaryTokens sessionCompactionSummaryTokensDefault sessionCompactionAttempts sessionCompactionAttemptsDefault sessionCompactionModelId unsafeBuiltInTools commandMarker commandMarkerDefault ' +
+  'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault agentMaxSubagents agentMaxSubagentsDefault agentMaxSubagentsAtOnceDefault chatMaxRounds chatMaxRoundsDefault researchReviewRounds researchReviewRoundsDefault researchFollowUps researchFollowUpsDefault maxToolCallsAtOnce maxToolCallsAtOnceDefault sessionCompactAfterTokens sessionCompactAfterTokensDefault sessionCompactionKeepTurns sessionCompactionKeepTurnsDefault sessionCompactionSummaryTokens sessionCompactionSummaryTokensDefault sessionCompactionAttempts sessionCompactionAttemptsDefault sessionCompactionModelId unsafeBuiltInTools commandMarker commandMarkerDefault ' +
   'functionTimeoutSeconds functionTimeoutSecondsDefault toolTimeoutSeconds toolTimeoutSecondsDefault ' +
   'voicePauseEndsTurnMs voiceSpeechOverRoomPercent voiceUnattendedMicrophoneMs voiceBargeInMs voiceBargeInWhileThinking ' +
   'voiceSpeechChunking chatShowTimestamps voiceButtonHidden widgetTimerSound sessionCostShown';
@@ -356,16 +362,17 @@ export async function setWorkspaceImageModel(
   return data.setWorkspaceImageModel;
 }
 
-/** Chooses the model behind the quick chat; null takes the button away. */
+/** Chooses the model behind the quick chat; null takes the button away, and useAny hands it to any chat model. */
 export async function setWorkspaceQuickChatModel(
   workspaceId: string,
   modelId: string | null,
+  useAny = false,
 ): Promise<Workspace> {
   const data = await graphql<{ setWorkspaceQuickChatModel: Workspace }>(
-    `mutation SetWorkspaceQuickChatModel($workspaceId: ID!, $modelId: ID) {
-       setWorkspaceQuickChatModel(workspaceId: $workspaceId, modelId: $modelId) { ${WORKSPACE_FIELDS} }
+    `mutation SetWorkspaceQuickChatModel($workspaceId: ID!, $modelId: ID, $useAny: Boolean) {
+       setWorkspaceQuickChatModel(workspaceId: $workspaceId, modelId: $modelId, useAny: $useAny) { ${WORKSPACE_FIELDS} }
      }`,
-    { workspaceId, modelId },
+    { workspaceId, modelId, useAny },
   );
   return data.setWorkspaceQuickChatModel;
 }

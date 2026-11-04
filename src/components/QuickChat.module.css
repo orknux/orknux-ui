@@ -5,15 +5,7 @@
  * application and not to whatever is being scrolled underneath it.
  */
 .launcher {
-  position: fixed;
-  right: var(--space-24);
-  /*
-   * Down in the corner, level with the attribution strip rather than floating
-   * above it: sitting higher, it covered the page instead — and the strip now
-   * ends short of the right, so the two share the row without overlapping.
-   */
-  bottom: var(--space-6);
-  z-index: 40;
+  /* Placed by the corner row it sits in (CornerButtons), level with the attribution strip. */
   display: flex;
   align-items: center;
   gap: var(--space-8);

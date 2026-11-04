@@ -233,6 +233,12 @@ function Figures({ budget }: { budget: SessionMemoryBudget }) {
  * advertisement for something they cannot have.
  */
 /** What the Completion Model field shows for a workspace: its own model, Default, or none. */
+/** What the quick chat picker shows: its own model, Any, or None. */
+function quickChatChoice(held: Workspace | null | undefined): string {
+  if (held?.quickChatModelId != null) return held.quickChatModelId;
+  return held?.quickChatModelAny === true ? INHERITED_MODEL : '';
+}
+
 function completionChoice(held: Workspace | null | undefined): string {
   if (held?.completionModelId != null) return held.completionModelId;
   return held?.completionModelDefault === true ? INHERITED_MODEL : '';
@@ -560,7 +566,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         setTranscription(found?.transcriptionModelId ?? '');
         setSpeech(found?.speechModelId ?? '');
         setImage(found?.imageModelId ?? '');
-        setQuickChat(found?.quickChatModelId ?? '');
+        setQuickChat(quickChatChoice(found));
         setQuickChatWrites(found?.quickChatMayWrite ?? false);
         setChatTimestamps(found?.chatShowTimestamps ?? true);
         setVoiceHidden(found?.voiceButtonHidden ?? false);
@@ -810,7 +816,9 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         latest = await setWorkspaceSessionCostShown(workspaceId, sessionCost);
       }
       if (touched.has('quickChat')) {
-        latest = await setWorkspaceQuickChatModel(workspaceId, asNull(quickChat));
+        latest = quickChat === INHERITED_MODEL
+          ? await setWorkspaceQuickChatModel(workspaceId, null, true)
+          : await setWorkspaceQuickChatModel(workspaceId, asNull(quickChat));
       }
       if (touched.has('quickChatWrites')) {
         latest = await setWorkspaceQuickChatWrites(workspaceId, quickChatWrites);
@@ -913,7 +921,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
     setTranscription(held.transcriptionModelId ?? '');
     setSpeech(held.speechModelId ?? '');
     setImage(held.imageModelId ?? '');
-    setQuickChat(held.quickChatModelId ?? '');
+    setQuickChat(quickChatChoice(held));
     setQuickChatWrites(held.quickChatMayWrite);
     setChatTimestamps(held.chatShowTimestamps);
     setVoiceHidden(held.voiceButtonHidden);
@@ -2667,6 +2675,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
               models={models.filter((model) => model.kind === 'CHAT')}
               onChange={(next) => { touch('quickChat'); setQuickChat(next); }}
               none={t('None — the AI button is not offered')}
+              inherited={t('Any — the first chat model switched on here')}
               disabled={workspace === null}
             />
           </div>

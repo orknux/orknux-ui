@@ -1,0 +1,143 @@
+/*
+ * Connect AI: a button beside Ask AI, and the instructions it opens.
+ *
+ * The button is Ask AI's shape - the corner row makes it Ask AI's height - so the two read as one row in the
+ * corner, but in the plain raised surface rather than the brand colour: Ask AI
+ * is the product's own assistant, this is a way in for somebody else's.
+ */
+.launcher {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-6) var(--space-16);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-modal);
+  font-family: inherit;
+  font-weight: 600;
+  font-size: var(--text-md);
+  line-height: 1;
+  letter-spacing: 0.4px;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.launcher:hover {
+  border-color: var(--color-text-muted);
+}
+
+.dialog {
+  width: 640px;
+  max-width: calc(100vw - var(--space-32));
+}
+
+.lead {
+  margin: 0 0 var(--space-16);
+  color: var(--color-text-body);
+  font-size: var(--text-md);
+  line-height: 1.5;
+}
+
+.part {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  margin-bottom: var(--space-16);
+}
+
+.step {
+  font-weight: 600;
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+}
+
+.note {
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-8);
+}
+
+/* What is pasted, whole: wrapped rather than cut, since a command cut short is a command that fails. */
+.code {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-8) var(--space-12);
+  /* A text field's own colours, as the forms' fields have them. */
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  /* Clear of the line under them that says where the snippet goes. */
+  margin-bottom: var(--space-12);
+}
+
+.tab {
+  padding: var(--space-4) var(--space-12);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.tabOn {
+  background: var(--color-accent-brand);
+  border-color: var(--color-accent-brand);
+  color: var(--color-on-accent-brand);
+}
+
+/*
+ * The snippets' colours: the chat's code palette, so a command reads the same
+ * here as in an answer that tells somebody what to run. Anything unlisted -
+ * punctuation, plain words - keeps the block's own colour.
+ */
+.code :global(.hljs-comment) {
+  color: var(--code-comment);
+  font-style: italic;
+}
+
+.code :global(.hljs-string) {
+  color: var(--code-string);
+}
+
+.code :global(.hljs-number),
+.code :global(.hljs-literal) {
+  color: var(--code-number);
+}
+
+.code :global(.hljs-keyword),
+.code :global(.hljs-built_in),
+.code :global(.hljs-meta) {
+  color: var(--code-keyword);
+}
+
+/* A key is a name, not a value: in JSON and TOML it is coloured apart from the string it holds. */
+.code :global(.hljs-attr),
+.code :global(.hljs-title),
+.code :global(.hljs-section),
+.code :global(.hljs-name),
+.code :global(.hljs-variable),
+.code :global(.hljs-attribute) {
+  color: var(--code-type);
+}

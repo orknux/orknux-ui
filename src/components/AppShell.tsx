@@ -22,6 +22,8 @@ import { CommandPalette } from './CommandPalette';
 import { askBeforeLeaving } from './leaveGuard';
 import { NotificationBell } from './NotificationBell';
 import { QuickChat } from './QuickChat';
+import { CornerButtons } from './CornerButtons';
+import { McpConnect } from './McpConnect';
 import styles from './AppShell.module.css';
 import { ResizeHandle, useDragSize } from './DragSize';
 import { connectedServer, disconnectFromServer } from '../session/desktop';
@@ -554,7 +556,17 @@ export function AppShell({
         floating over the one already open — two boxes to type a question into,
         one of which keeps no history.
       */}
-      {where !== 'Chat' && quickChat && <QuickChat workspacePath={workspaceHere} userName={user.name} />}
+      {/*
+        Orknux MCP beside it, on the same pages: how to reach this workspace
+        from an AI client somewhere else. Not in the chat either, where the
+        corner is the composer's.
+      */}
+      {where !== 'Chat' && (
+        <CornerButtons>
+          <McpConnect workspacePath={workspaceHere} />
+          {quickChat && <QuickChat workspacePath={workspaceHere} userName={user.name} />}
+        </CornerButtons>
+      )}
 
       {/*
         The attribution the licence asks to be kept visible. In the shell rather

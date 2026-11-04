@@ -1,0 +1,14 @@
+/*
+ * Down in the corner, level with the attribution strip: where the quick chat's
+ * launcher sat on its own, so it stays exactly there with Orknux MCP to its left.
+ */
+.row {
+  position: fixed;
+  right: var(--space-24);
+  bottom: var(--space-6);
+  z-index: 40;
+  display: flex;
+  /* Stretched, so a button with no icon is as tall as Ask AI, whose icon sets the height. */
+  align-items: stretch;
+  gap: var(--space-8);
+}

@@ -21,9 +21,6 @@ import styles from './QuickChat.module.css';
 import { t, tf } from '../i18n';
 
 
-/** The gap between the end of the attribution strip and the launcher, in pixels. A format, not a behaviour. */
-const REACH_GAP = 16;
-
 export interface QuickChatProps {
   /** The workspace it asks about, or undefined while none is known. */
   workspacePath?: string;
@@ -151,7 +148,7 @@ export function QuickChat({ workspacePath, userName }: QuickChatProps) {
     fetchWorkspace(workspaceId)
       .then((held) => {
         if (!live) return;
-        setOffered(held?.quickChatModelId != null);
+        setOffered(held?.quickChatAvailable === true);
         setMayWrite(held?.quickChatMayWrite ?? false);
       })
       .catch(() => {
@@ -328,30 +325,7 @@ export function QuickChat({ workspacePath, userName }: QuickChatProps) {
   const panelHeight = useDragSize({ storageKey: 'orknux.quickChat.height', initial: 460, min: 300, max: windowTall - 140, edge: 'top' });
   const launcher = useRef<HTMLButtonElement>(null);
 
-  /*
-   * How far the launcher reaches in from the right, for the attribution strip
-   * to end short of: measured, because its label's width depends on the
-   * language and the font, and a fixed number let the strip run under it.
-   */
-  useLayoutEffect(() => {
-    const button = launcher.current;
-    if (button === null) return undefined;
-    const root = document.documentElement;
-    const measure = () => {
-      const reach = window.innerWidth - button.getBoundingClientRect().left + REACH_GAP;
-      root.style.setProperty('--quick-chat-reach', `${Math.ceil(reach)}px`);
-    };
-    measure();
-    const watching = new ResizeObserver(measure);
-    watching.observe(button);
-    window.addEventListener('resize', measure);
-    return () => {
-      watching.disconnect();
-      window.removeEventListener('resize', measure);
-      // No launcher, nothing to keep clear of.
-      root.style.setProperty('--quick-chat-reach', '0px');
-    };
-  }, []);
+  // How far the corner reaches in from the right is measured by CornerButtons, which this launcher sits in.
   const [tail, setTail] = useState<{ left: number; top: number } | null>(null);
   useLayoutEffect(() => {
     if (!open) {
