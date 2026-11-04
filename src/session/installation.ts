@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { fetchInstallationSettings } from '../api/installation';
+import { setAwayAfterSeconds } from './visibility';
 import type { InstallationSettings } from '../api/installation';
 
 /**
@@ -25,6 +26,7 @@ function load(): Promise<InstallationSettings> {
   pending = fetchInstallationSettings()
     .then((settings) => {
       cached = settings;
+      setAwayAfterSeconds(settings.liveLetGoSeconds);
       listeners.forEach((listener) => listener(settings));
       return settings;
     })

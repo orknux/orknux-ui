@@ -43,6 +43,13 @@ export interface InstallationSettings {
   revisionRetentionDays: number;
   /** What a fresh installation would keep: ORKNUX_REVISION_RETENTION_DAYS. */
   revisionRetentionDaysConfigured: number;
+  /** How long a tab is out of sight before it lets go of its live connection, in seconds. */
+  liveLetGoSeconds: number;
+  /** Whether a diagram's picture on this machine or its network is fetched for its exports; link-local never is. */
+  diagramPicturesInternal?: boolean;
+  diagramPicturesInternalConfigured?: boolean;
+  slackListening?: boolean;
+  slackListeningConfigured?: boolean;
   /**
    * How long a finished run is kept before a sweep takes it.
    *
@@ -402,7 +409,7 @@ export interface InstallationSettings {
 const FIELDS =
   'attachmentsEnabled attachmentsConfigurable attachmentStorage attachmentLocation attachmentMaxFileSizeMb attachmentMaxFileSizeMbConfigured ' +
   'chatEnabled chatConfigurable metricsAnonymous metricsAnonymousConfigured ' +
-  'revisionRetentionDays revisionRetentionDaysConfigured ' +
+  'revisionRetentionDays revisionRetentionDaysConfigured liveLetGoSeconds diagramPicturesInternal diagramPicturesInternalConfigured slackListening slackListeningConfigured ' +
   'executionRetentionDays executionRetentionDaysConfigured ' +
   'taskSweepMinutes taskSweepMinutesConfigured taskSweepConfigurable ' +
   'pluginMaxSourceKb pluginMaxSourceKbConfigured pluginTimeoutSeconds pluginTimeoutSecondsConfigured ' +
@@ -437,6 +444,16 @@ export async function setChatEnabled(enabled: boolean): Promise<InstallationSett
     { enabled },
   );
   return data.setChatEnabled;
+}
+
+export async function setDiagramPicturesInternal(allowed: boolean): Promise<InstallationSettings> {
+  const data = await graphql<{ setDiagramPicturesInternal: InstallationSettings }>(
+    `mutation SetDiagramPicturesInternal($allowed: Boolean!) {
+       setDiagramPicturesInternal(allowed: $allowed) { ${FIELDS} }
+     }`,
+    { allowed },
+  );
+  return data.setDiagramPicturesInternal;
 }
 
 export async function setAttachmentsEnabled(enabled: boolean): Promise<InstallationSettings> {
@@ -1380,4 +1397,15 @@ export async function setBoxEditUndoSteps(steps: number): Promise<InstallationSe
     { steps },
   );
   return data.setBoxEditUndoSteps;
+}
+
+/** Whether this server listens to Slack; the sockets follow within a few seconds. */
+export async function setSlackListening(on: boolean): Promise<InstallationSettings> {
+  const data = await graphql<{ setSlackListening: InstallationSettings }>(
+    `mutation SetSlackListening($on: Boolean!) {
+       setSlackListening(on: $on) { ${FIELDS} }
+     }`,
+    { on },
+  );
+  return data.setSlackListening;
 }

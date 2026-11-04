@@ -52,6 +52,8 @@ import {
   setToolSummaryTrimPercent,
   setCommandMarker,
   setAttachmentsEnabled,
+  setDiagramPicturesInternal,
+  setSlackListening,
   setSessionsRemovable,
   setConcealedCallsHiddenInChats,
   setSessionFlaggingEnabled,
@@ -133,7 +135,7 @@ import { GrammarSection } from './GrammarSection';
 import type { PendingWrite } from './LogLevelsSection';
 import { ReportSwitch, ReportSwitches } from './ReportSwitches';
 import { fetchCommandRunsEnabled, setCommandRuns } from '../../api/commands';
-import { t } from '../../i18n';
+import { t, tf } from '../../i18n';
 import { Select } from '../../components/Select';
 
 export interface AdminSettingsPageProps {
@@ -2801,6 +2803,37 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
             </div>
 
 
+            <h2 id="slack" className={styles.sectionHeading}>Slack</h2>
+            {/*
+              Whether this server opens Socket Mode for the Slack connections
+              that hold an app-level token. It was only the environment's
+              ORKNUX_SLACK_ENABLED, so a server started without Slack needed a
+              restart with another environment to be given it back. The
+              sockets follow within a few seconds either way.
+            */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <p className={styles.settingLabel}>{t('Listen to Slack')}</p>
+                <p className={styles.settingNote}>
+                  {tf('Whether this server receives mentions and messages from the Slack connections that have an app-level token. Off, it can still post to Slack but hears nothing. Turn it off on a copy that uses the same Slack app as another server: Slack hands each message to one listener, so two would share them. The configuration file says {said}.', {
+                    said: settings.slackListeningConfigured === false ? t('off') : t('on'),
+                  })}
+                </p>
+              </div>
+              <button
+                type="button"
+                className={styles.toggle}
+                onClick={() => void save(() => setSlackListening(!(settings.slackListening ?? true)))}
+                disabled={busy || settings.slackListening === undefined}
+                role="switch"
+                aria-checked={settings.slackListening ?? true}
+                aria-label={t('Listen to Slack')}
+                data-testid="admin-slack-listening"
+              >
+                <img src={(settings.slackListening ?? true) ? toggleOnIcon : toggleOffIcon} alt="" width={36} height={20} data-keeps-colour />
+              </button>
+            </div>
+
             <h2 id="commands" className={styles.sectionHeading}>{t('Commands')}</h2>
 
             {/* What marks a command in a message that starts a run; a workspace
@@ -2865,6 +2898,34 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
                   height={20}
                   data-keeps-colour
                 />
+              </button>
+            </div>
+
+            {/*
+              A diagram's picture given as an address is fetched by the server
+              for the diagram's exports; whether that may be an address on its
+              own network is the administrator's call. Link-local never is.
+            */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <p className={styles.settingLabel}>{t('Diagram pictures from internal addresses')}</p>
+                <p className={styles.settingNote}>
+                  {tf('Whether a picture on a diagram given as an address on this server or its own network - an intranet page, a file server - is fetched for the diagram’s exports. Off, only public addresses are. The configuration file says {said}.', {
+                    said: settings.diagramPicturesInternalConfigured === false ? t('off') : t('on'),
+                  })}
+                </p>
+              </div>
+              <button
+                type="button"
+                className={styles.toggle}
+                onClick={() => void save(() => setDiagramPicturesInternal(!(settings.diagramPicturesInternal ?? true)))}
+                disabled={busy || settings.diagramPicturesInternal === undefined}
+                role="switch"
+                aria-checked={settings.diagramPicturesInternal ?? true}
+                aria-label={t('Diagram pictures from internal addresses')}
+                data-testid="admin-diagram-pictures-internal"
+              >
+                <img src={(settings.diagramPicturesInternal ?? true) ? toggleOnIcon : toggleOffIcon} alt="" width={36} height={20} data-keeps-colour />
               </button>
             </div>
 
