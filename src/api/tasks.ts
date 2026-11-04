@@ -1,3 +1,4 @@
+import { whileLookedAt } from '../session/visibility';
 import { graphql } from './client';
 import type { LlmSessionEventKind } from './llmSessions';
 import { payloadOf, readEventStream } from './sse';
@@ -440,12 +441,33 @@ export function watchTask(id: string, from: string, handlers: TaskWatchHandlers)
   const stopper = new AbortController();
   let cursor = from;
   let stopped = false;
+  /*
+   * Out of sight, the page lets go of its stream (see session/visibility) and
+   * asks again from its cursor when looked at, which is the reconnect it
+   * already makes after a drop: nothing it missed is lost.
+   */
+  let streaming: AbortController | null = null;
+  let away = false;
+  let back: (() => void) | null = null;
+  const stopLooking = whileLookedAt(
+    () => {
+      away = true;
+      streaming?.abort();
+    },
+    () => {
+      away = false;
+      back?.();
+    },
+  );
 
   async function stint(): Promise<'again' | 'ended'> {
+    streaming = new AbortController();
+    const ended = () => streaming?.abort();
+    stopper.signal.addEventListener('abort', ended, { once: true });
     const response = await fetch(`/api/tasks/${id}/stream?after=${encodeURIComponent(cursor)}`, {
       credentials: 'same-origin',
       headers: { Accept: 'text/event-stream' },
-      signal: stopper.signal,
+      signal: streaming.signal,
     });
 
     let ending: 'again' | 'ended' = 'again';
@@ -476,16 +498,29 @@ export function watchTask(id: string, from: string, handlers: TaskWatchHandlers)
   void (async () => {
     for (;;) {
       if (stopped) return;
+      if (away) {
+        await new Promise<void>((wake) => {
+          back = wake;
+        });
+        back = null;
+        continue;
+      }
       try {
         handlers.onWatching('live');
         const ending = await stint();
         if (stopped) return;
+        if (away) continue;
         if (ending === 'ended') {
           handlers.onWatching('ended');
           return;
         }
       } catch (cause: unknown) {
-        if (stopped || (cause instanceof DOMException && cause.name === 'AbortError')) return;
+        if (stopped) return;
+        // Let go of because the page went out of sight: wait to be looked at.
+        if (cause instanceof DOMException && cause.name === 'AbortError') {
+          if (away) continue;
+          return;
+        }
         /*
          * Anything else — the server restarting, a network that went away, a
          * proxy that closed it — is the same thing and is answered the same way.
@@ -502,6 +537,9 @@ export function watchTask(id: string, from: string, handlers: TaskWatchHandlers)
 
   return () => {
     stopped = true;
+    stopLooking();
+    back?.();
     stopper.abort();
+    streaming?.abort();
   };
 }

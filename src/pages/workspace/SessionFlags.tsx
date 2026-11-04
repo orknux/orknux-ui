@@ -13,7 +13,16 @@ import styles from './SessionFlags.module.css';
  * the query only to one. Nothing at all where the session carries none, so a
  * session page reads as it always did until something was flagged.
  */
-export function SessionFlags({ sessionId }: { sessionId: string }) {
+export function SessionFlags({ sessionId, lines }: {
+  sessionId: string;
+  /**
+   * How many lines the session has, as the page last read it. A flag is raised
+   * by a tool call, which is a line, so a new line is when to ask again: read
+   * once, a flag the agent raised while the page was open showed only after a
+   * reload.
+   */
+  lines?: number;
+}) {
   const [flags, setFlags] = useState<SessionFlag[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,7 +39,7 @@ export function SessionFlags({ sessionId }: { sessionId: string }) {
     return () => {
       abandoned = true;
     };
-  }, [sessionId]);
+  }, [sessionId, lines]);
 
   if (flags === null || flags.length === 0) return null;
 

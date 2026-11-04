@@ -40,6 +40,7 @@ export type ConfirmKind =
   | 'removeDiagramCatalog'
   | 'startFollowUp'
   | 'restoreDocumentVersion'
+  | 'restoreDiagramVersion'
   | 'newDocument'
   | 'copyDocument'
   | 'removeMember'
@@ -390,6 +391,11 @@ export function ConfirmDialog({ subject, kind, detail, onClose, onConfirm }: Con
     restoreDocumentVersion: {
       title: t('Restore this version'),
       message: <>{t('The document is put back to this version, and what it says now is kept in its history:')} {name}</>,
+      button: submitting ? t('Restoring…') : t('Restore'),
+    },
+    restoreDiagramVersion: {
+      title: t('Restore this version'),
+      message: <>{t('The diagram is put back to this version, and what it shows now is kept in its history:')} {name}</>,
       button: submitting ? t('Restoring…') : t('Restore'),
     },
     startFollowUp: {

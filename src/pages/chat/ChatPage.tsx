@@ -1,3 +1,4 @@
+import { useLookedAt } from '../../session/visibility';
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { cachedWorkspaces } from '../../session/workspaces';
@@ -929,6 +930,16 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   /* Read this chat again as if it had just been opened: the refresh button, and a voice turn left running. */
   const [readAgain, setReadAgain] = useState(0);
   /*
+   * Out of sight for a while, the chat lets go of what it holds open - the
+   * answer it is reading, and the wait for a turn nobody here asked for - and
+   * reads the chat again when it is looked at; see session/visibility. A
+   * background tab held one of the six connections a browser keeps to a host,
+   * and six of them froze every other tab.
+   */
+  const looked = useLookedAt();
+  /** Set while the effect below is let go of for being out of sight, not for leaving the chat. */
+  const hiding = useRef(false);
+  /*
    * What the open chat holds.
    *
    * Cleared before the fetch, not after: leaving the old conversation on screen
@@ -937,6 +948,8 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    * again is dropped for the same reason.
    */
   useEffect(() => {
+    if (!looked) return;
+    hiding.current = false;
     setMessages([]);
     setLastSpend(null);
     // Working belongs to the turn that produced it, and that turn is in the
@@ -984,6 +997,15 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     return () => {
       live = false;
       following.abort();
+      // Let go of for being out of sight: the answer goes on on the server and is read again on return.
+      if (hiding.current) {
+        if (asking.current !== null) {
+          asking.current.abort();
+          asking.current = null;
+          setSending(false);
+        }
+        return;
+      }
       /*
        * And whatever this page was reading for the chat being left. Only the
        * reading stops: a text turn goes on being written on the server, and the
@@ -1000,7 +1022,9 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     // `followAnswer` is a plain function of this render; what it reads is
     // refs and setters, so the one made by the render that opened the chat is
     // as good as any later one.
-  }, [currentId, readAgain]);
+  }, [currentId, readAgain, looked]);
+  // Marked before the effect above is let go of, so its cleanup knows why.
+  if (!looked && !hiding.current) hiding.current = true;
 
   /*
    * An answer still being written in a chat somebody has just left: followed

@@ -1645,7 +1645,7 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
             {held !== null && held.speed != null && <SpeedMeter speed={held.speed} />}
             {held !== null && <SessionRuns workspaceId={workspaceId} sessionId={sessionId} />}
             {/* What agents flagged here: an installation administrator's alone, and the server says the same. */}
-            {held !== null && session.admin && <SessionFlags sessionId={sessionId} />}
+            {held !== null && session.admin && <SessionFlags sessionId={sessionId} lines={events?.totalElements} />}
           </>
         )}
       </header>
