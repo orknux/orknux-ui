@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { createUserToken, deleteUserToken, fetchMyTokens, fetchUserTokens } from '../api/users';
+import { createUserToken,
+  fetchMcpTools, deleteUserToken, fetchMyTokens, fetchUserTokens } from '../api/users';
 import chevronDown12Icon from '../assets/chevron-down-12.svg';
 import closeIcon from '../assets/x.svg';
-import type { UserToken } from '../api/users';
+import type { McpTool, UserToken } from '../api/users';
 import { timeAgo } from '../api/tools';
 import { t, tf } from '../i18n';
 import { CopyButton } from './CopyButton';
@@ -31,8 +32,26 @@ export interface AccessTokensProps {
 export function AccessTokens({ userId, inputClassName, buttonClassName }: AccessTokensProps) {
   const [tokens, setTokens] = useState<UserToken[] | null>(null);
   const [name, setName] = useState('');
-  /** What the next token may do: read, or read and write. Asked here because it cannot be changed once made. */
-  const [readOnly, setReadOnly] = useState(false);
+  /**
+   * What the next token may do: read and write, read, or Custom - chosen MCP
+   * tools and no others. Asked here because it cannot be changed once made.
+   */
+  const [mode, setMode] = useState<'write' | 'read' | 'custom'>('write');
+  /** Custom: every MCP tool there is, and which are ticked. */
+  const [catalog, setCatalog] = useState<McpTool[] | null>(null);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  /** Custom: what the tool list is narrowed to, by name or by what a tool does. */
+  const [toolSearch, setToolSearch] = useState('');
+  useEffect(() => {
+    if (mode !== 'custom' || catalog !== null) return;
+    fetchMcpTools()
+      .then((found) => {
+        setCatalog(found);
+        // Starts as Read-only would: every tool that reads, none that writes.
+        setPicked(new Set(found.filter((one) => one.readOnly).map((one) => one.name)));
+      })
+      .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : t('Could not load the tools.')));
+  }, [mode, catalog]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** Shown once, and then never again by anybody. */
@@ -55,11 +74,11 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
   }, [userId]);
 
   async function mint() {
-    if (busy || name.trim() === '') return;
+    if (busy || name.trim() === '' || (mode === 'custom' && picked.size === 0)) return;
     setBusy(true);
     setError(null);
     try {
-      const made = await createUserToken(name.trim(), userId, readOnly);
+      const made = await createUserToken(name.trim(), userId, mode === 'read', mode === 'custom' ? [...picked] : undefined);
       setTokens((held) => [...(held ?? []), made.token]);
       setMinted(made.secret);
       setName('');
@@ -103,10 +122,13 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
                   <td className={styles.name}>{token.name}</td>
                   <td>
                     <span
-                      className={token.readOnly ? `${styles.access} ${styles.accessRead}` : styles.access}
-                      data-token-access={token.readOnly ? 'read' : 'write'}
+                      className={token.readOnly || token.tools !== null ? `${styles.access} ${styles.accessRead}` : styles.access}
+                      data-token-access={token.tools !== null ? 'custom' : token.readOnly ? 'read' : 'write'}
+                      title={token.tools !== null ? token.tools.join(', ') : undefined}
                     >
-                      {token.readOnly ? t('Read-only') : t('Read and write')}
+                      {token.tools !== null
+                        ? tf('Custom: {count} tools', { count: String(token.tools.length) })
+                        : token.readOnly ? t('Read-only') : t('Read and write')}
                     </span>
                   </td>
                   <td className={styles.when}>{timeAgo(token.createdAt)}</td>
@@ -146,14 +168,15 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
         <span className={styles.accessWrap}>
           <Select
             className={`${inputClassName} ${styles.accessPicker}`}
-            value={readOnly ? 'read' : 'write'}
+            value={mode}
             aria-label={t('What the token may do')}
             data-testid="token-access"
-            onChange={(picked) => setReadOnly(picked === 'read')}
+            onChange={(chosen) => setMode(chosen === 'read' ? 'read' : chosen === 'custom' ? 'custom' : 'write')}
             chevron={false}
           >
             <option value="write">{t('Read and write')}</option>
             <option value="read">{t('Read-only')}</option>
+            <option value="custom">{t('Custom')}</option>
           </Select>
           <img className={styles.accessChevron} src={chevronDown12Icon} alt="" width={12} height={12} />
         </span>
@@ -161,9 +184,84 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
           type="button"
           className={buttonClassName}
           onClick={() => void mint()}
-          disabled={busy || name.trim() === ''}
+          disabled={busy || name.trim() === '' || (mode === 'custom' && picked.size === 0)}
         >{t('Generate Token')}</button>
       </div>
+
+      {/*
+        Custom: the MCP tools this token may call, the ones that read apart
+        from the ones that change something. Outside MCP it is held to reading.
+      */}
+      {mode === 'custom' && (
+        <div className={styles.custom} data-testid="token-custom">
+          <p className={styles.note}>
+            {t('The MCP tools this token may call, and no others. Through the API it may only read.')}
+          </p>
+          {/* Two hundred tools and more: found by a word of their name or of what they do. */}
+          <input
+            className={`${inputClassName ?? ''} ${styles.customSearch}`}
+            type="search"
+            value={toolSearch}
+            placeholder={t('Search the tools')}
+            aria-label={t('Search the tools')}
+            onChange={(event) => setToolSearch(event.target.value)}
+            data-testid="token-tool-search"
+          />
+          {catalog === null ? (
+            <p className={styles.note}>{t('Loading…')}</p>
+          ) : (
+            ([['read', t('Reading')], ['write', t('Changing')]] as const).map(([kind, heading]) => {
+              const said = toolSearch.trim().toLowerCase();
+              const whole = catalog.filter((one) => (kind === 'read') === one.readOnly);
+              // What is shown is what the box ticks: a search narrows the select-all too.
+              const group = said === '' ? whole : whole.filter((one) => one.name.toLowerCase().includes(said) || one.summary.toLowerCase().includes(said));
+              if (said !== '' && group.length === 0) return null;
+              const all = group.length > 0 && group.every((one) => picked.has(one.name));
+              return (
+                <fieldset key={kind} className={styles.customGroup} data-testid={`token-custom-${kind}`}>
+                  <legend className={styles.customHead}>
+                    <label className={styles.customAll}>
+                      <input
+                        type="checkbox"
+                        checked={all}
+                        onChange={() =>
+                          setPicked((held) => {
+                            const next = new Set(held);
+                            group.forEach((one) => (all ? next.delete(one.name) : next.add(one.name)));
+                            return next;
+                          })
+                        }
+                      />
+                      {heading} <span className={styles.customCount}>{`${whole.filter((one) => picked.has(one.name)).length} / ${whole.length}`}</span>
+                    </label>
+                  </legend>
+                  <div className={styles.customList}>
+                    {group.map((one) => (
+                      <label key={one.name} className={styles.customTool} title={one.summary}>
+                        <input
+                          type="checkbox"
+                          checked={picked.has(one.name)}
+                          onChange={() =>
+                            setPicked((held) => {
+                              const next = new Set(held);
+                              if (next.has(one.name)) next.delete(one.name);
+                              else next.add(one.name);
+                              return next;
+                            })
+                          }
+                          data-testid={`token-tool-${one.name}`}
+                        />
+                        <span className={styles.customName}>{one.name}</span>
+                        <span className={styles.customSummary}>{one.summary}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              );
+            })
+          )}
+        </div>
+      )}
 
       {error !== null && (
         <p className={styles.error} role="alert">

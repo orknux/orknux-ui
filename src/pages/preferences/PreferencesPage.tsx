@@ -54,6 +54,8 @@ import {
   setSelectShortcut,
   setZoomInShortcut,
   setArrangeShortcut,
+  setDiagramFindShortcut,
+  setDiagramModeShortcut,
   setMagicRectangleShortcut,
   setMagicLassoShortcut,
   setMagicAllShortcut,
@@ -73,6 +75,8 @@ import {
   useSelectShortcut,
   useZoomInShortcut,
   useArrangeShortcut,
+  useDiagramFindShortcut,
+  useDiagramModeShortcut,
   useMagicRectangleShortcut,
   useMagicLassoShortcut,
   useMagicAllShortcut,
@@ -94,6 +98,10 @@ import {
   selectShortcut,
   zoomInShortcut,
   arrangeShortcut,
+  diagramFindShortcut,
+  DEFAULT_DIAGRAM_FIND_SHORTCUT,
+  diagramModeShortcut,
+  DEFAULT_DIAGRAM_MODE_SHORTCUT,
   magicRectangleShortcut,
   magicLassoShortcut,
   magicAllShortcut,
@@ -162,6 +170,8 @@ type ShortcutKey =
   | 'zoomIn'
   | 'zoomOut'
   | 'arrange'
+  | 'diagramFind'
+  | 'diagramMode'
   | 'magicRectangle'
   | 'magicLasso'
   | 'magicAll'
@@ -228,6 +238,8 @@ const SHORTCUTS: { key: ShortcutKey; stored: () => string; store: (next: string)
   { key: 'zoomIn', stored: zoomInShortcut, store: setZoomInShortcut },
   { key: 'zoomOut', stored: zoomOutShortcut, store: setZoomOutShortcut },
   { key: 'arrange', stored: arrangeShortcut, store: setArrangeShortcut },
+  { key: 'diagramFind', stored: diagramFindShortcut, store: setDiagramFindShortcut },
+  { key: 'diagramMode', stored: diagramModeShortcut, store: setDiagramModeShortcut },
   { key: 'magicRectangle', stored: magicRectangleShortcut, store: setMagicRectangleShortcut },
   { key: 'magicLasso', stored: magicLassoShortcut, store: setMagicLassoShortcut },
   { key: 'magicAll', stored: magicAllShortcut, store: setMagicAllShortcut },
@@ -311,6 +323,10 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
   const zoomOut = shortcutDrafts.zoomOut ?? storedZoomOut;
   const storedArrange = useArrangeShortcut();
   const arrange = shortcutDrafts.arrange ?? storedArrange;
+  const storedDiagramFind = useDiagramFindShortcut();
+  const diagramFind = shortcutDrafts.diagramFind ?? storedDiagramFind;
+  const storedDiagramMode = useDiagramModeShortcut();
+  const diagramMode = shortcutDrafts.diagramMode ?? storedDiagramMode;
   const storedRedo = useRedoShortcut();
   const redo = shortcutDrafts.redo ?? storedRedo;
   const storedDuplicate = useDuplicateShortcut();
@@ -350,6 +366,8 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
     | 'zoomIn'
     | 'zoomOut'
     | 'arrange'
+    | 'diagramFind'
+    | 'diagramMode'
     | 'magicRectangle'
     | 'magicLasso'
     | 'magicAll'
@@ -416,6 +434,8 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
       else if (recording === 'zoomIn') draftShortcut('zoomIn', said);
       else if (recording === 'zoomOut') draftShortcut('zoomOut', said);
       else if (recording === 'arrange') draftShortcut('arrange', said);
+      else if (recording === 'diagramFind') draftShortcut('diagramFind', said);
+      else if (recording === 'diagramMode') draftShortcut('diagramMode', said);
       else if (recording === 'magicRectangle') draftShortcut('magicRectangle', said);
       else if (recording === 'magicLasso') draftShortcut('magicLasso', said);
       else if (recording === 'magicAll') draftShortcut('magicAll', said);
@@ -1493,6 +1513,66 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
                 )}
               </div>
               {recording === 'arrange' && (
+                <p className={styles.settingNote}>
+                  {t('Press the combination you want. Escape leaves it as it is.')}
+                </p>
+              )}
+            </div>
+
+            <div className={styles.setting}>
+              <span className={styles.labelWithHint}>
+                <span className={styles.settingLabel} id="diagramFind-shortcut">{t('Find in Diagram Shortcut')}</span>
+                <FieldHint label={t('Find in Diagram Shortcut')}>
+                  {t('Puts the cursor in the diagram editor’s search box, which finds boxes by their label or notes and lines by their label. Outside the diagram editor the browser’s own find is left alone.')}
+                </FieldHint>
+              </span>
+              <div className={styles.options}>
+                <button
+                  type="button"
+                  className={recording === 'diagramFind' ? styles.optionCurrent : styles.option}
+                  onClick={() => {
+                    setRefused(null);
+                    setRecording((held) => (held === 'diagramFind' ? null : 'diagramFind'));
+                  }}
+                  data-testid="diagram-find-shortcut"
+                >
+                  {recording === 'diagramFind' ? t('Press any keys…') : diagramFind}
+                </button>
+                {diagramFind !== DEFAULT_DIAGRAM_FIND_SHORTCUT && recording !== 'diagramFind' && (
+                  <button type="button" className={styles.option} onClick={() => draftShortcut('diagramFind', DEFAULT_DIAGRAM_FIND_SHORTCUT)}>{t('Reset')}</button>
+                )}
+              </div>
+              {recording === 'diagramFind' && (
+                <p className={styles.settingNote}>
+                  {t('Press the combination you want. Escape leaves it as it is.')}
+                </p>
+              )}
+            </div>
+
+            <div className={styles.setting}>
+              <span className={styles.labelWithHint}>
+                <span className={styles.settingLabel} id="diagramMode-shortcut">{t('View or Edit Diagram Shortcut')}</span>
+                <FieldHint label={t('View or Edit Diagram Shortcut')}>
+                  {t('Switches the diagram editor between View, where nothing can be changed, and Edit.')}
+                </FieldHint>
+              </span>
+              <div className={styles.options}>
+                <button
+                  type="button"
+                  className={recording === 'diagramMode' ? styles.optionCurrent : styles.option}
+                  onClick={() => {
+                    setRefused(null);
+                    setRecording((held) => (held === 'diagramMode' ? null : 'diagramMode'));
+                  }}
+                  data-testid="diagram-mode-shortcut"
+                >
+                  {recording === 'diagramMode' ? t('Press any keys…') : diagramMode}
+                </button>
+                {diagramMode !== DEFAULT_DIAGRAM_MODE_SHORTCUT && recording !== 'diagramMode' && (
+                  <button type="button" className={styles.option} onClick={() => draftShortcut('diagramMode', DEFAULT_DIAGRAM_MODE_SHORTCUT)}>{t('Reset')}</button>
+                )}
+              </div>
+              {recording === 'diagramMode' && (
                 <p className={styles.settingNote}>
                   {t('Press the combination you want. Escape leaves it as it is.')}
                 </p>
