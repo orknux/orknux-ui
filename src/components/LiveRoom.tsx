@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { graphql } from '../api/client';
-import { colourOf, joinRoom, newViewer, pointerTo } from '../api/workflowLive';
+import { colourOf, joinRoom, newViewer, onePerLogin, pointerTo } from '../api/workflowLive';
+import { tf } from '../i18n';
 import type { GraphMoved, Pointer, Viewer } from '../api/workflowLive';
 import styles from './LiveRoom.module.css';
 
@@ -70,10 +71,7 @@ export function useLiveRoom(kind: LiveKind, id: string | null, onSaved: (moved: 
     [kind, id, viewer],
   );
 
-  const others = useMemo(() => {
-    const seen = new Set<string>();
-    return viewers.filter((one) => one.viewer !== viewer && !seen.has(one.login) && (seen.add(one.login), true));
-  }, [viewers, viewer]);
+  const others = useMemo(() => onePerLogin(viewers, viewer), [viewers, viewer]);
 
   return { viewer, others, pointers, point };
 }
@@ -117,26 +115,110 @@ export function useAutosave(unsaved: boolean, change: string, paused: boolean, s
   }, [unsaved, change, paused, millis, attempts]);
 }
 
-/** Who else has it open, by login, in the colour their pointer is drawn in. */
-export function Presence({ others }: { others: Viewer[] }) {
+/** When somebody went away, as the clock on this machine says it. */
+function awayAt(since: string | null | undefined): string {
+  if (!since) return '';
+  const at = new Date(since);
+  return Number.isNaN(at.getTime()) ? '' : at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+/**
+ * Who else has it open, by login, in the colour their pointer is drawn in.
+ * Somebody whose tab is open and not being looked at is drawn faded, and says
+ * since when: still there, and not watching.
+ */
+export function Presence({
+  others,
+  className,
+  dotClassName,
+  onJump,
+  following = null,
+  onFollow,
+}: {
+  others: Viewer[];
+  className?: string;
+  dotClassName?: string;
+  /** One click on somebody: go to where they are pointing. Without it the avatars are only shown. */
+  onJump?: (login: string) => void;
+  /** Whom this tab is following, by login: their avatar carries an eye. */
+  following?: string | null;
+  /** A double click on somebody: follow them, or stop following them; null stops. */
+  onFollow?: (login: string | null) => void;
+}) {
+  // A double click is two clicks first: the jump waits a moment, and a second click turns it into following.
+  const pending = useRef<number | null>(null);
+  useEffect(() => () => {
+    if (pending.current !== null) window.clearTimeout(pending.current);
+  }, []);
   if (others.length === 0) return null;
+  const acting = onJump !== undefined || onFollow !== undefined;
   return (
-    <span className={styles.presence} data-testid="presence">
-      {others.map((one) => (
-        <span
-          key={one.login}
-          className={styles.presenceDot}
-          style={{ borderColor: colourOf(one.login) }}
-          title={one.login}
-          aria-label={one.login}
-          data-login={one.login}
-        >
-          {one.login.slice(0, 2).toUpperCase()}
-        </span>
-      ))}
+    <span className={className ?? styles.presence} data-testid="presence">
+      {others.map((one) => {
+        const inactive = one.active === false;
+        const followed = following === one.login;
+        const away = inactive
+          ? (awayAt(one.awaySince) === '' ? tf('{login} - inactive', { login: one.login }) : tf('{login} - inactive since {time}', { login: one.login, time: awayAt(one.awaySince) }))
+          : one.login;
+        const said = !acting
+          ? away
+          : followed
+            ? tf('{who} - following; double-click to stop', { who: away })
+            : tf('{who} - click to go to them, double-click to follow', { who: away });
+        const look = {
+          className: `${dotClassName ?? styles.presenceDot} ${inactive ? styles.presenceAway : ''} ${acting ? styles.presenceActs : ''} ${followed ? styles.presenceFollowed : ''}`,
+          style: { borderColor: colourOf(one.login) },
+          title: said,
+          'aria-label': said,
+          'data-login': one.login,
+          'data-active': inactive ? 'false' : 'true',
+          'data-following': followed ? 'true' : undefined,
+        };
+        const initials = one.login.slice(0, 2).toUpperCase();
+        if (!acting) {
+          return (
+            <span key={one.login} {...look}>
+              {initials}
+            </span>
+          );
+        }
+        return (
+          <button
+            key={one.login}
+            type="button"
+            {...look}
+            aria-pressed={followed}
+            onClick={() => {
+              if (pending.current !== null) window.clearTimeout(pending.current);
+              pending.current = window.setTimeout(() => {
+                pending.current = null;
+                onJump?.(one.login);
+              }, DOUBLE_CLICK_MS);
+            }}
+            onDoubleClick={() => {
+              if (pending.current !== null) window.clearTimeout(pending.current);
+              pending.current = null;
+              onFollow?.(followed ? null : one.login);
+            }}
+          >
+            {initials}
+            {followed && (
+              <span className={styles.presenceEye} aria-hidden="true" data-testid="presence-following">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </span>
+            )}
+          </button>
+        );
+      })}
     </span>
   );
 }
+
+/** How long a click waits to learn whether it is the first of a double click, in milliseconds. */
+const DOUBLE_CLICK_MS = 250;
 
 /**
  * The others' pointers, inside a positioned element: [place] turns a pointer's

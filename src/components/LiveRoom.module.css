@@ -47,3 +47,41 @@
   white-space: nowrap;
   color: var(--color-presence-text);
 }
+
+/* Open in a tab nobody is looking at: still there, faded, the ring dashed. */
+.presenceAway {
+  border-style: dashed !important;
+  opacity: 0.45;
+}
+
+/* An avatar that goes to them on a click and follows them on a double click. */
+.presenceActs {
+  position: relative;
+  padding: 0;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.presenceActs:hover {
+  filter: brightness(1.2);
+}
+
+/* Being followed: raised, with an eye in its corner. */
+.presenceFollowed {
+  box-shadow: 0 0 0 2px var(--color-accent-brand);
+}
+
+.presenceEye {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  color: var(--color-on-accent-brand);
+  background: var(--color-accent-brand);
+  border-radius: var(--radius-full);
+}

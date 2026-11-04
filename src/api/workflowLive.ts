@@ -1,3 +1,4 @@
+import { whileLookedAt } from '../session/visibility';
 import { payloadOf, readEventStream } from './sse';
 
 /**
@@ -11,6 +12,28 @@ import { payloadOf, readEventStream } from './sse';
 export interface Viewer {
   viewer: string;
   login: string;
+  /**
+   * False for a tab that is open and not being looked at - it let go of its
+   * stream - since [awaySince]. Absent from a server older than it, which
+   * reads as active.
+   */
+  active?: boolean;
+  awaySince?: string | null;
+}
+
+/**
+ * Everybody else in a room, once per login: the tab being looked at where a
+ * person has one, the most recently away of theirs where they do not. What a
+ * row of initials draws.
+ */
+export function onePerLogin(viewers: Viewer[], self: string): Viewer[] {
+  const best = new Map<string, Viewer>();
+  for (const one of viewers) {
+    if (one.viewer === self) continue;
+    const held = best.get(one.login);
+    if (held === undefined || (held.active === false && one.active !== false)) best.set(one.login, one);
+  }
+  return [...best.values()];
 }
 
 /** Where a viewer's pointer is on the canvas, in the canvas's own coordinates; null when it has left. */
@@ -83,12 +106,50 @@ export function joinWorkflow(
 export function joinRoom(address: string, savedEvent: string, handlers: RoomHandlers): () => void {
   const stopper = new AbortController();
   let stopped = false;
+  /*
+   * Out of sight, this tab lets go of its stream (see session/visibility):
+   * it tells the room it is away first, so the others see it inactive rather
+   * than gone, and joins again when it is looked at. Each stint has its own
+   * controller, so letting go of one does not stop the loop.
+   */
+  const [base, query] = address.split('?');
+  const viewer = new URLSearchParams(query ?? '').get('viewer') ?? '';
+  let streaming: AbortController | null = null;
+  let away = false;
+  let back: (() => void) | null = null;
+  const say = (what: 'away' | 'leave') =>
+    fetch(`${base}/${what}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ viewer }),
+      // Sent as the page goes, where a plain request would be cancelled with it.
+      keepalive: true,
+    }).catch(() => undefined);
+  const stopLooking = whileLookedAt(
+    () => {
+      away = true;
+      void say('away').finally(() => streaming?.abort());
+    },
+    () => {
+      away = false;
+      back?.();
+    },
+  );
+  // Closed rather than hidden: off the others' list at once, not away for hours.
+  const closing = () => {
+    if (away) void say('leave');
+  };
+  window.addEventListener('pagehide', closing);
 
   async function stint(): Promise<void> {
+    streaming = new AbortController();
+    const ended = () => streaming?.abort();
+    stopper.signal.addEventListener('abort', ended, { once: true });
     const response = await fetch(address, {
       credentials: 'same-origin',
       headers: { Accept: 'text/event-stream' },
-      signal: stopper.signal,
+      signal: streaming.signal,
     });
     await readEventStream(response, (frame) => {
       if (frame.event === 'hello') {
@@ -110,12 +171,26 @@ export function joinRoom(address: string, savedEvent: string, handlers: RoomHand
   void (async () => {
     for (;;) {
       if (stopped) return;
+      if (away) {
+        // Waits here, holding nothing, until the tab is looked at again.
+        await new Promise<void>((wake) => {
+          back = wake;
+        });
+        back = null;
+        continue;
+      }
       try {
         await stint();
       } catch (cause: unknown) {
-        if (stopped || (cause instanceof DOMException && cause.name === 'AbortError')) return;
+        if (stopped) return;
+        // Let go of because the tab went out of sight: wait to be looked at, not to try again.
+        if (cause instanceof DOMException && cause.name === 'AbortError') {
+          if (away) continue;
+          return;
+        }
       }
       if (stopped) return;
+      if (away) continue;
       await new Promise((wake) => {
         window.setTimeout(wake, RETURN_AFTER_MS);
       });
@@ -124,7 +199,11 @@ export function joinRoom(address: string, savedEvent: string, handlers: RoomHand
 
   return () => {
     stopped = true;
+    stopLooking();
+    window.removeEventListener('pagehide', closing);
+    back?.();
     stopper.abort();
+    streaming?.abort();
   };
 }
 

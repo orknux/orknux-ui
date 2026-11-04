@@ -53,7 +53,8 @@ import type {
   WorkflowStatus,
 } from '../../api/graph';
 import { ApiError } from '../../api/client';
-import { colourOf, joinWorkflow, newViewer, pointerSender } from '../../api/workflowLive';
+import { colourOf, joinWorkflow, newViewer, onePerLogin, pointerSender } from '../../api/workflowLive';
+import { Presence } from '../../components/LiveRoom';
 import type { Pointer, Viewer } from '../../api/workflowLive';
 import { mergeGraphs } from './graphMerge';
 import type { DrawnGraph } from './graphMerge';
@@ -5686,11 +5687,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   }, [workspaceId, workflowId, viewer]);
 
   /** Everybody else in the room, once per login, for the row of initials. */
-  const others = useMemo(() => {
-    const seen = new Map<string, Viewer>();
-    viewers.filter((one) => one.viewer !== viewer).forEach((one) => seen.set(one.login, one));
-    return [...seen.values()];
-  }, [viewers, viewer]);
+  const others = useMemo(() => onePerLogin(viewers, viewer), [viewers, viewer]);
 
   const sendPointer = useMemo(() => pointerSender(workspaceId, workflowId, viewer), [workspaceId, workflowId, viewer]);
 
@@ -6299,22 +6296,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
             </button>
           )}
           {/* Who else has it open, by login, in the colour their pointer is drawn in. Issue #645. */}
-          {others.length > 0 && (
-            <span className={styles.presence} data-testid="presence">
-              {others.map((one) => (
-                <span
-                  key={one.login}
-                  className={styles.presenceDot}
-                  style={{ borderColor: colourOf(one.login) }}
-                  title={one.login}
-                  aria-label={one.login}
-                  data-login={one.login}
-                >
-                  {one.login.slice(0, 2).toUpperCase()}
-                </span>
-              ))}
-            </span>
-          )}
+          <Presence others={others} className={styles.presence} dotClassName={styles.presenceDot} />
           {error !== null && (
             <span className={styles.error} role="alert">
               {error}
