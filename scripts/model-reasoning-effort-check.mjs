@@ -1,6 +1,11 @@
 /**
- * A chat model's page draws only the sampling and reasoning settings its
- * provider reads, and Save stores them.
+ * A chat model's page draws only the sampling settings its provider reads, and
+ * Save stores them; the reasoning effort is the agent's, on the agent's page.
+ *
+ * The effort moved in V653: on the model, every agent sharing a deployment
+ * shared it. The model page no longer draws it; an agent whose model's
+ * provider takes one offers exactly the words it takes, and stores the one
+ * chosen.
  *
  * Asked for as provider-specific settings, like the image parameters: the
  * server declares what each provider reads (`chatModelParameters`) and the page
@@ -29,6 +34,11 @@ const model = async (providerId, name) => (await graphql(
 )).createModel;
 
 const SAMPLING = ['temperature', 'top-p', 'top-k', 'min-p', 'repeat-penalty', 'reasoning-effort'];
+const agentMade = async (name, modelId) => (await graphql(
+  `mutation($i: CreateAgentInput!) { createAgent(input: $i) { id name } }`,
+  { i: { workspaceId: WORKSPACE, name, type: 'LLM' } },
+)).createAgent;
+let thinkerAgent = null;
 
 /** Which of the sampling and reasoning boxes the page draws, once the provider's list has had time to arrive. */
 async function drawnSettings(label) {
@@ -51,55 +61,49 @@ try {
   await page.goto(`${BASE}/workspace/${WORKSPACE}/models/${thinker.id}`, { waitUntil: 'domcontentloaded' });
   const onAzure = await drawnSettings('the Azure model page');
   record(
-    JSON.stringify(onAzure) === JSON.stringify(['temperature', 'top-p', 'reasoning-effort']),
-    `the Azure model draws Temperature, Top P and Reasoning effort only (${onAzure.join(',')})`,
+    JSON.stringify(onAzure) === JSON.stringify(['temperature', 'top-p']),
+    `the Azure model draws Temperature and Top P, and no Reasoning effort (${onAzure.join(',')})`,
   );
 
-  const select = page.locator('[data-select]#reasoning-effort');
-  if (onAzure.includes('reasoning-effort')) {
-    record(await page.getByText('Reasoning effort', { exact: true }).isVisible(), 'labelled Reasoning effort');
+  // The effort is the agent's: an agent on that model offers exactly what its provider takes.
+  thinkerAgent = await agentMade(`zz sampling agent ${stamp}`);
+  await graphql(
+    `mutation($id: ID!, $n: String!, $m: ID) { updateAgent(id: $id, input: { name: $n, modelId: $m }) { id } }`,
+    { id: thinkerAgent.id, n: thinkerAgent.name, m: thinker.id },
+  );
+  await page.goto(`${BASE}/workspace/${WORKSPACE}/agents/${thinkerAgent.id}/settings`, { waitUntil: 'domcontentloaded' });
+  const select = page.locator('[data-select]#agent-reasoning-effort');
+  const there = await select.waitFor({ timeout: 20_000 }).then(() => true).catch(() => false);
+  record(there, "the agent's page has a Reasoning effort for its model");
+  if (there) {
     const offered = (await optionsOffered(page, select)).map((one) => one.value);
     record(
       JSON.stringify(offered) === JSON.stringify(['', 'minimal', 'low', 'medium', 'high']),
       `it offers default and the four efforts (${offered.join(',')})`,
     );
     record((await chosenOption(page, select)) === '', 'it opens on the default');
-    // An optional choice on the page names its empty state: Unset, or Server default on
-    // Tool Calls Per Reply, where nothing sent means the model server decides (37062e20).
-    const empties = [];
-    for (const one of await page.locator('[data-select]').all()) {
-      const empty = (await optionsOffered(page, one)).find((option) => option.value === '');
-      if (empty !== undefined) empties.push(empty.label);
-    }
-    record(empties.length >= 2 && empties.every((text) => text === 'Unset' || text === 'Server default') && empties.includes('Unset'), `each optional choice offers Unset or Server default (${JSON.stringify(empties)})`);
     await chooseOption(page, select, 'high');
-    await page.locator('#temperature').fill('0.4');
     await page.getByRole('button', { name: /^Save/ }).first().click();
-    await page.getByText('Saved.', { exact: true }).waitFor({ timeout: 10_000 }).catch(() => undefined);
-
-    const held = (await graphql(`query($id: ID!) { model(id: $id) { reasoningEffort temperature } }`, { id: thinker.id })).model;
-    record(held?.reasoningEffort === 'high', `the server holds high (${held?.reasoningEffort})`);
-    record(held?.temperature === 0.4, `and the temperature (${held?.temperature})`);
-
+    await page.waitForTimeout(2000);
+    const held = (await graphql(`query($id: ID!) { agent(id: $id) { reasoningEffort } }`, { id: thinkerAgent.id })).agent;
+    record(held?.reasoningEffort === 'high', `the server holds high on the agent (${held?.reasoningEffort})`);
     await page.reload({ waitUntil: 'domcontentloaded' });
     await select.waitFor({ timeout: 20_000 }).catch(() => undefined);
     record((await chosenOption(page, select).catch(() => '')) === 'high', 'and a reload draws it back');
-  } else {
-    record(false, 'the Azure model offers a Reasoning effort select');
   }
 
   await page.goto(`${BASE}/workspace/${WORKSPACE}/models/${gemma.id}`, { waitUntil: 'domcontentloaded' });
   const onOllama = await drawnSettings('the Ollama model page');
   record(
-    JSON.stringify(onOllama) === JSON.stringify(['temperature', 'top-p', 'reasoning-effort']),
-    `the Ollama model draws Temperature, Top P and Reasoning effort only (${onOllama.join(',')})`,
+    JSON.stringify(onOllama) === JSON.stringify(['temperature', 'top-p']),
+    `the Ollama model draws Temperature and Top P only (${onOllama.join(',')})`,
   );
 
   await page.goto(`${BASE}/workspace/${WORKSPACE}/models/${llama.id}`, { waitUntil: 'domcontentloaded' });
   const onLlama = await drawnSettings('the llama.cpp model page');
   record(
-    JSON.stringify(onLlama) === JSON.stringify(['temperature', 'top-p', 'top-k', 'min-p', 'repeat-penalty', 'reasoning-effort']),
-    `a llama.cpp server behind the OpenAI shape draws all five sampling settings and the effort (${onLlama.join(',')})`,
+    JSON.stringify(onLlama) === JSON.stringify(['temperature', 'top-p', 'top-k', 'min-p', 'repeat-penalty']),
+    `a llama.cpp server behind the OpenAI shape draws all five sampling settings (${onLlama.join(',')})`,
   );
   if (onLlama.includes('top-k')) {
     await page.locator('#top-k').fill('40');
@@ -109,6 +113,7 @@ try {
     record(held?.topK === 40, `its top-k is stored (${held?.topK})`);
   }
 } finally {
+  if (thinkerAgent !== null) await graphql(`mutation($id: ID!) { deleteAgent(id: $id) }`, { id: thinkerAgent.id }).catch(() => undefined);
   for (const one of [azure, ollama, local]) {
     await graphql(`mutation($id: ID!) { removeModelProvider(id: $id) }`, { id: one.id }).catch(() => undefined);
   }

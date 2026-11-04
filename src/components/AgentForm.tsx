@@ -13,7 +13,8 @@ import { fetchSharedModels, fetchSharesReceived } from '../api/sharing';
 import { fetchVariableCatalogs, type VariableCatalog } from '../api/variables';
 import { fetchWorkspace } from '../api/workspaces';
 import type { MemoryCatalog } from '../api/memory';
-import { answers, fetchModels, fetchProviders } from '../api/models';
+import { answers, fetchChatModelParameters, fetchModels, fetchProviders } from '../api/models';
+import { effortLabel } from './ModelForm';
 import type { Model, ModelProvider } from '../api/models';
 import {
   BUILT_IN_SKILLS,
@@ -1206,7 +1207,18 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
    * emptying the box puts it back to whatever Admin has set.
    */
   const [rounds, setRounds] = useState<string>(agent.maxRounds === null ? '' : String(agent.maxRounds));
+  /**
+   * How many of the agents it asked may be working at once, or blank to follow
+   * Admin. For the agent whose model sits on a deployment with a small
+   * capacity: five audits started together all failed on its rate limit.
+   */
+  const [atOnce, setAtOnce] = useState<string>(
+    agent.maxSubagentsAtOnce == null ? '' : String(agent.maxSubagentsAtOnce),
+  );
+  const [installationAtOnce, setInstallationAtOnce] = useState<number | null>(null);
   const [chattiness, setChattiness] = useState<Chattiness>(agent.chattiness ?? 'MEDIUM');
+  /** How hard its model thinks; '' is the provider's default. */
+  const [effort, setEffort] = useState<string>(agent.reasoningEffort ?? '');
   /**
    * The number an empty box follows - the workspace's where it has one, else the
    * installation's - shown in it, so empty is not a blank.
@@ -1214,8 +1226,14 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
   const [installationRounds, setInstallationRounds] = useState<number | null>(null);
   useEffect(() => {
     fetchWorkspace(workspaceId)
-      .then((held) => setInstallationRounds(held?.chatMaxRounds ?? held?.chatMaxRoundsDefault ?? null))
-      .catch(() => setInstallationRounds(null));
+      .then((held) => {
+        setInstallationRounds(held?.chatMaxRounds ?? held?.chatMaxRoundsDefault ?? null);
+        setInstallationAtOnce(held?.agentMaxSubagentsAtOnceDefault ?? null);
+      })
+      .catch(() => {
+        setInstallationRounds(null);
+        setInstallationAtOnce(null);
+      });
   }, [workspaceId]);
   /** What that share works out to, as the server works it out. Null until asked. */
   const [budget, setBudget] = useState<SessionMemoryBudget | null>(null);
@@ -1571,6 +1589,31 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
    * form can say when this agent holds more: past it the rest are found as
    * needed, a round each. Null while unknown, and then nothing is said.
    */
+  /**
+   * The efforts the chosen model's provider takes, asked for again when the
+   * model changes; null while unknown or where it takes none, and then the
+   * field is not drawn - a word nothing would send is not a setting.
+   */
+  const [effortChoices, setEffortChoices] = useState<string[] | null>(null);
+  const effortProvider = modelCatalogue.items.find((one) => one.id === modelId)?.providerId ?? null;
+  useEffect(() => {
+    if (effortProvider === null) {
+      setEffortChoices(null);
+      return;
+    }
+    let left = false;
+    fetchChatModelParameters(effortProvider)
+      .then((held) => {
+        if (!left) setEffortChoices(held.find((one) => one.name === 'reasoningEffort')?.choices ?? null);
+      })
+      .catch(() => {
+        if (!left) setEffortChoices(null);
+      });
+    return () => {
+      left = true;
+    };
+  }, [effortProvider]);
+
   const capOfModel = (() => {
     const model = modelCatalogue.items.find((one) => one.id === modelId);
     const provider = model === undefined ? undefined : providers.find((one) => one.id === model.providerId);
@@ -1750,6 +1793,8 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
     memoryShare: asked,
     // The same rule: blank is null, and null is the installation's number.
     maxRounds: rounds.trim() === '' ? null : Number(rounds),
+    maxSubagentsAtOnce: atOnce.trim() === '' ? null : Number(atOnce),
+    reasoningEffort: effort === '' ? null : effort,
     chattiness,
   };
   /*
@@ -1787,6 +1832,8 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
       setModelId(updated.modelId ?? '');
       setShare(updated.memoryShare);
       setRounds(updated.maxRounds === null ? '' : String(updated.maxRounds));
+      setAtOnce(updated.maxSubagentsAtOnce == null ? '' : String(updated.maxSubagentsAtOnce));
+      setEffort(updated.reasoningEffort ?? '');
       setChattiness(updated.chattiness ?? 'MEDIUM');
       setSaved(true);
       onSaved(updated);
@@ -2138,6 +2185,31 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         </div>
 
         {/*
+          How hard its model thinks: the agent's, not the model's, since a quick
+          triage agent and a careful reviewer on one deployment want different
+          answers. Only the words the model's provider takes; drawn where it
+          takes any.
+        */}
+        {effortChoices !== null && effortChoices.length > 0 && (
+          <div className={`${styles.field} ${own.inlineField}`} id="agent-effort" data-menu-entry={t('Reasoning effort')}>
+            <span className={own.labelWithHint}>
+              <label className={styles.label} htmlFor="agent-reasoning-effort">{t('Reasoning effort')}</label>
+              <FieldHint label={t('Reasoning effort')}>
+                {t('How long its model thinks before answering. Default sends nothing and the provider decides. A chat can choose its own in the box you write in, and a workflow node with its reasoningEffort parameter.')}
+              </FieldHint>
+            </span>
+            <Select id="agent-reasoning-effort" className={own.levelBox} value={effort} onChange={(picked) => setEffort(picked)}>
+              <option value="">{t('Default')}</option>
+              {effortChoices.map((one) => (
+                <option key={one} value={one}>{effortLabel(one)}</option>
+              ))}
+              {/* A word kept from a model that took it, shown rather than silently dropped. */}
+              {effort !== '' && !effortChoices.includes(effort) && <option value={effort}>{effort}</option>}
+            </Select>
+          </div>
+        )}
+
+        {/*
           What this agent may read of what the workspace knows. A grant:
           an agent given none reads none.
         */}
@@ -2362,7 +2434,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
               {t('Tools carried at once')}
             </label>
             <FieldHint label={t('Tools carried at once')}>
-              {t('How many tools this agent holds in front of the model at a time. Left empty it holds all of them, up to what the model’s provider allows — which is 300 for llama.cpp and Ollama, 200 for OpenAI-compatible servers and 128 for Azure and OpenAI’s own API, and is the number at which a request fails rather than the number at which an agent starts choosing badly. Set one and the agent carries the ones marked "always" plus a tool for searching the rest, finding what a job needs and giving up what it looked up longest ago when the room runs out. Between 5 and 1024.')}
+              {t('How many tools this agent holds in front of the model at a time. Left empty it holds all of them, up to what the model’s provider allows — which is 300 for llama.cpp and Ollama, 200 for OpenAI-compatible servers and 128 for Azure and OpenAI’s own API, and is the number at which a request fails rather than the number at which an agent starts choosing badly. Set one and the agent carries the ones marked "always" plus a tool for searching the rest, finding what a job needs and giving up what it looked up longest ago when the room runs out. 0 carries only the search, and finds every tool it uses. Between 0 and 1024.')}
             </FieldHint>
           </span>
           {/* Boxed with its unit, as Tool Rounds is: borderless, the space around it looked like the field. */}
@@ -2372,7 +2444,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
               name="maxTools"
               className={own.numberBox}
               type="number"
-              min={5}
+              min={0}
               max={1024}
               value={maxTools}
               onChange={(event) => setMaxTools(event.target.value)}
@@ -2467,6 +2539,38 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
             )
           }
         />
+
+        {/*
+          How many of them may be working at once, drawn as Tool Rounds is and
+          only where it has somebody to ask. Empty shows and follows Admin's
+          number. An ask past it waits for one to finish, and the agent is told
+          it is waiting rather than working.
+        */}
+        {agentIds.length > 0 && (
+          <div className={`${styles.field} ${own.inlineField}`} id="agent-at-once" data-menu-entry={t('Agents at Once')}>
+            <span className={own.labelWithHint}>
+              <label className={styles.label} htmlFor="agent-max-subagents-at-once">
+                {t('Agents at Once')}
+              </label>
+              <FieldHint label={t('Agents at Once')}>
+                {t('How many of the agents above it may have working at the same time in one conversation. An ask past the number waits until one of them has answered, and the agent is told it is waiting. Set 1 for an agent whose model has a small rate limit, so its asks run one after another. Empty follows How many of those may work at once under Admin → Settings → Agents. Between 1 and 20.')}
+              </FieldHint>
+            </span>
+            <div className={own.numberWithUnit}>
+              <input
+                id="agent-max-subagents-at-once"
+                className={own.numberBox}
+                type="number"
+                min={1}
+                max={20}
+                value={atOnce}
+                placeholder={installationAtOnce === null ? '' : String(installationAtOnce)}
+                onChange={(event) => setAtOnce(event.target.value)}
+              />
+              <span className={own.unit}>{t('at once')}</span>
+            </div>
+          </div>
+        )}
 
         {/*
           Orknux itself, kept apart from the servers below on purpose: those

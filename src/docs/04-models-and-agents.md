@@ -864,6 +864,21 @@ each agent it may ask can do - its model, tools, skills and connections - so it
 asks the one that holds the tool the work needs. Each ask is a session of its
 own, listed under the one that asked.
 
+**An agent stops what it no longer wants answered** with `agent_stop`: one ask
+by the session `agent_asks` lists for it, every ask of one agent by its name,
+or all of them. The asked agent's model call is ended where it is, its
+transcript says who stopped it, and nothing comes back from it - an answer
+arriving later would wake the asker into a turn about something else. What it
+did before it was stopped stays done. An agent can stop only what it asked
+itself.
+
+An answer that comes back long after it was asked says so - "which you asked
+at 12:58, 20 minutes ago" - and it is read before the message the turn is
+answering rather than after it, so it is not taken for the reply to that
+message. And an asked agent that cannot answer for a reason that may pass, a
+rate limit say, is asked again by the retry policy of the workflow step it
+was asked from, carrying on from where it stopped.
+
 An agent that ends its turn before the answer comes is not left without it.
 The answer is delivered to its session: read between two steps if it is still
 working, and otherwise it wakes the agent - a workflow step waits rather than

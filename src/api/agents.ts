@@ -95,6 +95,10 @@ export interface Agent {
   memoryShare: number | null;
   /** Its own ceiling on tool rounds; null follows the installation's. */
   maxRounds: number | null;
+  /** How many of the agents it asked may be working at once; null follows the installation. */
+  maxSubagentsAtOnce: number | null;
+  /** How hard its model thinks; null is the provider's default. */
+  reasoningEffort: string | null;
   /** How much it says while it works; a workflow node may override it. */
   chattiness: Chattiness;
   /**
@@ -157,7 +161,7 @@ export interface SessionMemoryBudget {
 }
 
 const AGENT_FIELDS =
-  'id workspaceId name type description systemPrompt enabled modelId modelName mcpServers orknuxAccess mayAskForTools memoryCatalogs secretCatalogs variableCatalogs skillCatalogs hiddenSkills requiredSkills tools connectionIds agentIds boxLabels maxTools requiredTools icon memoryShare maxRounds chattiness';
+  'id workspaceId name type description systemPrompt enabled modelId modelName mcpServers orknuxAccess mayAskForTools memoryCatalogs secretCatalogs variableCatalogs skillCatalogs hiddenSkills requiredSkills tools connectionIds agentIds boxLabels maxTools requiredTools icon memoryShare maxRounds maxSubagentsAtOnce reasoningEffort chattiness';
 
 /**
  * What switches one of the server's own tools on an agent. Issue #444.
@@ -392,6 +396,8 @@ export async function updateAgent(
      */
     memoryShare?: number | null;
     maxRounds?: number | null;
+    maxSubagentsAtOnce?: number | null;
+    reasoningEffort?: string | null;
     chattiness?: Chattiness;
   },
 ): Promise<Agent> {

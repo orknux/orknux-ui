@@ -341,8 +341,8 @@ export function useModelForm(workspaceId: string, modelId: string) {
         maxOutput: toNumber(maxOutput),
         parallelToolCalls: parallel === '' ? null : parallel === 'several',
         // Not yet known is sent back as stored; known and not taken is nothing, which the server requires.
-        reasoningEffort:
-          chatParameters === null ? model.reasoningEffort : effortChoices === null || reasoningEffort === '' ? null : reasoningEffort,
+        // Not on this page any more (see the agent's); sent back as stored, so a save changes nothing of it.
+        reasoningEffort: model.reasoningEffort,
         temperature: sampled('temperature', temperature, model.temperature),
         topP: sampled('topP', topP, model.topP),
         topK: sampled('topK', topK, model.topK),
@@ -569,7 +569,7 @@ export function ModelDetailsFields({ form }: SectionProps) {
  * wrong for all but one of them. Issue #252.
  */
 export function ModelWindowFields({ form }: SectionProps) {
-  const { draws, reads, takesNegative, offered, effortChoices, fields } = form;
+  const { draws, reads, takesNegative, offered, fields } = form;
   if (form.model === null || form.makesVideo) return null;
   return (
     <div className={styles.fieldRow}>
@@ -644,27 +644,11 @@ export function ModelWindowFields({ form }: SectionProps) {
               <option value="several">{t('Several allowed')}</option>
             </Select>
           </div>
-          {effortChoices !== null && (
-            <div className={styles.field}>
-              <span className={styles.labelWithHint}>
-                <label className={styles.label} htmlFor="reasoning-effort">{t('Reasoning effort')}</label>
-                <FieldHint label={t('Reasoning effort')}>
-                  {t('How long a reasoning model thinks before answering; default sends nothing.')}
-                </FieldHint>
-              </span>
-              <Select
-                id="reasoning-effort"
-                className={styles.input}
-                value={fields.reasoningEffort}
-                onChange={(picked) => fields.setReasoningEffort(picked)}
-              >
-                <option value="">{t('Unset')}</option>
-                {effortChoices.map((one) => (
-                  <option key={one} value={one}>{effortLabel(one)}</option>
-                ))}
-              </Select>
-            </div>
-          )}
+          {/*
+            No reasoning effort here any more: it is the agent's, on its own
+            page, since agents sharing a model want to think differently.
+            V653 moved each model's onto the agents that used it.
+          */}
           {offered('temperature') && (
             <div className={styles.field}>
               <span className={styles.labelWithHint}>

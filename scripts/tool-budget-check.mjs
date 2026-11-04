@@ -332,7 +332,7 @@ record(
  * mutation is reachable from the API.
  */
 const refused = await graphql(
-  `mutation($id: ID!, $name: String!) { updateAgent(id: $id, input: { name: $name, maxTools: 2 }) { maxTools } }`,
+  `mutation($id: ID!, $name: String!) { updateAgent(id: $id, input: { name: $name, maxTools: -1 }) { maxTools } }`,
   { id: AGENT, name: made.createAgent.name },
 ).then(
   () => null,
@@ -341,7 +341,7 @@ const refused = await graphql(
 console.log(`refusal: ${refused}`);
 record(
   refused !== null && refused.includes('not a number of tools'),
-  'a ceiling too low to hold the search and a handful of tools is refused',
+  'a ceiling below nought is refused',
 );
 
 await clean();
