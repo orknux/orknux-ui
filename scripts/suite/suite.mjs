@@ -89,6 +89,18 @@ export const TESTS = [
     /* It sets the workspace's quick-chat model and puts it back; no model is asked. */
   },
   {
+    name: 'quick-chat-any-check',
+    what: 'Ask AI is offered on any chat model by default, None takes it away, and the settings page says which',
+    needs: ['workspace'],
+    /* It sets the workspace's quick chat model and puts it back; no model is asked. */
+  },
+  {
+    name: 'token-custom-check',
+    what: 'a Custom access token chooses its MCP tools, reading apart from changing, and a search narrows the list and what its select-all ticks',
+    needs: [],
+    /* It makes a token on alice's page and revokes it. */
+  },
+  {
     name: 'quick-chat-copy-check',
     what: "the quick chat's copy button shows only while the pointer is on its message, and leaves no blank row in a one-word question",
     needs: ['workspace'],
@@ -875,6 +887,12 @@ export const TESTS = [
     name: 'mcp-draft-check-check',
     what: 'Test in the Add MCP Server dialog: a server is asked before it is added, and asking adds nothing',
     needs: ['workspace'],
+  },
+  {
+    name: 'mcp-description-check',
+    what: 'an MCP server says what it is for: typed in the add dialog and on its page, shown under its name on Integrations',
+    needs: ['workspace'],
+    /* Adds a server over the dialog and removes it. */
   },
   {
     name: 'mcp-check-button-check',
@@ -2648,6 +2666,59 @@ export const TESTS = [
     /* Makes its own diagram and removes it. */
   },
   {
+    name: 'diagram-layers-check',
+    what: "a diagram's layers hide and lock what is on them for everybody, take new shapes, keep their boxes when deleted, and hide for one person in View",
+    needs: ['workspace'],
+    /* Makes its own diagram and removes it. */
+  },
+  {
+    name: 'diagram-history-check',
+    what: "a diagram's History lists every version with the live one on top, draws the one opened, and restores it - asked first - as a version of its own the canvas takes in",
+    needs: ['workspace'],
+    /* Makes its own diagram and removes it. */
+  },
+  {
+    name: 'diagram-find-check',
+    what: "the diagram editor's search box finds a box by its label or notes and a line by its label, selects it and brings it to the middle",
+    needs: ['workspace'],
+    /* Makes its own diagram and removes it. */
+  },
+  {
+    name: 'diagram-editing-check',
+    what: "a right click on a diagram's box duplicates, deletes, outlines and restacks it; a picture from a file is drawn in its proportions with a spinner while it goes up; a box links to another diagram by name",
+    needs: ['workspace'],
+    /* Makes its own two diagrams and removes them. */
+  },
+  {
+    name: 'diagram-node-link-check',
+    what: 'a link to one box of a diagram opens it with that box selected and in the middle of the canvas, from a fresh load and a reload',
+    needs: ['workspace'],
+    /* It makes a diagram of its own and deletes it. */
+  },
+  {
+    name: 'diagram-viewing-check',
+    what: "View in the diagram editor moves, types and deletes nothing, greys the tools and is remembered; a selected box lights only its own lines; the later of two crossing lines hops over the earlier, and the hop follows a dragged box",
+    needs: ['workspace'],
+    /* Makes a diagram of its own and removes it. */
+  },
+  {
+    name: 'diagram-follow-check',
+    what: "a click on somebody's avatar in a diagram goes to their pointer, a double click follows it with an eye until the canvas is moved by hand, a tab out of sight lets go of its live stream and is shown as away, takes it up again when looked at, and a closed one is gone",
+    needs: ['workspace'],
+    /* Two tabs of one person; waits out the away delay, about half a minute. */
+  },
+  {
+    name: 'mcp-connect-check',
+    what: "Orknux MCP sits left of Ask AI and level with it, opens this workspace's MCP address with where a token is made and each client's own setup, and the attribution strip ends short of both buttons",
+    needs: ['workspace'],
+  },
+  {
+    name: 'diagram-pictures-setting-check',
+    what: 'Admin Settings draws the switch for diagram pictures from internal addresses with what the server holds, stores a flip at once and shows it after a reload',
+    needs: [],
+    /* Flips an installation-wide setting and puts it back. */
+  },
+  {
     name: 'diagram-tidy-check',
     what: "a wide shape keeps its side features to its height, a node's notes dot is quiet, and a line runs straight, in right angles or curved",
     needs: ['workspace'],
@@ -4231,6 +4302,12 @@ export const TESTS = [
      */
   },
   {
+    name: 'agent-at-once-check',
+    what: 'an agent given others to ask says how many of them may work at once, or follows the installation',
+    needs: ['workspace'],
+    /* Makes two agents and removes them. */
+  },
+  {
     name: 'agent-ask-agent-check',
     what: 'an agent is given other agents to put a question to',
     needs: ['workspace'],
@@ -5051,7 +5128,7 @@ export const TESTS = [
 
   {
     name: 'model-reasoning-effort-check',
-    what: "a chat model's page draws only the sampling and reasoning settings its provider reads - Azure and Ollama: temperature, top-p, reasoning effort; a llama.cpp server: all five and the effort - and Save stores them",
+    what: "a chat model's page draws only the sampling settings its provider reads, and an agent on it offers the reasoning efforts that provider takes and stores the one chosen",
     needs: [],
     /* The refusals - a setting the provider does not read, a word off the list - are ModelChatParametersTest's. */
   },
@@ -5765,6 +5842,12 @@ export const TESTS = [
   {
     name: 'connection-url-check',
     what: "A workspace's own connection can be pointed elsewhere on its page - an HTTP one's URL and a mail one's server - and Slack's address is not offered",
+    needs: ['workspace'],
+    /* Makes three connections over the API and disconnects them. */
+  },
+  {
+    name: 'connection-none-auth-check',
+    what: 'a connection page draws no token field under Auth Type None and no URL Override beside a URL it can edit, unless one is stored',
     needs: ['workspace'],
     /* Makes three connections over the API and disconnects them. */
   },
