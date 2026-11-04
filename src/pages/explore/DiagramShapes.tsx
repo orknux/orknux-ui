@@ -116,6 +116,77 @@ export const OUTLINES: Partial<Record<DiagramNodeKind, Outline>> = {
   boundary: { pieces: [{ cx: 60, cy: 50, r: 32 }, { d: 'M 8 18 L 8 82 M 8 50 L 28 50', open: true }], inside: FULL, icon: true },
   control: { pieces: [{ cx: 50, cy: 55, r: 35 }, { d: 'M 58 11 L 47 20 L 58 29', open: true }], inside: FULL, icon: true },
   entity: { pieces: [{ cx: 50, cy: 45, r: 35 }, { d: 'M 15 88 L 85 88', open: true }], inside: FULL, icon: true },
+  subroutine: {
+    pieces: [{ d: 'M 0 0 L 100 0 L 100 100 L 0 100 Z' }, { d: 'M 10 0 L 10 100 M 90 0 L 90 100', open: true }],
+    inside: { left: 12, top: 4, right: 88, bottom: 96 },
+  },
+  'manual-input': {
+    pieces: [{ d: 'M 0 25 L 100 0 L 100 100 L 0 100 Z' }],
+    inside: { left: 4, top: 30, right: 96, bottom: 96 },
+    rim: [[0, 25], [100, 0], [100, 100], [0, 100]],
+  },
+  delay: {
+    pieces: [{ d: 'M 0 0 L 60 0 C 105 0 105 100 60 100 L 0 100 Z' }],
+    inside: { left: 4, top: 4, right: 84, bottom: 96 },
+    rim: [[0, 0], [60, 0], [88, 15], [94, 50], [88, 85], [60, 100], [0, 100]],
+  },
+  display: {
+    pieces: [{ d: 'M 15 0 L 80 0 C 105 0 105 100 80 100 L 15 100 L 0 50 Z' }],
+    inside: { left: 16, top: 4, right: 86, bottom: 96 },
+    rim: [[15, 0], [80, 0], [96, 25], [100, 50], [96, 75], [80, 100], [15, 100], [0, 50]],
+  },
+  'off-page': {
+    pieces: [{ d: 'M 0 0 L 100 0 L 100 65 L 50 100 L 0 65 Z' }],
+    inside: { left: 4, top: 4, right: 96, bottom: 64 },
+    rim: [[0, 0], [100, 0], [100, 65], [50, 100], [0, 65]],
+  },
+  documents: {
+    pieces: [{ d: 'M 10 0 L 100 0 L 100 70 L 95 70 L 95 5 L 10 5 Z' }, { d: 'M 5 5 L 95 5 L 95 78 L 90 78 L 90 10 L 5 10 Z' }, { d: 'M 0 10 L 90 10 L 90 88 C 63 75 31 105 0 90 Z' }],
+    inside: { left: 4, top: 14, right: 86, bottom: 82 },
+    rim: [[0, 10], [10, 0], [100, 0], [100, 70], [90, 80], [90, 88], [45, 92], [0, 90]],
+  },
+  step: {
+    pieces: [{ d: 'M 0 0 L 85 0 L 100 50 L 85 100 L 0 100 L 15 50 Z' }],
+    inside: { left: 18, top: 4, right: 84, bottom: 96 },
+    rim: [[0, 0], [85, 0], [100, 50], [85, 100], [0, 100], [15, 50]],
+  },
+  callout: {
+    pieces: [{ d: 'M 0 0 L 100 0 L 100 75 L 40 75 L 20 100 L 25 75 L 0 75 Z' }],
+    inside: { left: 4, top: 4, right: 96, bottom: 71 },
+    rim: [[0, 0], [100, 0], [100, 75], [40, 75], [20, 100], [25, 75], [0, 75]],
+  },
+  octagon: {
+    pieces: [{ d: 'M 30 0 L 70 0 L 100 30 L 100 70 L 70 100 L 30 100 L 0 70 L 0 30 Z' }],
+    inside: { left: 10, top: 10, right: 90, bottom: 90 },
+    rim: [[30, 0], [70, 0], [100, 30], [100, 70], [70, 100], [30, 100], [0, 70], [0, 30]],
+  },
+  star: {
+    pieces: [{ d: 'M 50 2 L 62.3 35 L 97.6 36.5 L 70 58.5 L 79.4 92.5 L 50 73 L 20.6 92.5 L 30 58.5 L 2.4 36.5 L 37.7 35 Z' }],
+    inside: { left: 30, top: 38, right: 70, bottom: 76 },
+    rim: [[50, 2], [62.3, 35], [97.6, 36.5], [70, 58.5], [79.4, 92.5], [50, 73], [20.6, 92.5], [30, 58.5], [2.4, 36.5], [37.7, 35]],
+  },
+  queue: {
+    pieces: [{ d: 'M 7.5 0 L 92.5 0 C 102.5 0 102.5 100 92.5 100 L 7.5 100 C -2.5 100 -2.5 0 7.5 0 Z' }, { d: 'M 92.5 0 C 82.5 0 82.5 100 92.5 100', open: true }],
+    inside: { left: 6, top: 4, right: 86, bottom: 96 },
+    rim: [[7.5, 0], [92.5, 0], [100, 50], [92.5, 100], [7.5, 100], [0, 50]],
+  },
+  storage: {
+    pieces: [{ d: 'M 0 10 C 0 0 100 0 100 10 L 88 95 C 85 102 15 102 12 95 Z' }, { d: 'M 0 10 C 0 20 100 20 100 10', open: true }],
+    inside: { left: 12, top: 22, right: 88, bottom: 90 },
+    rim: [[0, 10], [50, 3], [100, 10], [88, 95], [50, 100], [12, 95]],
+  },
+  server: {
+    pieces: [{ d: 'M 0 0 L 100 0 L 100 100 L 0 100 Z' }, { d: 'M 0 33 L 100 33 M 0 66 L 100 66', open: true }, { cx: 88, cy: 16, r: 3, open: true }, { cx: 88, cy: 50, r: 3, open: true }, { cx: 88, cy: 83, r: 3, open: true }],
+    inside: { left: 4, top: 4, right: 80, bottom: 96 },
+  },
+  browser: {
+    pieces: [{ d: 'M 0 0 L 100 0 L 100 100 L 0 100 Z' }, { d: 'M 0 16 L 100 16', open: true }, { cx: 6, cy: 8, r: 2.5, open: true }, { cx: 12, cy: 8, r: 2.5, open: true }, { cx: 18, cy: 8, r: 2.5, open: true }],
+    inside: { left: 4, top: 20, right: 96, bottom: 96 },
+  },
+  mobile: {
+    pieces: [{ d: 'M 12 0 L 88 0 C 95 0 100 5 100 12 L 100 88 C 100 95 95 100 88 100 L 12 100 C 5 100 0 95 0 88 L 0 12 C 0 5 5 0 12 0 Z' }, { d: 'M 40 5 L 60 5 M 42 95 L 58 95', open: true }],
+    inside: { left: 6, top: 10, right: 94, bottom: 90 },
+  },
 };
 
 /**
@@ -197,12 +268,39 @@ export function ShapeIcon({ kind }: { kind: DiagramNodeKind }) {
  * ellipse's own; and the box for the rest.
  */
 export function rimBorder(kind: DiagramNodeKind | undefined, box: { cx: number; cy: number; hw: number; hh: number }, tx: number, ty: number): { x: number; y: number } | null {
-  const dx = tx - box.cx;
-  const dy = ty - box.cy;
+  return rimBorderFrom(kind, box, box.cx, box.cy, tx, ty);
+}
+
+/**
+ * Where a ray from (ox, oy), inside the node, towards (tx, ty) leaves the
+ * outline a person sees - [rimBorder] is the one from the centre; the
+ * server's `DiagramOutline.borderFrom`. A routed line leaves a side away from
+ * its middle along such a ray, so a cylinder's side has as many places to
+ * leave from as a box's. Null for a shape whose outline is its rectangle.
+ */
+export function rimBorderFrom(
+  kind: DiagramNodeKind | undefined,
+  box: { cx: number; cy: number; hw: number; hh: number },
+  ox: number,
+  oy: number,
+  tx: number,
+  ty: number,
+): { x: number; y: number } | null {
+  const dx = tx - ox;
+  const dy = ty - oy;
   if (dx === 0 && dy === 0) return null;
   if (kind === 'ellipse') {
-    const t = 1 / Math.sqrt((dx * dx) / (box.hw * box.hw) + (dy * dy) / (box.hh * box.hh));
-    return { x: box.cx + dx * t, y: box.cy + dy * t };
+    const a = box.hw;
+    const b = box.hh;
+    const px = ox - box.cx;
+    const py = oy - box.cy;
+    const qa = (dx * dx) / (a * a) + (dy * dy) / (b * b);
+    const qb = 2 * ((px * dx) / (a * a) + (py * dy) / (b * b));
+    const qc = (px * px) / (a * a) + (py * py) / (b * b) - 1;
+    const root = qb * qb - 4 * qa * qc;
+    if (root < 0) return null;
+    const t = (-qb + Math.sqrt(root)) / (2 * qa);
+    return t > 0 ? { x: ox + dx * t, y: oy + dy * t } : null;
   }
   const outline = kind === undefined ? undefined : outlineOf(kind, box.hw * 2, box.hh * 2);
   const rim: [number, number][] | undefined = kind === 'diamond' ? [[50, 0], [100, 50], [50, 100], [0, 50]] : outline?.icon ? undefined : outline?.rim;
@@ -217,11 +315,11 @@ export function rimBorder(kind: DiagramNodeKind | undefined, box: { cx: number; 
     const ey = by - ay;
     const det = dx * -ey - dy * -ex;
     if (Math.abs(det) < 1e-9) return;
-    const px = ax - box.cx;
-    const py = ay - box.cy;
+    const px = ax - ox;
+    const py = ay - oy;
     const t = (px * -ey - py * -ex) / det;
     const s = (dx * py - dy * px) / det;
     if (t > 0 && s >= -1e-9 && s <= 1 + 1e-9 && t < nearest) nearest = t;
   });
-  return nearest === Infinity ? null : { x: box.cx + dx * nearest, y: box.cy + dy * nearest };
+  return nearest === Infinity ? null : { x: ox + dx * nearest, y: oy + dy * nearest };
 }

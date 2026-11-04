@@ -1,3 +1,5 @@
+import { t } from '../i18n';
+import { refuseOversized, sendUpload } from './uploads';
 import { graphql } from './client';
 import { editorTurnsInput } from './attachments';
 import type { EditorTurn } from './attachments';
@@ -9,12 +11,15 @@ import type { EditorTurn } from './attachments';
 export type DiagramNodeKind = (typeof DIAGRAM_NODE_KINDS)[number];
 
 /** The flowchart shapes past the first six, in the order the menu offers them. */
-export const FLOWCHART_KINDS = ['database', 'document', 'hexagon', 'parallelogram', 'trapezoid', 'triangle', 'cloud'] as const;
+export const FLOWCHART_KINDS = ['database', 'document', 'hexagon', 'parallelogram', 'trapezoid', 'triangle', 'cloud', 'subroutine', 'manual-input', 'delay', 'display', 'off-page', 'documents', 'step', 'callout', 'octagon', 'star'] as const;
 
 /** The UML shapes, in the order the menu offers them. */
 export const UML_KINDS = ['actor', 'class', 'component', 'package', 'interface', 'device', 'boundary', 'control', 'entity'] as const;
 
-export const DIAGRAM_NODE_KINDS = ['box', 'rounded', 'ellipse', 'diamond', 'note', 'group', ...FLOWCHART_KINDS, ...UML_KINDS] as const;
+/** The shapes of a system's architecture - queues, storage, machines and where people meet it - in the order the menu offers them. */
+export const ARCHITECTURE_KINDS = ['queue', 'storage', 'server', 'browser', 'mobile'] as const;
+
+export const DIAGRAM_NODE_KINDS = ['box', 'rounded', 'ellipse', 'diamond', 'note', 'group', 'image', 'text', 'link', ...FLOWCHART_KINDS, ...ARCHITECTURE_KINDS, ...UML_KINDS] as const;
 
 /**
  * What a connection was drawn as before it had a style and two ends (`DiagramEdgeKind`):
@@ -53,6 +58,52 @@ export interface DiagramNodeData {
   notes?: string;
   /** The group it sits in, by id. */
   parent?: string;
+  /** The layer it is on, by id; left out, the drawing's first. */
+  layer?: string;
+  /** What a reader opens from it: a web address, or another diagram as `diagram:<id>`. */
+  link?: string;
+  /** Its outline's colour, `#rrggbb`, and thickness in pixels; left out, as every box is drawn. */
+  border?: string;
+  borderWidth?: number;
+  /** The picture an image shows: an uploaded one's id, or an address on the web. */
+  image?: string;
+}
+
+/** Where the browser fetches an image's picture from: the diagram's own store, or the address it was given. */
+export function pictureUrl(image: string): string {
+  return /^\d+$/.test(image) ? `/api/diagram-images/${image}` : image;
+}
+
+/** A picture a browser and the server's renderer both draw, which a diagram takes. */
+export const PICTURE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+
+/** A picture put on a diagram: kept beside it, answered with its id and its size where it could be read. */
+export async function uploadDiagramPicture(diagramId: string, file: File): Promise<{ id: string; width: number | null; height: number | null }> {
+  await refuseOversized([file]);
+  const form = new FormData();
+  form.append('file', file, file.name);
+  return sendUpload(`/api/diagrams/${diagramId}/images`, form, t('That picture could not be added.'));
+}
+
+/** The thicknesses offered for an outline or a line, in pixels; the server takes 1 to 12. */
+export const STROKE_WIDTHS = [1, 2, 3, 4, 6, 8] as const;
+
+/** How a box links to another diagram: this, then the diagram's id - the server's `Diagrams.DIAGRAM_LINK`. */
+export const DIAGRAM_LINK = 'diagram:';
+
+/** What of the workspace's own a box can link to, each written as its kind, a colon and its id. */
+export const LINKED_KINDS = ['diagram', 'document', 'wireframe'] as const;
+export type LinkedKind = (typeof LINKED_KINDS)[number];
+
+/** What a link names of the workspace's own, and its id; null for an address. */
+export function linkedItem(link: string): { kind: LinkedKind; id: string } | null {
+  const found = /^(diagram|document|wireframe):(\d+)$/i.exec(link.trim());
+  return found === null ? null : { kind: found[1].toLowerCase() as LinkedKind, id: found[2] };
+}
+
+/** What a box may link to: a web address, a mail address, or another diagram - the server's `DiagramDocument.LINK`. */
+export function linkAllowed(link: string): boolean {
+  return /^(?:(?:https?:\/\/|mailto:)[^\s<>"]+|(?:diagram|document|wireframe):\d+)$/i.test(link.trim());
 }
 
 export interface DiagramEdgeData {
@@ -67,11 +118,37 @@ export interface DiagramEdgeData {
   /** At `to`. */
   end?: DiagramEndStyle;
   routing?: DiagramRouting;
+  /** The layer it is on, by id; left out, the drawing's first. */
+  layer?: string;
+  /**
+   * Its own corners, start to end, where `orknux_route_diagram` routed it
+   * around the boxes in its way; only a right-angle line follows them. Its ends
+   * stay on the boxes, so a box moved still carries it.
+   */
+  points?: [number, number][];
+  /** Where along a routed line its label sits, a share of its length; left out, the middle of its longest run. */
+  labelAt?: number;
+  /** Its colour, `#rrggbb`, ends included, and thickness in pixels; left out, as every line is drawn. */
+  color?: string;
+  width?: number;
+}
+
+/**
+ * One layer of a diagram, as draw.io has them. Hidden, what is on it is left
+ * out of the editor and of exports; locked, it is drawn and cannot be changed.
+ */
+export interface DiagramLayer {
+  id: string;
+  name: string;
+  visible: boolean;
+  locked: boolean;
 }
 
 export interface DiagramDrawing {
   nodes: DiagramNodeData[];
   edges: DiagramEdgeData[];
+  /** Bottom first; left out, the one layer every diagram has, Base. */
+  layers?: DiagramLayer[];
 }
 
 export interface DiagramCatalog {
@@ -134,7 +211,12 @@ const CATALOG_FIELDS = 'id workspaceId name diagramCount';
 export function drawingOf(diagram: Pick<Diagram, 'document'>): DiagramDrawing {
   try {
     const read = JSON.parse(diagram.document) as Partial<DiagramDrawing>;
-    return { nodes: Array.isArray(read.nodes) ? read.nodes : [], edges: Array.isArray(read.edges) ? read.edges : [] };
+    return {
+      nodes: Array.isArray(read.nodes) ? read.nodes : [],
+      edges: Array.isArray(read.edges) ? read.edges : [],
+      // Only where it has its own: a diagram without them has Base, which is no list at all.
+      ...(Array.isArray(read.layers) && read.layers.length > 0 ? { layers: read.layers } : {}),
+    };
   } catch {
     return { nodes: [], edges: [] };
   }

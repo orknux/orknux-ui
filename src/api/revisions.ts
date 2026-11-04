@@ -7,9 +7,10 @@ import { graphql } from './client';
  * versioned by publishing, and one without is versioned by saving. A workflow
  * is the only kind with a draft, so its versions are its publications and it is
  * read through `fetchWorkflowPublications` rather than through the four here.
- * A Design document is versioned by saving too, and its `readable` is Markdown.
+ * A Design document is versioned by saving too, and its `readable` is Markdown;
+ * so is a diagram, whose `content` is its drawing as SVG.
  */
-export type ComponentRevisionKind = 'FUNCTION' | 'TOOL' | 'SKILL' | 'AGENT' | 'DOCUMENT';
+export type ComponentRevisionKind = 'FUNCTION' | 'TOOL' | 'SKILL' | 'AGENT' | 'DOCUMENT' | 'DIAGRAM';
 
 /** One line of a component's history: what it was, and when it stopped being it. */
 export interface ComponentRevision {
@@ -59,7 +60,7 @@ export interface ComponentRevisionDetail extends ComponentRevision {
    * agent may have no prompt at all.
    */
   content: string | null;
-  /** `typescript`, `markdown` or `json`. */
+  /** `typescript`, `markdown`, `json`, or a diagram's `svg`. */
   contentLanguage: string;
   /** The whole component as it was, as JSON. */
   snapshot: string;

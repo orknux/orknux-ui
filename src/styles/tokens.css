@@ -36,6 +36,9 @@
   --color-scrollbar: #3f3f46;
   --color-scrollbar-hover: #52525b;
   --color-border: #27272a;
+  /* A field that has to be found on a toolbar: lighter than the bar, and edged more clearly. */
+  --color-field: #27272a;
+  --color-field-border: #52525b;
 
   /*
    * What a surface becomes under the pointer.
@@ -92,6 +95,8 @@
    * background.
    */
   --color-accent-brand: #5f8467;
+  /* Words on the brand colour: a chosen toggle, a filled option. */
+  --color-on-accent-brand: #ffffff;
   --color-accent-brand-soft: rgba(95, 132, 103, 0.15);
   /* A model's thinking: red, so it never reads as the agent's sage answer. */
   --color-thinking: #c4453d;
@@ -291,6 +296,8 @@
   --diagram-paper: #ffffff;
   --diagram-ink: #3f3f46;
   --diagram-muted: #71717a;
+  /* A link card's name: a link's blue, on the diagram's paper. */
+  --diagram-link: #2563eb;
   --diagram-note: #fef9c3;
   --diagram-group: #eef2f7;
   --diagram-select: #2f80ed;
@@ -356,6 +363,8 @@
   --color-scrollbar: #c4c4c8;
   --color-scrollbar-hover: #a1a1aa;
   --color-border: #e4e4e7;
+  --color-field: #ffffff;
+  --color-field-border: #a1a1aa;
 
   /* The same one step, downwards, because the ramp is inverted here. */
   --color-surface-hover: #e4e4e7;
@@ -384,6 +393,8 @@
   /* The brand colour keeps its hue: it is the product's, not the theme's. On
      white it can be the full-strength iron-moss. */
   --color-accent-brand: #4a6b52;
+  /* Words on the brand colour: a chosen toggle, a filled option. */
+  --color-on-accent-brand: #ffffff;
   --color-accent-brand-soft: rgba(74, 107, 82, 0.12);
   --color-thinking: #a8322b;
   --color-thinking-soft: rgba(168, 50, 43, 0.12);

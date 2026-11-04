@@ -9,14 +9,15 @@
  */
 import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
 
-const FLOWCHART = ['database', 'document', 'hexagon', 'parallelogram', 'trapezoid', 'triangle', 'cloud'];
+const FLOWCHART = ['database', 'document', 'hexagon', 'parallelogram', 'trapezoid', 'triangle', 'cloud', 'subroutine', 'manual-input', 'delay', 'display', 'off-page', 'documents', 'step', 'callout', 'octagon', 'star'];
+const ARCHITECTURE = ['queue', 'storage', 'server', 'browser', 'mobile'];
 const UML = ['actor', 'class', 'component', 'package', 'interface', 'device', 'boundary', 'control', 'entity'];
 const ICONS = ['actor', 'interface', 'boundary', 'control', 'entity'];
 
 const { browser, page, graphql } = await open({ viewport: { width: 1600, height: 1000 } });
 
 // Every shape in a grid, an icon stretched wider than it is tall, and a line into a triangle from its right at mid height.
-const nodes = [...FLOWCHART, ...UML].map((kind, at) => ({
+const nodes = [...FLOWCHART, ...ARCHITECTURE, ...UML].map((kind, at) => ({
   id: kind,
   kind,
   label: kind === 'class' ? 'Order\n--\nid: Long\n--\nplace()' : kind,
@@ -40,7 +41,7 @@ await page.getByRole('button', { name: /fit view/i }).click().catch(() => {});
 await page.waitForTimeout(800);
 
 // Each drawn as an outline: the closed pieces fill the node for a stretched shape; for an icon, a round piece stays round.
-for (const kind of [...FLOWCHART, ...UML]) {
+for (const kind of [...FLOWCHART, ...ARCHITECTURE, ...UML]) {
   const look = await node(kind).evaluate((one, icon) => {
     const shape = one.querySelector('[data-testid="diagram-node-shape"]');
     const art = one.querySelector('[data-testid="diagram-node-outline"]');
@@ -87,10 +88,22 @@ const [, , ex, ey] = points;
 record(points.length === 4 && Math.abs(ex - (triangle.x + 90)) < 2 && Math.abs(ey - (triangle.y + 50)) < 2,
   `a line into a triangle ends on its side, at ${triangle.x + 90},${triangle.y + 50}, not ${triangle.x + 120} (${end})`);
 
-// More shapes offers every one, under Flowchart and UML, and adds the one picked.
+// More shapes offers every one, under Flowchart, Architecture and UML, and adds the one picked.
 await page.getByTestId('diagram-more-shapes').click();
 const offered = await page.locator('[role="menu"] [data-testid^="diagram-add-"]').evaluateAll((items) => items.map((one) => one.getAttribute('data-testid').replace('diagram-add-', '')));
-record(JSON.stringify(offered) === JSON.stringify([...FLOWCHART, ...UML]), `More shapes offers every flowchart and UML shape (${JSON.stringify(offered)})`);
+record(JSON.stringify(offered) === JSON.stringify([...FLOWCHART, ...ARCHITECTURE, ...UML]), `More shapes offers every flowchart, architecture and UML shape (${JSON.stringify(offered)})`);
+// On a laptop's window the menu stops at the bottom and scrolls: its last rows ran off the screen, out of reach.
+await page.setViewportSize({ width: 1440, height: 760 });
+await page.waitForTimeout(200);
+const reach = await page.locator('[role="menu"]').evaluate((menu) => {
+  const last = [...menu.querySelectorAll('[data-testid^="diagram-add-"]')].at(-1);
+  last.scrollIntoView({ block: 'nearest' });
+  const box = menu.getBoundingClientRect();
+  const end = last.getBoundingClientRect();
+  return { bottom: Math.round(box.bottom), window: window.innerHeight, scrolls: menu.scrollHeight > menu.clientHeight, last: Math.round(end.bottom) };
+});
+record(reach.bottom <= reach.window && reach.scrolls && reach.last <= reach.bottom + 1, `More shapes ends inside the window and scrolls to its last shape (${JSON.stringify(reach)})`);
+await page.setViewportSize({ width: 1600, height: 1000 });
 const before = await page.locator('.react-flow__node').count();
 await page.getByTestId('diagram-add-database').click();
 await page.waitForTimeout(300);

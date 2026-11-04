@@ -35,11 +35,16 @@ const slantOf = () =>
     return x === undefined ? null : { units: Number(x), pixels: Number(x) * 10 };
   });
 
-/** The points an edge's path visits, and whether it bends with a curve. */
+/**
+ * The corners an edge's path turns at - where it starts, the point each
+ * rounded corner turns through (its Q's control point), and where it ends -
+ * and whether it bends with a curve.
+ */
 const route = (id) =>
   page.evaluate((edge) => {
     const d = document.querySelector(`.react-flow__edge[data-id="${edge}"] path.react-flow__edge-path`)?.getAttribute('d') ?? '';
-    const points = [...d.matchAll(/[ML]\s*([0-9.-]+)[ ,]([0-9.-]+)/g)].map((m) => [Number(m[1]), Number(m[2])]);
+    const pairs = (pattern) => [...d.matchAll(pattern)].map((m) => [Number(m[1]), Number(m[2])]);
+    const points = [...pairs(/M\s*([0-9.-]+)[ ,]([0-9.-]+)/g), ...pairs(/Q\s*([0-9.-]+)[ ,]([0-9.-]+)/g), ...pairs(/L\s*([0-9.-]+)[ ,]([0-9.-]+)/g).slice(-1)];
     return { d, points, curved: /C/.test(d) };
   }, id);
 

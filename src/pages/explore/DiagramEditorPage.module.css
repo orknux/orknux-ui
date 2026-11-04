@@ -68,6 +68,20 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-8);
   box-shadow: var(--shadow-menu);
+  /*
+   * Never past the bottom of the window: More shapes holds some forty rows and
+   * ran off a laptop's screen with its last ones out of reach. What does not
+   * fit scrolls; the room left is the window less the bar above it and the
+   * footer below.
+   */
+  max-height: calc(100dvh - 160px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Scrolling, the rows keep their height rather than being squeezed to fit. */
+.menu > * {
+  flex-shrink: 0;
 }
 
 .menuRight {
@@ -142,7 +156,8 @@
   overflow: hidden;
   color: var(--diagram-ink);
   background: var(--diagram-paper);
-  border: 1.5px solid var(--diagram-ink);
+  /* A box's own outline where it has one; see `--node-border` on the node. */
+  border: var(--node-border-width, 1.5px) solid var(--node-border, var(--diagram-ink));
   border-radius: var(--radius-4);
 }
 
@@ -238,8 +253,8 @@
 
 .diamond polygon {
   fill: var(--diagram-paper);
-  stroke: var(--diagram-ink);
-  stroke-width: 1.5;
+  stroke: var(--node-border, var(--diagram-ink));
+  stroke-width: var(--node-stroke, 1.5);
   vector-effect: non-scaling-stroke;
 }
 
@@ -258,8 +273,8 @@
 
 .outlinePiece {
   fill: var(--diagram-paper);
-  stroke: var(--diagram-ink);
-  stroke-width: 1.5;
+  stroke: var(--node-border, var(--diagram-ink));
+  stroke-width: var(--node-stroke, 1.5);
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
 }
@@ -345,6 +360,7 @@
  * on the node being looked at. Bright on every noted node, a diagram whose
  * nodes all had notes wore a row of blue dots that read as something wrong.
  */
+
 .notedMark {
   position: absolute;
   top: 5px;
@@ -376,8 +392,13 @@
   opacity: 1;
 }
 
+/*
+ * The resize frame's edges, there to be dragged and not seen: drawn, they were
+ * a rectangle round an ellipse or a diamond, and the selection is drawn on the
+ * shape itself below. The handles at its corners stay.
+ */
 .resizeLine {
-  border-color: var(--diagram-select) !important;
+  border-color: transparent !important;
 }
 
 .resizeHandle {
@@ -387,12 +408,21 @@
   border: 1.5px solid var(--diagram-select) !important;
 }
 
-:global(.react-flow__node-shape.selected) .shape,
+/*
+ * Selected, a shape is lit along its own outline - an ellipse as an ellipse, a
+ * diamond as a diamond, a cylinder as a cylinder - not boxed in a rectangle.
+ * A plain box takes a ring that follows its corners; a drawn outline takes the
+ * colour and a heavier stroke.
+ */
+:global(.react-flow__node-shape.selected) .shape {
+  border-color: var(--diagram-select);
+  box-shadow: 0 0 0 2px var(--diagram-select);
+}
+
 :global(.react-flow__node-shape.selected) .diamond polygon,
-:global(.react-flow__node-shape.selected) .shapeOutlineBox,
-:global(.react-flow__node-shape.selected) .shapeIconBox {
-  outline: 2px solid var(--diagram-select);
-  outline-offset: 2px;
+:global(.react-flow__node-shape.selected) .outlinePiece {
+  stroke: var(--diagram-select);
+  stroke-width: 3;
 }
 
 /* ---- A connection ---- */
@@ -405,6 +435,17 @@
 .linkSelected {
   stroke: var(--diagram-select) !important;
   stroke-width: 2.5 !important;
+}
+
+/* A line of a selected box: lit with it, a little lighter than a line selected itself. */
+.linkTouched {
+  stroke: var(--diagram-select) !important;
+  stroke-width: 2 !important;
+}
+
+/* Viewing: nothing to draw a line from. */
+.handleViewing {
+  visibility: hidden;
 }
 
 .linkLabel {
@@ -631,4 +672,831 @@
   z-index: 5;
   width: 8px;
   margin-inline: -4px;
+}
+
+/* ---- View or edit ---- */
+
+/* Raised off the toolbar like the search box, so which mode the editor is in is seen at a glance. */
+.modeSwitch {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--color-field);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-6);
+}
+
+.modeOption {
+  padding: var(--space-2) var(--space-10);
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--text-sm);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-4);
+  cursor: pointer;
+}
+
+.modeOption:hover:not(.modeOn) {
+  color: var(--color-text-primary);
+}
+
+/* The mode it is in, filled: the brand's own colour, and the words bright and bold. */
+.modeOn {
+  color: var(--color-on-accent-brand);
+  font-weight: 600;
+  background: var(--color-accent-brand);
+}
+
+/* The panel's fields, held off at once while viewing; drawn as nothing of its own. */
+.panelFields {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* ---- Find ---- */
+
+.finder {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+/* Raised off the toolbar and edged, with its icon inside: the bar's own colour made it read as no box at all. */
+.finderField {
+  width: 280px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-2) var(--space-8);
+  background: var(--color-field);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-6);
+  cursor: text;
+}
+
+/* Lit while it is in use - typed into, or holding a search - so a search left running is seen to be. */
+.finderField:focus-within,
+.finderSearching {
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--color-accent-brand) 35%, transparent),
+    0 0 14px color-mix(in srgb, var(--color-accent-brand) 30%, transparent);
+}
+
+.finderField:focus-within {
+  border-color: var(--color-accent-brand);
+}
+
+.finderIcon {
+  opacity: 0.8;
+}
+
+/* Takes what the field has left once its count and arrows are drawn: the field's width never moves. */
+.finderBox {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  padding: var(--space-2) 0;
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--text-md);
+  background: transparent;
+  border: 0;
+  outline: none;
+}
+
+/* The browser's own clearing cross: the field draws one of its own, at the end of the row. */
+.finderBox::-webkit-search-cancel-button {
+  display: none;
+  appearance: none;
+}
+
+.finderBox::placeholder {
+  color: var(--color-text-secondary);
+}
+
+.finderCount {
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.finderStep:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* What the search found, down the left of the canvas while there is a search. */
+.findResults {
+  width: 260px;
+  max-height: calc(100% - 120px);
+  overflow-y: auto;
+  padding: var(--space-4);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-field-border);
+  /* Clear of the search box's row, which is in the middle at the top. */
+  margin-top: 56px;
+}
+
+.findResultsHead {
+  padding: var(--space-4) var(--space-6);
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+}
+
+.findResult {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: var(--space-6) var(--space-8);
+  color: var(--color-text-primary);
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-6);
+  cursor: pointer;
+}
+
+.findResult:hover {
+  background: var(--color-surface-hover);
+}
+
+/* The one the canvas is on: in the selection's colour, as the box itself is. */
+.findResultOn,
+.findResultOn:hover {
+  background: color-mix(in srgb, var(--color-accent-brand) 18%, transparent);
+  border-color: var(--color-accent-brand);
+}
+
+.findResultKind {
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+}
+
+.findResultTitle {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.findResultMore {
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}
+
+/* The one chevron, turned for the way back. */
+.finderUp {
+  transform: rotate(180deg);
+}
+
+/* ---- Which way a lit line goes ---- */
+
+/* The workflow editor's moving dots, in the selection's colour, over a lit line. */
+.linkFlow {
+  fill: none;
+  stroke: var(--diagram-select);
+  stroke-width: 3px;
+  stroke-linecap: round;
+  stroke-dasharray: 8 12;
+  pointer-events: none;
+  animation: linkFlow 1.6s linear infinite;
+}
+
+/* An arrowhead travelling along a lit line; see DiagramCanvas. */
+.linkFlowHead {
+  fill: var(--diagram-select);
+  stroke: var(--color-surface);
+  stroke-width: 1px;
+  pointer-events: none;
+}
+
+@keyframes linkFlow {
+  from {
+    stroke-dashoffset: 20;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .linkFlow {
+    display: none;
+    animation: none;
+  }
+}
+
+/* The edit tools as one group the mode can disable; drawn as nothing of its own, so the bar keeps its shape. */
+.toolGroup {
+  display: contents;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* ---- Layers ---- */
+
+.layersButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.layersMenu {
+  min-width: 320px;
+  gap: var(--space-2);
+}
+
+.layerRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-6);
+}
+
+/* Where new shapes go, marked as the current layer. */
+.layerCurrent {
+  background: var(--color-accent-brand-soft);
+}
+
+.layerToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  color: var(--color-text-secondary);
+  font: inherit;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-4);
+  cursor: pointer;
+}
+
+.layerToggle:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+
+.layerToggle:disabled {
+  /* Still readable as what it would do: at 0.35 a disabled arrow was taken for no button at all. */
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* A glyph rather than an icon, drawn at an icon's size and in the text's own colour. */
+.layerMove {
+  color: var(--color-text-primary);
+  font-size: 17px;
+  line-height: 1;
+}
+
+.layerPick {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  min-width: 0;
+  padding: var(--space-4) var(--space-6);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-4);
+  cursor: pointer;
+}
+
+.layerPick:disabled {
+  cursor: default;
+}
+
+.layerLabel {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.layerCount {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.layerName {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-4) var(--space-6);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--text-sm);
+  background: var(--color-field);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-4);
+}
+
+/* Off is dimmed: a hidden layer's eye, an unlocked layer's padlock - the two padlocks were hard to tell apart. */
+.layerToggle[aria-pressed='false'] img {
+  opacity: 0.4;
+}
+
+.layerToggle[aria-pressed='true'] img {
+  opacity: 1;
+}
+
+/* In the canvas's bottom right corner: raised off the canvas, and its menu opening upwards and leftwards. */
+.layersCorner > button {
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-12);
+  font-size: var(--text-md);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-menu);
+}
+
+.layersCorner .layersMenu {
+  top: auto;
+  right: 0;
+  bottom: calc(100% + var(--space-4));
+  left: auto;
+}
+
+/* The arrows inside the field: small enough to leave the words their room. */
+.finderField .finderStep {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  padding: 0;
+}
+
+.finderField .finderCount {
+  font-size: var(--text-sm);
+  color: var(--color-text-body);
+}
+
+/* Search and the mode switch, floating on the canvas: raised off whatever is drawn under them. */
+.canvasCorner {
+  border-radius: var(--radius-6);
+  box-shadow: var(--shadow-menu);
+}
+
+/* A box's link in the side panel: the place it goes, which opens it, and a cross to take it away. */
+.linkChosen {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.linkChosenName {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-4) var(--space-8);
+  overflow: hidden;
+  color: var(--color-accent-brand);
+  font: inherit;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: transparent;
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-6);
+  cursor: pointer;
+}
+
+.linkPick {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* A row of stroke colours, the usual first. */
+.strokeRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+/* The right-click menu, where the click was, over everything; the shade behind it closes it. */
+.rightMenuShade {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+}
+
+.rightMenu {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  width: 260px;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-4);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+  box-shadow: var(--shadow-menu);
+}
+
+.rightMenu > * {
+  flex-shrink: 0;
+}
+
+/*
+ * The diagram's menus read in the body face at its own weight, every row and
+ * field alike. Portaled to the page or held in the toolbar, they took the
+ * weight and size of whatever they sat in - a toolbar's bold, a form's
+ * larger select - and looked like a different product.
+ */
+.rightMenu,
+.menu {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 400;
+}
+
+.rightMenu .menuItem,
+.menu .menuItem,
+.rightMenu select,
+.rightMenu input {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 400;
+}
+
+.rightMenu select {
+  padding-top: var(--space-6);
+  padding-bottom: var(--space-6);
+}
+
+.rightMenu .field {
+  padding: var(--space-4) var(--space-10);
+}
+
+.rightMenuSection {
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+  margin-top: var(--space-4);
+}
+
+.rightMenuSection .strokeRow {
+  padding: 0 var(--space-10);
+}
+
+.rightMenuHead {
+  padding: var(--space-4) var(--space-10);
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+}
+
+/* Which kind of thing the link picker lists: the View and Edit switch's look. */
+.linkKinds {
+  display: inline-flex;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  margin-bottom: var(--space-8);
+  background: var(--color-field);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-6);
+}
+
+/* A picture on the diagram: fitted inside its box, its caption under it, and an outline only where it was given one. */
+.picture {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border: var(--node-border-width, 0px) solid var(--node-border, transparent);
+  border-radius: var(--radius-4);
+}
+
+.pictureArt {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.pictureNone {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  color: var(--diagram-muted);
+  font-size: 12px;
+  border: 1.5px dashed var(--diagram-muted);
+  border-radius: var(--radius-4);
+}
+
+.pictureCaption {
+  padding-top: 2px;
+  color: var(--diagram-ink);
+  font-size: 13px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+:global(.react-flow__node-shape.selected) .picture {
+  box-shadow: 0 0 0 2px var(--diagram-select);
+}
+
+/* A picture still going up: a spinner in the box it will fill. */
+.pictureLoading {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--diagram-muted) 12%, transparent);
+  border: 1.5px dashed var(--diagram-muted);
+  border-radius: var(--radius-4);
+}
+
+.pictureSpinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid color-mix(in srgb, var(--diagram-muted) 35%, transparent);
+  border-top-color: var(--diagram-select);
+  border-radius: 50%;
+  animation: pictureSpin 0.8s linear infinite;
+}
+
+@keyframes pictureSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pictureSpinner {
+    animation-duration: 2.4s;
+  }
+}
+
+/* A box's link: a small button in its bottom right corner, which opens it. */
+.linkMark {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: var(--color-accent-brand);
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.linkMark:hover {
+  filter: brightness(1.15);
+}
+
+/* The icon drawn white on the button's blue: the shared icon's grey stroke read as a smudge on it. */
+.linkMark img {
+  filter: brightness(0) invert(1);
+}
+
+/* On text, level with the words rather than tucked into the corner of a box that has no outline to be the corner of. */
+.linkMarkBeside {
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%);
+}
+
+/* A link to a diagram deleted since: there, and greyed, so the box still says it once pointed somewhere. */
+.linkMarkGone {
+  background: var(--color-text-secondary);
+  opacity: 0.6;
+}
+
+/* Where a box's link goes, shown on resting on its button - the document editor's link card. */
+.linkCard {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 320px;
+  padding: var(--space-8) var(--space-12, 12px);
+  color: var(--color-text-primary);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-6);
+  box-shadow: var(--shadow-menu);
+  pointer-events: none;
+}
+
+.linkCardName {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.linkCardGone {
+  text-decoration: line-through;
+}
+
+.linkCardWhere,
+.linkCardExcerpt {
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}
+
+/* ---- Adding a picture or a link from the toolbar ---- */
+
+/* A menu that holds a field, so wider than a list of shapes, and padded like a form. */
+.addMenu {
+  min-width: 300px;
+  gap: var(--space-4);
+  /* The toolbar's own weight is a button label's; a menu of rows and a field reads in the body face. */
+  font-family: var(--font-sans);
+  font-weight: 400;
+}
+
+.linkMenu {
+  width: 380px;
+  padding: var(--space-8);
+}
+
+.addressRow {
+  display: flex;
+  gap: var(--space-6);
+  padding: var(--space-2) var(--space-8) var(--space-6);
+}
+
+.addressField {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-6) var(--space-10);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--text-md);
+  background: var(--color-field);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-6);
+  outline: none;
+}
+
+.addressField:focus {
+  border-color: var(--color-accent-brand);
+}
+
+.addressField[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+
+.addressAdd {
+  padding: var(--space-6) var(--space-12);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 1.2;
+  background: var(--color-surface-hover);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  cursor: pointer;
+}
+
+.addressAdd:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ---- A link card on the canvas ---- */
+
+.linkNode {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: var(--space-8) var(--space-12);
+  color: var(--diagram-ink);
+  background: var(--diagram-paper);
+  border: var(--node-border-width, 1.5px) solid var(--node-border, var(--diagram-ink));
+  border-radius: 8px;
+}
+
+.linkNodeGone .linkNodeName {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.linkNodeIcon {
+  flex: none;
+}
+
+.linkNodeWords {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.linkNodeName {
+  overflow: hidden;
+  color: var(--diagram-link);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.linkNodeWhere {
+  overflow: hidden;
+  color: var(--diagram-muted);
+  font-size: 11px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.linkNodeOpen {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  color: #3f3f46;
+  font-size: 20px;
+  line-height: 1;
+  background: #f4f4f5;
+  border: 1px solid #d4d4d8;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.linkNodeOpen:hover {
+  background: #e4e4e7;
+}
+
+/* ---- Text: words alone on the diagram ---- */
+
+.textNode {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: var(--space-4) var(--space-6);
+  color: var(--diagram-ink);
+  background: transparent;
+  border: 0;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.textNodeWords {
+  /* As wide as the words and no wider: a link is opened by its words, not by the empty room beside them. */
+  max-width: 100%;
+  font-size: 14px;
+  line-height: 20px;
+  text-align: left;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* A word on the canvas for a moment: a link copied. */
+.notice {
+  padding: var(--space-6) var(--space-12);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-menu);
+  overflow-wrap: anywhere;
+  max-width: 70%;
+}
+
+/* Text that leads somewhere reads as a link; its button in the corner opens it. */
+.textNodeLinked {
+  color: var(--diagram-link);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
 }

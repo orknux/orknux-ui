@@ -19,6 +19,8 @@ const VOICE_MUTE_KEY = 'orknux.voiceMuteShortcut';
 const ZOOM_IN_KEY = 'orknux.zoomInShortcut';
 const ZOOM_OUT_KEY = 'orknux.zoomOutShortcut';
 const ARRANGE_KEY = 'orknux.arrangeShortcut';
+const DIAGRAM_FIND_KEY = 'orknux.diagramFindShortcut';
+const DIAGRAM_MODE_KEY = 'orknux.diagramModeShortcut';
 const MAGIC_RECTANGLE_KEY = 'orknux.magicRectangleShortcut';
 const MAGIC_LASSO_KEY = 'orknux.magicLassoShortcut';
 const MAGIC_ALL_KEY = 'orknux.magicAllShortcut';
@@ -192,6 +194,20 @@ export const DEFAULT_ZOOM_OUT_SHORTCUT = 'Ctrl+-';
 export const DEFAULT_ARRANGE_SHORTCUT = 'Ctrl+Shift+L';
 
 /**
+ * Finding a node or a line in the diagram editor: Ctrl+F, the browser's own
+ * find, taken over there only - the browser's cannot see a canvas, and a box
+ * drawn in one is text it never finds.
+ */
+export const DEFAULT_DIAGRAM_FIND_SHORTCUT = 'Ctrl+F';
+
+/**
+ * Switching the diagram editor between View and Edit: Ctrl+Alt+E, E for edit.
+ * Not Ctrl+E, the browser's search box, nor Ctrl+Shift+E, which is the
+ * palette's recently opened and works on every page.
+ */
+export const DEFAULT_DIAGRAM_MODE_SHORTCUT = 'Ctrl+Alt+E';
+
+/**
  * Magic edit's two ways of selecting, in the image editor: M for the rectangle
  * (a marquee) and L for the lasso, as image editors have them. A bare letter,
  * because it is heard only on the editor's canvas and never in a text box.
@@ -334,6 +350,8 @@ const voiceMuting = remembered(VOICE_MUTE_KEY, DEFAULT_VOICE_MUTE_SHORTCUT);
 const zoomingIn = remembered(ZOOM_IN_KEY, DEFAULT_ZOOM_IN_SHORTCUT);
 const zoomingOut = remembered(ZOOM_OUT_KEY, DEFAULT_ZOOM_OUT_SHORTCUT);
 const arranging = remembered(ARRANGE_KEY, DEFAULT_ARRANGE_SHORTCUT);
+const diagramFinding = remembered(DIAGRAM_FIND_KEY, DEFAULT_DIAGRAM_FIND_SHORTCUT);
+const diagramMode = remembered(DIAGRAM_MODE_KEY, DEFAULT_DIAGRAM_MODE_SHORTCUT);
 const magicRectangle = remembered(MAGIC_RECTANGLE_KEY, DEFAULT_MAGIC_RECTANGLE_SHORTCUT);
 const magicLasso = remembered(MAGIC_LASSO_KEY, DEFAULT_MAGIC_LASSO_SHORTCUT);
 const magicAll = remembered(MAGIC_ALL_KEY, DEFAULT_MAGIC_ALL_SHORTCUT);
@@ -568,6 +586,30 @@ export function setArrangeShortcut(next: Shortcut): void {
 
 export function useArrangeShortcut(): Shortcut {
   return arranging.use();
+}
+
+export function diagramFindShortcut(): Shortcut {
+  return diagramFinding.get();
+}
+
+export function setDiagramFindShortcut(next: Shortcut): void {
+  diagramFinding.set(next);
+}
+
+export function useDiagramFindShortcut(): Shortcut {
+  return diagramFinding.use();
+}
+
+export function diagramModeShortcut(): Shortcut {
+  return diagramMode.get();
+}
+
+export function setDiagramModeShortcut(next: Shortcut): void {
+  diagramMode.set(next);
+}
+
+export function useDiagramModeShortcut(): Shortcut {
+  return diagramMode.use();
 }
 
 export function magicRectangleShortcut(): Shortcut {
