@@ -575,7 +575,7 @@ export function AppShell({
       */}
       {where !== 'Chat' && (
         <CornerButtons>
-          <McpConnect workspacePath={workspaceHere} />
+          <McpConnect workspacePath={workspaceHere} admin={user.admin} />
           {quickChat && <QuickChat workspacePath={workspaceHere} userName={user.name} />}
         </CornerButtons>
       )}

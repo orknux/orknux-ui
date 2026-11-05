@@ -15,6 +15,8 @@ import styles from './McpConnect.module.css';
 export interface McpConnectProps {
   /** The workspace being looked at, as its path: `/workspace/<id>/…`. Nothing is drawn without one. */
   workspacePath?: string;
+  /** Whether the viewer administers the installation, who is shown the way to make a token for somebody else. */
+  admin?: boolean;
 }
 
 /** What the token is written as in the instructions, until somebody puts their own in. */
@@ -104,7 +106,7 @@ const CLIENTS: Client[] = [
  * manual. The token is left for them to put in - the interface never holds one
  * it could print.
  */
-export function McpConnect({ workspacePath }: McpConnectProps) {
+export function McpConnect({ workspacePath, admin = false }: McpConnectProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
   const [chosen, setChosen] = useState(CLIENTS[0].key);
@@ -176,7 +178,23 @@ export function McpConnect({ workspacePath }: McpConnectProps) {
                 <Link to="/preferences" onClick={() => setOpen(false)}>
                   {t('Preferences › Your tokens')}
                 </Link>
-                {t('. It is you by another door: it carries your roles and nothing more. For a directory account an administrator makes it, on your user page.')}
+                {t('. It is you by another door: it carries your roles and nothing more.')}
+              </span>
+              {/*
+                A directory account has no tokens of its own to make, so somebody
+                reading this needs to know who does it and where - and an
+                administrator reading it needs the way there.
+              */}
+              <span className={styles.note} data-testid="mcp-connect-directory">
+                {t('A directory account cannot make its own. An administrator makes it under')}{' '}
+                {admin ? (
+                  <Link to="/admin/users" onClick={() => setOpen(false)} data-testid="mcp-connect-admin-users">
+                    {t('Admin › Users')}
+                  </Link>
+                ) : (
+                  <strong>{t('Admin › Users')}</strong>
+                )}
+                {t(': open the person, then Access Tokens, and hand them the token.')}
               </span>
             </section>
 

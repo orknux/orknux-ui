@@ -70,6 +70,12 @@ if (shown) {
   const address = (await page.getByTestId('mcp-connect-address').innerText()).trim();
   record(address === `${origin}/mcp/${WORKSPACE}`, `the dialog names this workspace's MCP address (${address})`);
   record((await dialog.getByRole('link', { name: /Preferences/ }).count()) === 1, 'and links to where a token is made');
+  // A directory account cannot make its own token: the dialog says who makes one and where, and an administrator is shown the way.
+  const directory = dialog.getByTestId('mcp-connect-directory');
+  const told = (await directory.innerText()).trim();
+  record(/administrator/i.test(told) && told.includes('Admin › Users') && told.includes('Access Tokens'), `it says where an administrator makes one for a directory account (${told})`);
+  const way = dialog.getByTestId('mcp-connect-admin-users');
+  record((await way.count()) === 1 && (await way.getAttribute('href')) === '/admin/users', 'and, to an administrator, links to Admin › Users');
 
   // Each client its own spelling, each with the address in it.
   const wants = {
