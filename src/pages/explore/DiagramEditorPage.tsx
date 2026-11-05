@@ -1985,11 +1985,11 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
               }}
               data-testid="diagram-picture-input"
             />
-            {UP_FRONT.map((kind) => (
+            {UP_FRONT.map((kind, at) => (
               <button
                 key={kind}
                 type="button"
-                className={`${shell.tool} ${styles.upFront}`}
+                className={`${shell.tool} ${styles.upFront} ${at >= UP_FRONT.length / 2 ? styles.upFrontLater : ''}`}
                 onClick={() => add(kind)}
                 title={tf('Add {shape}', { shape: kindLabel(kind) })}
                 aria-label={tf('Add {shape}', { shape: kindLabel(kind) })}

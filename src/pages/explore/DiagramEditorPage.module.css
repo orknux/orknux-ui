@@ -10,7 +10,18 @@
   gap: 2px;
 }
 
-/* On a narrow window the toolbar has no room for them, and they stay in More shapes. */
+/*
+ * On a narrow window the toolbar has no room for them, and they stay in More
+ * shapes. The second half goes first: at 1440 the bar held every one of them
+ * only until somebody else opened the diagram, when their avatar wrapped the
+ * tools onto a second row and the canvas jumped down under the pointer.
+ */
+@media (max-width: 1500px) {
+  .upFrontLater {
+    display: none;
+  }
+}
+
 @media (max-width: 1200px) {
   .upFront {
     display: none;
