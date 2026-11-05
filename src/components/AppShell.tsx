@@ -104,11 +104,14 @@ export interface AppShellProps {
    */
   title?: string;
   /**
-   * Scrolls the content rather than the window.
+   * Scrolls the content rather than the window, which is what every page does
+   * unless it [fills] the frame itself.
    *
-   * For pages that are long by nature — the documentation — where the top bar
-   * and the contents down the side should stay where they are instead of
-   * riding up out of view.
+   * It used to be asked for page by page, and the list pages - Agents, Tools,
+   * Sessions and twenty more - did not ask: past a window's height the whole
+   * document scrolled, and the attribution strip and the top bar rode out of
+   * view on those pages and on no others. Only the Ask AI and Orknux MCP
+   * buttons float; the strip stays at the foot of the window everywhere.
    */
   scrollContent?: boolean;
   /**
@@ -236,7 +239,8 @@ function useSectionArrival(pathname: string, hash: string) {
       const found = document.getElementById(wanted);
       if (found !== null) {
         const top = found.getBoundingClientRect().top;
-        const scroller = document.scrollingElement;
+        // The content, on every page held to the window; the window itself only where nothing nearer scrolls.
+        const scroller = scrollerOf(found);
         /*
          * What is left to scroll, not what there was. The last section of a
          * page cannot reach the top - the page runs out first - so a rule about
@@ -263,6 +267,14 @@ function useSectionArrival(pathname: string, hash: string) {
 /** How near the top counts as landed on, in pixels; a heading has a margin. */
 const SEATED = 120;
 
+/** The nearest box around [element] that scrolls up and down, or the window's. */
+function scrollerOf(element: Element): Element | null {
+  for (let at = element.parentElement; at !== null; at = at.parentElement) {
+    if (/(auto|scroll)/.test(getComputedStyle(at).overflowY) && at.scrollHeight > at.clientHeight) return at;
+  }
+  return document.scrollingElement;
+}
+
 /** The sidebar's width where a page lets it be dragged: the shell's own to begin with, and bounds either way. */
 const SIDEBAR_DEFAULT = 240;
 const SIDEBAR_MIN = 200;
@@ -274,7 +286,7 @@ export function AppShell({
   sidebar,
   hideSidebar = false,
   fills = false,
-  scrollContent = false,
+  scrollContent = !fills,
   quickChat = true,
   contentKey,
   showAdmin,

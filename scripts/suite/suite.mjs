@@ -1654,6 +1654,12 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'footer-held-check',
+    what: 'on the list pages too, the attribution strip stays at the foot of a short window and the list scrolls above it',
+    // Reads five list pages and changes nothing.
+    needs: [],
+  },
+  {
     name: 'catalog-room-check',
     what: 'a catalog of forty scrolls its own shelf and leaves the footer on the screen',
     // Stubs the catalog: a short shelf would not test the thing that breaks,

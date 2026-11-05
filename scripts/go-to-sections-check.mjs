@@ -132,7 +132,14 @@ for (const one of [
         const found = document.getElementById(wanted.id);
         if (found === null) return false;
         const top = Math.round(found.getBoundingClientRect().top);
-        const scroller = document.scrollingElement;
+        // The content scrolls on a page held to the window, not the window.
+        const scrollerOf = (element) => {
+          for (let at = element.parentElement; at !== null; at = at.parentElement) {
+            if (/(auto|scroll)/.test(getComputedStyle(at).overflowY) && at.scrollHeight > at.clientHeight) return at;
+          }
+          return document.scrollingElement;
+        };
+        const scroller = scrollerOf(found);
         const left = scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop;
         if (top < 300) return true;
         // Nothing left to scroll: as near the top as this page can put it, so
@@ -147,7 +154,10 @@ for (const one of [
   console.log(
     `${one.id} sits at ${await page.evaluate((id) => {
       const el = document.getElementById(id);
-      const scroller = document.scrollingElement;
+      if (el === null) return null;
+      let scroller = el.parentElement;
+      while (scroller !== null && !(/(auto|scroll)/.test(getComputedStyle(scroller).overflowY) && scroller.scrollHeight > scroller.clientHeight)) scroller = scroller.parentElement;
+      scroller ??= document.scrollingElement;
       return el === null
         ? null
         : `${Math.round(el.getBoundingClientRect().top)}px, with ` +
