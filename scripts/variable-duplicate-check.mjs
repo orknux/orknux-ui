@@ -67,6 +67,9 @@ record(
   `it names the clash (${JSON.stringify(await note.innerText())})`,
 );
 record(await note.getAttribute('role').then((role) => role === 'alert'), 'and is announced');
+// Said once, under the row: the banner at the top of the panel used to say it a second time.
+const said_ = await page.getByText(`This catalog already holds a variable named "${NAME}"`).count();
+record(said_ === 1, `and said once, not again at the top of the page (${said_})`);
 
 /* Directly under the add row: within one row's height of it, and below it. */
 const row = await values.getByLabel('New value name').boundingBox();

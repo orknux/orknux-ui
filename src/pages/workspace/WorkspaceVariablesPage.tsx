@@ -766,8 +766,9 @@ function VariableTable({
    * catalog's name - five hundred pixels from the add row at the foot of the
    * table, and off the screen entirely on a list of any length. A name that
    * was already taken looked like a press that did nothing. So the row that
-   * was refused says so, directly under itself, where the eye already is;
-   * the page still hears about it for its own record.
+   * was refused says so, directly under itself, where the eye already is -
+   * and only there: told to the page as well, it was drawn twice, once at the
+   * top and once under the row.
    */
   const [refused, setRefused] = useState<{ id: string; message: string } | null>(null);
 
@@ -800,11 +801,10 @@ function VariableTable({
     );
   }
 
-  /** Says under the row why it was not written, and tells the page. */
+  /** Says under the row why it was not written; the row is where it is read, so nowhere else. */
   function refuse(id: string, cause: unknown) {
     const message = cause instanceof Error ? cause.message : typeof cause === 'string' ? cause : t('That could not be saved.');
     setRefused({ id, message });
-    onError(message);
   }
 
   async function run(id: string, work: () => Promise<void>) {
