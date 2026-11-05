@@ -136,9 +136,15 @@ export function joinRoom(address: string, savedEvent: string, handlers: RoomHand
       back?.();
     },
   );
-  // Closed rather than hidden: off the others' list at once, not away for hours.
+  /*
+   * Closed rather than hidden: off the others' list at once, not away for
+   * hours. Said while looked at too: the server notices a stream has ended
+   * only when it next writes to it, and a closed or reloaded tab stayed among
+   * the avatars until then. A reload is a new viewer, so this never takes the
+   * page that replaces it out.
+   */
   const closing = () => {
-    if (away) void say('leave');
+    void say('leave');
   };
   window.addEventListener('pagehide', closing);
 

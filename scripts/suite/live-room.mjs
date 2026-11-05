@@ -15,7 +15,21 @@ export async function twoTabs() {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   await signIn(context);
   const second = await context.newPage();
-  return { browser, first, second, graphql, closeSecond: () => context.close().catch(() => undefined) };
+  /*
+   * Closed as a person closes a tab, with the page told it is going: a context
+   * closed outright fires no pagehide, so the tab never says it has left, and
+   * the room was left to notice the dropped stream - which Chromium holds open
+   * while it drains it, for as long as it likes.
+   */
+  const closeSecond = async () => {
+    if (!second.isClosed()) {
+      const gone = second.waitForEvent('close', { timeout: 5000 }).catch(() => undefined);
+      await second.close({ runBeforeUnload: true }).catch(() => undefined);
+      await gone;
+    }
+    await context.close().catch(() => undefined);
+  };
+  return { browser, first, second, graphql, closeSecond };
 }
 
 /** Opens [path] in both tabs and waits for [ready] in each. */

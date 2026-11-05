@@ -70,9 +70,12 @@ const streams = { opened: 0, dropped: 0 };
 second.on('request', (one) => {
   if (one.headers().accept === 'text/event-stream') streams.opened += 1;
 });
-second.on('requestfailed', (one) => {
-  if (one.headers().accept === 'text/event-stream') streams.dropped += 1;
-});
+// Dropped by the tab, or ended by the server when the tab said it was going away.
+for (const ended of ['requestfailed', 'requestfinished']) {
+  second.on(ended, (one) => {
+    if (one.headers().accept === 'text/event-stream') streams.dropped += 1;
+  });
+}
 
 try {
   await openBoth(first, second, `/workspace/${WORKSPACE}/explore/diagrams/${id}`, '.react-flow__node[data-id="right"]');
