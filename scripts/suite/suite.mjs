@@ -107,6 +107,12 @@ export const TESTS = [
     /* It makes two workspaces and a token on alice's page, and removes all three. */
   },
   {
+    name: 'token-server-label-check',
+    what: "a Custom token's entry for a whole other MCP server is labelled so, strongly, and so is the token made with it",
+    needs: [],
+    /* It adds an MCP server at an address that cannot resolve, makes a token, and removes both. */
+  },
+  {
     name: 'quick-chat-copy-check',
     what: "the quick chat's copy button shows only while the pointer is on its message, and leaves no blank row in a one-word question",
     needs: ['workspace'],

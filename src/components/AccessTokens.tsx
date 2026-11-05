@@ -11,6 +11,9 @@ import { CopyButton } from './CopyButton';
 import styles from './AccessTokens.module.css';
 import { Select } from './Select';
 
+/** How the catalogue names an entry that stands for every tool of one MCP server; see McpLentTools.catalog. */
+const SERVER_SUFFIX = '__*';
+
 export interface AccessTokensProps {
   /**
    * Whose tokens: a user's id, from the admin user page, or absent for the
@@ -159,6 +162,15 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
                         ? tf('Custom: {count} tools', { count: String(token.tools.length) })
                         : token.readOnly ? t('Read-only') : t('Read and write')}
                     </span>
+                    {(token.tools ?? []).some((one) => one.endsWith(SERVER_SUFFIX)) && (
+                      <strong
+                        className={styles.serverBadge}
+                        data-token-servers=""
+                        title={(token.tools ?? []).filter((one) => one.endsWith(SERVER_SUFFIX)).map((one) => one.slice(0, -SERVER_SUFFIX.length)).join(', ')}
+                      >
+                        {t('Whole MCP server')}
+                      </strong>
+                    )}
                     {token.workspaces !== null && (
                       <span
                         className={`${styles.access} ${styles.accessRead} ${styles.accessPlaces}`}
@@ -324,7 +336,12 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
                   </legend>
                   <div className={styles.customList}>
                     {group.map((one) => (
-                      <label key={one.name} className={styles.customTool} title={one.summary}>
+                      <label
+                        key={one.name}
+                        className={one.name.endsWith(SERVER_SUFFIX) ? `${styles.customTool} ${styles.customServer}` : styles.customTool}
+                        title={one.summary}
+                        data-mcp-server={one.name.endsWith(SERVER_SUFFIX) ? '' : undefined}
+                      >
                         <input
                           type="checkbox"
                           checked={picked.has(one.name)}
@@ -338,7 +355,16 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
                           }
                           data-testid={`token-tool-${one.name}`}
                         />
-                        <span className={styles.customName}>{one.name}</span>
+                        <span className={styles.customName}>
+                          {one.name}
+                          {/*
+                            Not one tool but a whole other MCP server: every tool it
+                            offers now, and every one it adds later, is this token's.
+                          */}
+                          {one.name.endsWith(SERVER_SUFFIX) && (
+                            <strong className={styles.serverBadge}>{t('Whole MCP server')}</strong>
+                          )}
+                        </span>
                         <span className={styles.customSummary}>{one.summary}</span>
                       </label>
                     ))}

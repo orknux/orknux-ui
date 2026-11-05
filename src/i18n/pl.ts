@@ -4417,6 +4417,7 @@ export const PL: Record<string, string> = {
   '{count} workspaces': 'Przestrzenie robocze: {count}',
   'Every workspace you can see': 'Każda przestrzeń robocza, którą widzisz',
   'Only these': 'Tylko te',
+  'Whole MCP server': 'Cały serwer MCP',
   'Could not load the workspaces.': 'Nie udało się wczytać przestrzeni roboczych.',
   'The MCP tools this token may call, and no others. Through the API it may only read.': 'Narzędzia MCP, które ten token może wywołać, i żadne inne. Przez API może tylko czytać.',
   'Changing': 'Zmienianie',
