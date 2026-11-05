@@ -369,11 +369,35 @@
   gap: var(--space-8);
 }
 
-.toolFilters > .accessWrap > .sourcePicker {
-  min-width: 200px;
-  appearance: none;
-  padding-right: var(--space-32);
+.sourceChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+}
+
+/* A quick filter: an outlined pill, filled with the accent while it is the one in force. */
+.sourceChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-6) var(--space-12);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
   cursor: pointer;
+}
+
+.sourceChip:hover {
+  color: var(--color-text-primary);
+}
+
+.sourceChipOn {
+  border-color: var(--color-accent-brand);
+  background: var(--color-accent-brand-soft, rgba(139, 92, 246, 0.12));
+  color: var(--color-text-primary);
 }
 
 /* A whole other MCP server, not one tool: said so loudly, since it carries whatever that server offers later too. */

@@ -70,14 +70,18 @@ export interface UserToken {
 const TOKEN_FIELDS = 'id name createdAt lastUsedAt readOnly tools workspaces';
 
 /** One tool the MCP endpoint can offer, as the Custom token form lists it. */
+/** Where a tool on the Custom token form comes from: the server itself, a plugin, another MCP server, a workspace's own. */
+export type McpToolSource = 'BUILT_IN' | 'PLUGIN' | 'MCP_SERVER' | 'WORKSPACE';
+
 export interface McpTool {
   name: string;
   summary: string;
   readOnly: boolean;
+  source: McpToolSource;
 }
 
 export async function fetchMcpTools(): Promise<McpTool[]> {
-  const data = await graphql<{ mcpTools: McpTool[] }>('query { mcpTools { name summary readOnly } }');
+  const data = await graphql<{ mcpTools: McpTool[] }>('query { mcpTools { name summary readOnly source } }');
   return data.mcpTools;
 }
 

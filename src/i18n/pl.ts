@@ -4456,7 +4456,6 @@ export const PL: Record<string, string> = {
   "Every workspace you can see. Add one to hold the token to the ones listed.": "Każda przestrzeń robocza, którą widzisz. Dodaj jedną, aby ograniczyć token do wymienionych.",
   "Workspace {number}": "Przestrzeń robocza {number}",
   "+ Add Workspace": "+ Dodaj przestrzeń roboczą",
-  "Which MCP server": "Który serwer MCP",
-  "Every MCP server": "Każdy serwer MCP",
-  "Orknux's own": "Własne narzędzia Orknux",
+  "Where the tools come from": "Skąd pochodzą narzędzia",
+  "Workspace tools": "Narzędzia przestrzeni roboczej",
 };

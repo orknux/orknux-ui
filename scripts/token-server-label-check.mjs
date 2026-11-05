@@ -11,7 +11,7 @@
  * The server is made for the check at an address that can never resolve - the
  * catalogue does not call it - and removed with the token before it ends.
  */
-import { BASE, WORKSPACE, open, record, finish, chooseOption } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1100 } });
 const { users } = await graphql('query { users { id username type } }');
@@ -55,20 +55,25 @@ try {
   record(plain.length === 0, `no single tool carries it (${plain.join('; ')})`);
   record((await entry.locator('[class*="customSummary"]').count()) === 0, 'the entry says what it is in its badge, with no line under it saying it again');
 
-  // The tools of one MCP server, of Orknux's own, or of all of them: a filter beside the search.
-  const entryName = ((await entry.locator('input[type=checkbox]').getAttribute('data-testid')) ?? '').slice('token-tool-'.length);
-  const serverName = entryName.slice(0, entryName.indexOf('__'));
+  // Quick filters beside the search: MCP servers only, built-in, plugins - and All.
   await page.getByTestId('token-tool-search').fill('');
-  const source = page.getByTestId('token-tool-source');
   const listedTools = () =>
     page.locator('input[type=checkbox][data-testid^="token-tool-"]').evaluateAll((all) => all.map((box) => box.dataset.testid.slice('token-tool-'.length)));
-  await chooseOption(page, source, { value: serverName });
+  const chip = (source) => page.locator(`[data-testid="token-tool-sources"] [data-source="${source}"]`);
+  record((await chip('MCP_SERVER').count()) === 1 && (await chip('BUILT_IN').count()) === 1, 'the tools can be narrowed to MCP servers or to the built-in ones');
+  await chip('MCP_SERVER').click();
   let shown = await listedTools();
-  record(shown.length > 0 && shown.every((one) => one.startsWith(`${serverName}__`)), `choosing a server lists its tools and no others (${shown.join(', ')})`);
-  await chooseOption(page, source, { label: "Orknux's own" });
+  record(shown.length > 0 && shown.every((one) => one.includes('__')), `MCP servers shows their tools and nothing else (${shown.length})`);
+  record((await chip('MCP_SERVER').getAttribute('aria-pressed')) === 'true', 'and says it is the filter in force');
+  await chip('BUILT_IN').click();
   shown = await listedTools();
-  record(shown.length > 0 && shown.every((one) => !one.includes('__')), `Orknux's own lists no server's tools (${shown.length})`);
-  await chooseOption(page, source, { label: 'Every MCP server' });
+  record(shown.includes('orknux_issues') && !shown.some((one) => one.includes('__')), `Built-in shows Orknux's own tools (${shown.length})`);
+  if ((await chip('PLUGIN').count()) === 1) {
+    await chip('PLUGIN').click();
+    shown = await listedTools();
+    record(shown.length > 0 && !shown.includes('orknux_issues') && !shown.some((one) => one.includes('__')), `Plugins shows the plugins' tools alone (${shown.slice(0, 3).join(', ')})`);
+  }
+  await chip('ALL').click();
 
   await entry.locator('input[type=checkbox]').check();
   await page.getByTestId('token-tool-search').fill('');

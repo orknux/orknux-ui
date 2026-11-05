@@ -3,7 +3,7 @@ import { createUserToken,
   fetchMcpTools, deleteUserToken, fetchMyTokens, fetchUserTokens } from '../api/users';
 import chevronDown12Icon from '../assets/chevron-down-12.svg';
 import closeIcon from '../assets/x.svg';
-import type { McpTool, UserToken } from '../api/users';
+import type { McpTool, McpToolSource, UserToken } from '../api/users';
 import { fetchWorkspaces } from '../api/workspaces';
 import { timeAgo } from '../api/tools';
 import { t, tf } from '../i18n';
@@ -14,15 +14,13 @@ import { Select } from './Select';
 /** How the catalogue names an entry that stands for every tool of one MCP server; see McpLentTools.catalog. */
 const SERVER_SUFFIX = '__*';
 
-/** The MCP server a tool is lent from - its name before `__` - or null for Orknux's own and its plugins'. */
-function serverOf(tool: string): string | null {
-  const at = tool.indexOf('__');
-  return at > 0 ? tool.slice(0, at) : null;
-}
-
-/** The source filter's two choices that are not one server. */
-const EVERY_SOURCE = '';
-const NO_SERVER = '\u0000orknux';
+/** The quick filters over the tools, in the order they are drawn; a source with no tools draws no chip. */
+const SOURCES: { source: McpToolSource; label: string }[] = [
+  { source: 'MCP_SERVER', label: 'MCP servers' },
+  { source: 'BUILT_IN', label: 'Built-in' },
+  { source: 'PLUGIN', label: 'Plugins' },
+  { source: 'WORKSPACE', label: 'Workspace tools' },
+];
 
 export interface AccessTokensProps {
   /**
@@ -56,8 +54,8 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
   const [picked, setPicked] = useState<Set<string>>(new Set());
   /** Custom: what the tool list is narrowed to, by name or by what a tool does. */
   const [toolSearch, setToolSearch] = useState('');
-  /** Custom: one MCP server's tools, Orknux's own, or every source. */
-  const [toolSource, setToolSource] = useState(EVERY_SOURCE);
+  /** Custom: the tools of one source - MCP servers, built-in, plugins, a workspace's own - or null for all of them. */
+  const [toolSource, setToolSource] = useState<McpToolSource | null>(null);
   useEffect(() => {
     if (mode !== 'custom' || catalog !== null) return;
     fetchMcpTools()
@@ -109,9 +107,9 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
   const customIncomplete = mode === 'custom' && picked.size === 0;
   /** The workspaces not on a row yet, which is what + Add Workspace offers next. */
   const unplaced = (places ?? []).filter((one) => !placeIds.includes(one.id));
-  /** The MCP servers the catalogue lends tools from, for the source filter. */
-  const servers = [...new Set((catalog ?? []).map((one) => serverOf(one.name)).filter((one): one is string => one !== null))].sort(
-    (one, other) => one.toLowerCase().localeCompare(other.toLowerCase()),
+  /** The sources the catalogue holds tools from, each with how many, for the quick filters. */
+  const sources = SOURCES.map((one) => ({ ...one, count: (catalog ?? []).filter((tool) => tool.source === one.source).length })).filter(
+    (one) => one.count > 0,
   );
 
   /** A token's workspaces by name where they are known, by id where not. */
@@ -330,27 +328,34 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
             data-testid="token-tool-search"
           />
           {/*
-            Which MCP server's tools, beside the search: two hundred tools are
-            mostly a few servers' worth, and a token is often for one of them.
+            Quick filters beside the search: two hundred tools are mostly a few
+            sources' worth, and a token is often for one of them - the MCP
+            servers it lends, say, and nothing of Orknux's own.
           */}
-          {servers.length > 0 && (
-            <span className={styles.accessWrap}>
-              <Select
-                className={`${inputClassName} ${styles.accessPicker} ${styles.sourcePicker}`}
-                value={toolSource}
-                aria-label={t('Which MCP server')}
-                data-testid="token-tool-source"
-                onChange={setToolSource}
-                chevron={false}
+          {sources.length > 0 && (
+            <div className={styles.sourceChips} role="group" aria-label={t('Where the tools come from')} data-testid="token-tool-sources">
+              <button
+                type="button"
+                className={toolSource === null ? `${styles.sourceChip} ${styles.sourceChipOn}` : styles.sourceChip}
+                aria-pressed={toolSource === null}
+                onClick={() => setToolSource(null)}
+                data-source="ALL"
               >
-                <option value={EVERY_SOURCE}>{t('Every MCP server')}</option>
-                <option value={NO_SERVER}>{t("Orknux's own")}</option>
-                {servers.map((one) => (
-                  <option key={one} value={one}>{one}</option>
-                ))}
-              </Select>
-              <img className={styles.accessChevron} src={chevronDown12Icon} alt="" width={12} height={12} />
-            </span>
+                {t('All')}
+              </button>
+              {sources.map((one) => (
+                <button
+                  key={one.source}
+                  type="button"
+                  className={toolSource === one.source ? `${styles.sourceChip} ${styles.sourceChipOn}` : styles.sourceChip}
+                  aria-pressed={toolSource === one.source}
+                  onClick={() => setToolSource((held) => (held === one.source ? null : one.source))}
+                  data-source={one.source}
+                >
+                  {t(one.label)} <span className={styles.customCount}>{one.count}</span>
+                </button>
+              ))}
+            </div>
           )}
           </div>
           {catalog === null ? (
@@ -360,12 +365,11 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
               const said = toolSearch.trim().toLowerCase();
               const whole = catalog.filter((one) => (kind === 'read') === one.readOnly);
               // What is shown is what the box ticks: a search narrows the select-all too.
-              const fromSource = (one: McpTool) =>
-                toolSource === EVERY_SOURCE || (toolSource === NO_SERVER ? serverOf(one.name) === null : serverOf(one.name) === toolSource);
+              const fromSource = (one: McpTool) => toolSource === null || one.source === toolSource;
               const group = whole.filter(
                 (one) => fromSource(one) && (said === '' || one.name.toLowerCase().includes(said) || one.summary.toLowerCase().includes(said)),
               );
-              if ((said !== '' || toolSource !== EVERY_SOURCE) && group.length === 0) return null;
+              if ((said !== '' || toolSource !== null) && group.length === 0) return null;
               const all = group.length > 0 && group.every((one) => picked.has(one.name));
               return (
                 <fieldset key={kind} className={styles.customGroup} data-testid={`token-custom-${kind}`}>
