@@ -84,6 +84,10 @@ record(gaps.content === 40, `and so does the content above it (${gaps.content})`
 const fill = await page.getByRole('button', { name: '+ Add Value' }).evaluate((one) => getComputedStyle(one).backgroundColor);
 const saveFill = await save.evaluate((one) => getComputedStyle(one).backgroundColor);
 record(fill === saveFill, `+ Add Value wears the primary fill Save does (${fill})`);
+// The size every page's Add is: Integrations' + Add Connection, in the strip's Save font.
+const addSize = await page.getByRole('button', { name: '+ Add Value' }).evaluate((one) => getComputedStyle(one).fontSize);
+const saveSize = await save.evaluate((one) => getComputedStyle(one).fontSize);
+record(addSize === saveSize, `and the standard size, as Save's (${addSize} against ${saveSize})`);
 record(
   (await page.getByRole('button', { name: '+ Add Secret' }).evaluate((one) => getComputedStyle(one).backgroundColor)) === saveFill,
   'and so does + Add Secret',
