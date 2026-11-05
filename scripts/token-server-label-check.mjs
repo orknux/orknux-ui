@@ -11,7 +11,7 @@
  * The server is made for the check at an address that can never resolve - the
  * catalogue does not call it - and removed with the token before it ends.
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1100 } });
 const { users } = await graphql('query { users { id username type } }');
@@ -53,6 +53,22 @@ try {
     (all) => all.filter((box) => !box.closest('[data-mcp-server]') && box.closest('label')?.querySelector('strong') != null).map((box) => box.dataset.testid),
   );
   record(plain.length === 0, `no single tool carries it (${plain.join('; ')})`);
+  record((await entry.locator('[class*="customSummary"]').count()) === 0, 'the entry says what it is in its badge, with no line under it saying it again');
+
+  // The tools of one MCP server, of Orknux's own, or of all of them: a filter beside the search.
+  const entryName = ((await entry.locator('input[type=checkbox]').getAttribute('data-testid')) ?? '').slice('token-tool-'.length);
+  const serverName = entryName.slice(0, entryName.indexOf('__'));
+  await page.getByTestId('token-tool-search').fill('');
+  const source = page.getByTestId('token-tool-source');
+  const listedTools = () =>
+    page.locator('input[type=checkbox][data-testid^="token-tool-"]').evaluateAll((all) => all.map((box) => box.dataset.testid.slice('token-tool-'.length)));
+  await chooseOption(page, source, { value: serverName });
+  let shown = await listedTools();
+  record(shown.length > 0 && shown.every((one) => one.startsWith(`${serverName}__`)), `choosing a server lists its tools and no others (${shown.join(', ')})`);
+  await chooseOption(page, source, { label: "Orknux's own" });
+  shown = await listedTools();
+  record(shown.length > 0 && shown.every((one) => !one.includes('__')), `Orknux's own lists no server's tools (${shown.length})`);
+  await chooseOption(page, source, { label: 'Every MCP server' });
 
   await entry.locator('input[type=checkbox]').check();
   await page.getByTestId('token-tool-search').fill('');

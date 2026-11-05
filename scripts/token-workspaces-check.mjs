@@ -2,13 +2,14 @@
  * A Custom access token chooses which workspaces it reaches, and reaches those
  * and no others.
  *
- * Two workspaces made for the check, one ticked. The token is listed with the
+ * Two workspaces made for the check, one listed - a row of its own, as a
+ * workspace's Allowed roles are. The token is listed with the
  * one it names, and then used: through GraphQL the ticked workspace answers and
  * the other answers as not there. Held to a workspace it is no installation
  * administrator either, so the users list is refused it although alice may read
  * it. Both workspaces and the token are removed before the check ends.
  */
-import { BASE, open, record, finish } from './suite/harness.mjs';
+import { BASE, open, record, finish, chooseOption, optionsOffered } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1100 } });
 const { users } = await graphql('query { users { id username type } }');
@@ -51,17 +52,25 @@ try {
   // The tools come with their reading ones ticked once they have loaded; until then nothing can be made.
   await page.locator('[data-testid="token-custom-read"] [data-testid^="token-tool-"]').first().waitFor({ timeout: 10_000 });
 
-  record(await page.getByTestId('token-reach-all').isChecked(), 'Custom starts reaching every workspace, as a token always did');
-  await page.getByTestId('token-reach-some').check();
-  const box = page.getByTestId(`token-workspace-${inside}`);
-  await box.waitFor({ timeout: 10_000 });
-  record((await page.getByTestId(`token-workspace-${outside}`).count()) === 1, 'Only these lists the workspaces to choose from');
+  record((await page.getByTestId('token-reach-all').count()) === 1, 'Custom starts reaching every workspace, as a token always did, and says so');
+  record((await page.getByTestId('token-workspace-row').count()) === 0, 'with no workspace listed');
+  // Not a bold fieldset of radios any more: the label is the form's own size, as Allowed roles' is.
+  const labelSize = await page.getByTestId('token-workspaces').locator('span').first().evaluate((one) => parseFloat(getComputedStyle(one).fontSize));
+  record(labelSize <= 14 && (await page.getByTestId('token-workspaces').locator('input[type="radio"]').count()) === 0, `Workspaces is a list, not radios, in the form's size (${labelSize}px)`);
 
   const generate = page.getByRole('button', { name: 'Generate Token' });
   await page.getByPlaceholder('What is it for?').fill(name);
-  record(await generate.isDisabled(), 'with Only these and nothing ticked, no token can be made');
-  await box.check();
-  record(await generate.isEnabled(), 'one ticked, it can');
+  await page.getByTestId('token-workspace-add').click();
+  const rowPicker = page.getByTestId('token-workspace-row').first().getByLabel('Workspace 1');
+  await rowPicker.waitFor({ timeout: 10_000 });
+  const offered = await optionsOffered(page, rowPicker);
+  record(JSON.stringify(offered).includes(`zz token out ${stamp}`), 'a row offers the workspaces to choose from');
+  await chooseOption(page, rowPicker, { value: inside });
+  await page.getByTestId('token-workspace-add').click();
+  record((await page.getByTestId('token-workspace-row').count()) === 2, '+ Add Workspace adds another row');
+  await page.getByTestId('token-workspace-row').nth(1).getByRole('button', { name: /^Remove / }).click();
+  record((await page.getByTestId('token-workspace-row').count()) === 1, 'and × takes one away');
+  record(await generate.isEnabled(), 'one workspace listed, the token can be made');
   await generate.click();
 
   const secret = (await page.getByTestId('token-secret').locator('code').textContent())?.trim() ?? '';

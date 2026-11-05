@@ -14,6 +14,16 @@ import { Select } from './Select';
 /** How the catalogue names an entry that stands for every tool of one MCP server; see McpLentTools.catalog. */
 const SERVER_SUFFIX = '__*';
 
+/** The MCP server a tool is lent from - its name before `__` - or null for Orknux's own and its plugins'. */
+function serverOf(tool: string): string | null {
+  const at = tool.indexOf('__');
+  return at > 0 ? tool.slice(0, at) : null;
+}
+
+/** The source filter's two choices that are not one server. */
+const EVERY_SOURCE = '';
+const NO_SERVER = '\u0000orknux';
+
 export interface AccessTokensProps {
   /**
    * Whose tokens: a user's id, from the admin user page, or absent for the
@@ -46,6 +56,8 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
   const [picked, setPicked] = useState<Set<string>>(new Set());
   /** Custom: what the tool list is narrowed to, by name or by what a tool does. */
   const [toolSearch, setToolSearch] = useState('');
+  /** Custom: one MCP server's tools, Orknux's own, or every source. */
+  const [toolSource, setToolSource] = useState(EVERY_SOURCE);
   useEffect(() => {
     if (mode !== 'custom' || catalog !== null) return;
     fetchMcpTools()
@@ -57,13 +69,13 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
       .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : t('Could not load the tools.')));
   }, [mode, catalog]);
   /**
-   * Custom: whether it reaches every workspace its owner sees or only the ones
-   * ticked. Every one is the default, as a token always was; Only these is a
-   * list held by the server, so a workspace made later is not reached.
+   * Custom: the workspaces it is held to, one row each, as a workspace's
+   * Allowed roles are listed. None is every workspace its owner sees, as a
+   * token always was; a list is held by the server, so a workspace made later
+   * is not reached.
    */
-  const [reach, setReach] = useState<'all' | 'some'>('all');
   const [places, setPlaces] = useState<{ id: string; name: string }[] | null>(null);
-  const [placesPicked, setPlacesPicked] = useState<Set<string>>(new Set());
+  const [placeIds, setPlaceIds] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** Shown once, and then never again by anybody. */
@@ -94,7 +106,13 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
   }, [wantsPlaces, places]);
 
   /** What the next token cannot be made without, for Custom. */
-  const customIncomplete = mode === 'custom' && (picked.size === 0 || (reach === 'some' && placesPicked.size === 0));
+  const customIncomplete = mode === 'custom' && picked.size === 0;
+  /** The workspaces not on a row yet, which is what + Add Workspace offers next. */
+  const unplaced = (places ?? []).filter((one) => !placeIds.includes(one.id));
+  /** The MCP servers the catalogue lends tools from, for the source filter. */
+  const servers = [...new Set((catalog ?? []).map((one) => serverOf(one.name)).filter((one): one is string => one !== null))].sort(
+    (one, other) => one.toLowerCase().localeCompare(other.toLowerCase()),
+  );
 
   /** A token's workspaces by name where they are known, by id where not. */
   const placeNames = (ids: string[]) => ids.map((id) => places?.find((one) => one.id === id)?.name ?? `#${id}`);
@@ -109,7 +127,7 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
         userId,
         mode === 'read',
         mode === 'custom' ? [...picked] : undefined,
-        mode === 'custom' && reach === 'some' ? [...placesPicked] : undefined,
+        mode === 'custom' && placeIds.length > 0 ? placeIds : undefined,
       );
       setTokens((held) => [...(held ?? []), made.token]);
       setMinted(made.secret);
@@ -248,55 +266,60 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
         <div className={styles.custom} data-testid="token-custom">
           {/*
             Which workspaces it reaches: every one its owner sees, or only the
-            ticked ones. Held to some, it administers no installation, so an
+            ones listed. Held to some, it administers no installation, so an
             administrator's token cannot reach the rest through Admin either.
           */}
-          <fieldset className={styles.customGroup} data-testid="token-workspaces">
-            <legend className={styles.customHead}>
-              <span className={styles.customAll}>{t('Workspaces')}</span>
-            </legend>
-            <div className={styles.reach}>
-              <label className={styles.customAll}>
-                <input type="radio" name="token-reach" checked={reach === 'all'} onChange={() => setReach('all')} data-testid="token-reach-all" />
-                {t('Every workspace you can see')}
-              </label>
-              <label className={styles.customAll}>
-                <input type="radio" name="token-reach" checked={reach === 'some'} onChange={() => setReach('some')} data-testid="token-reach-some" />
-                {t('Only these')}
-                {reach === 'some' && places !== null && (
-                  <span className={styles.customCount}>{`${placesPicked.size} / ${places.length}`}</span>
-                )}
-              </label>
-            </div>
-            {reach === 'some' && (places === null ? (
-              <p className={styles.note}>{t('Loading…')}</p>
-            ) : (
-              <div className={styles.customList}>
-                {places.map((one) => (
-                  <label key={one.id} className={styles.customTool}>
-                    <input
-                      type="checkbox"
-                      checked={placesPicked.has(one.id)}
-                      onChange={() =>
-                        setPlacesPicked((held) => {
-                          const next = new Set(held);
-                          if (next.has(one.id)) next.delete(one.id);
-                          else next.add(one.id);
-                          return next;
-                        })
-                      }
-                      data-testid={`token-workspace-${one.id}`}
-                    />
-                    <span className={styles.placeName}>{one.name}</span>
-                  </label>
-                ))}
+          <div className={styles.places} data-testid="token-workspaces">
+            <span className={styles.placesLabel}>{t('Workspaces')}</span>
+            {placeIds.length === 0 && (
+              <p className={styles.note} data-testid="token-reach-all">
+                {t('Every workspace you can see. Add one to hold the token to the ones listed.')}
+              </p>
+            )}
+            {placeIds.map((id, index) => (
+              <div key={`${id}-${index}`} className={styles.placeRow} data-testid="token-workspace-row">
+                <span className={styles.placeWrap}>
+                  <Select
+                    className={`${inputClassName} ${styles.placeSelect}`}
+                    value={id}
+                    aria-label={tf('Workspace {number}', { number: String(index + 1) })}
+                    onChange={(chosen) => setPlaceIds((held) => held.map((one, at) => (at === index ? chosen : one)))}
+                    chevron={false}
+                  >
+                    {(places ?? []).map((one) => (
+                      // Already on another row: twice would hold it once and leave a row that does nothing.
+                      <option key={one.id} value={one.id} disabled={one.id !== id && placeIds.includes(one.id)}>
+                        {one.name}
+                      </option>
+                    ))}
+                  </Select>
+                  <img className={styles.accessChevron} src={chevronDown12Icon} alt="" width={12} height={12} />
+                </span>
+                <button
+                  type="button"
+                  className={styles.placeRemove}
+                  aria-label={tf('Remove {name}', { name: placeNames([id])[0] })}
+                  onClick={() => setPlaceIds((held) => held.filter((_, at) => at !== index))}
+                >
+                  ×
+                </button>
               </div>
             ))}
-          </fieldset>
+            <button
+              type="button"
+              className={styles.addPlace}
+              disabled={places === null || unplaced.length === 0}
+              onClick={() => setPlaceIds((held) => (unplaced.length === 0 ? held : [...held, unplaced[0].id]))}
+              data-testid="token-workspace-add"
+            >
+              {t('+ Add Workspace')}
+            </button>
+          </div>
           <p className={styles.note}>
             {t('The MCP tools this token may call, and no others. Through the API it may only read.')}
           </p>
           {/* Two hundred tools and more: found by a word of their name or of what they do. */}
+          <div className={styles.toolFilters}>
           <input
             className={`${inputClassName ?? ''} ${styles.customSearch}`}
             type="search"
@@ -306,6 +329,30 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
             onChange={(event) => setToolSearch(event.target.value)}
             data-testid="token-tool-search"
           />
+          {/*
+            Which MCP server's tools, beside the search: two hundred tools are
+            mostly a few servers' worth, and a token is often for one of them.
+          */}
+          {servers.length > 0 && (
+            <span className={styles.accessWrap}>
+              <Select
+                className={`${inputClassName} ${styles.accessPicker} ${styles.sourcePicker}`}
+                value={toolSource}
+                aria-label={t('Which MCP server')}
+                data-testid="token-tool-source"
+                onChange={setToolSource}
+                chevron={false}
+              >
+                <option value={EVERY_SOURCE}>{t('Every MCP server')}</option>
+                <option value={NO_SERVER}>{t("Orknux's own")}</option>
+                {servers.map((one) => (
+                  <option key={one} value={one}>{one}</option>
+                ))}
+              </Select>
+              <img className={styles.accessChevron} src={chevronDown12Icon} alt="" width={12} height={12} />
+            </span>
+          )}
+          </div>
           {catalog === null ? (
             <p className={styles.note}>{t('Loading…')}</p>
           ) : (
@@ -313,8 +360,12 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
               const said = toolSearch.trim().toLowerCase();
               const whole = catalog.filter((one) => (kind === 'read') === one.readOnly);
               // What is shown is what the box ticks: a search narrows the select-all too.
-              const group = said === '' ? whole : whole.filter((one) => one.name.toLowerCase().includes(said) || one.summary.toLowerCase().includes(said));
-              if (said !== '' && group.length === 0) return null;
+              const fromSource = (one: McpTool) =>
+                toolSource === EVERY_SOURCE || (toolSource === NO_SERVER ? serverOf(one.name) === null : serverOf(one.name) === toolSource);
+              const group = whole.filter(
+                (one) => fromSource(one) && (said === '' || one.name.toLowerCase().includes(said) || one.summary.toLowerCase().includes(said)),
+              );
+              if ((said !== '' || toolSource !== EVERY_SOURCE) && group.length === 0) return null;
               const all = group.length > 0 && group.every((one) => picked.has(one.name));
               return (
                 <fieldset key={kind} className={styles.customGroup} data-testid={`token-custom-${kind}`}>
@@ -365,7 +416,8 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
                             <strong className={styles.serverBadge}>{t('Whole MCP server')}</strong>
                           )}
                         </span>
-                        <span className={styles.customSummary}>{one.summary}</span>
+                        {/* A server's entry says what it is in its badge; "every tool the server offers" under it said it twice. */}
+                        {!one.name.endsWith(SERVER_SUFFIX) && <span className={styles.customSummary}>{one.summary}</span>}
                       </label>
                     ))}
                   </div>

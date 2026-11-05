@@ -277,17 +277,103 @@
   text-overflow: ellipsis;
 }
 
-.reach {
+/*
+ * The workspaces a Custom token is held to: a row per workspace and an add
+ * under them, drawn as a workspace's Allowed roles are - a label in the form's
+ * own size, then the rows, rather than a bold fieldset of radios.
+ */
+.places {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-6) var(--space-24);
-  padding: var(--space-4) 0;
+  flex-direction: column;
+  gap: var(--space-8);
 }
 
-/* A workspace is named as a person wrote it, not as code. */
-.placeName {
-  color: var(--color-text-primary);
+.placesLabel {
+  font-weight: 500;
   font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.placeRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  max-width: 420px;
+}
+
+.placeWrap {
+  position: relative;
+  display: flex;
+  flex: 1 0 0;
+  min-width: 0;
+}
+
+.placeWrap > .placeSelect {
+  flex: 1 0 0;
+  min-width: 0;
+  appearance: none;
+  padding-right: var(--space-32);
+  cursor: pointer;
+}
+
+/* A target the size of the row's picker, not a speck beside it - Allowed roles' own. */
+.placeRemove {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  font-family: inherit;
+  font-size: var(--text-xl);
+  line-height: 1;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.placeRemove:hover {
+  color: var(--color-danger);
+}
+
+.addPlace {
+  align-self: flex-start;
+  padding: var(--space-6) var(--space-10);
+  background: none;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-6);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.addPlace:hover:not(:disabled) {
+  border-style: solid;
+  color: var(--color-text-primary);
+}
+
+.addPlace:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* The tool search and the server it is narrowed to, in one row. */
+.toolFilters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.toolFilters > .accessWrap > .sourcePicker {
+  min-width: 200px;
+  appearance: none;
+  padding-right: var(--space-32);
+  cursor: pointer;
 }
 
 /* A whole other MCP server, not one tool: said so loudly, since it carries whatever that server offers later too. */
@@ -317,5 +403,6 @@
 }
 
 .customSearch {
+  flex: 1 1 260px;
   max-width: 420px;
 }
