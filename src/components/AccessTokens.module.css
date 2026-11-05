@@ -91,6 +91,11 @@
   color: var(--color-accent-brand);
 }
 
+/* Beside what it may do: where it may do it. */
+.accessPlaces {
+  margin-left: var(--space-6);
+}
+
 .accessWrap {
   position: relative;
   display: flex;
@@ -270,6 +275,19 @@
   font-size: var(--text-xs);
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+.reach {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6) var(--space-24);
+  padding: var(--space-4) 0;
+}
+
+/* A workspace is named as a person wrote it, not as code. */
+.placeName {
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
 }
 
 .customSearch {

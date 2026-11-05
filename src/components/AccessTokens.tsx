@@ -4,6 +4,7 @@ import { createUserToken,
 import chevronDown12Icon from '../assets/chevron-down-12.svg';
 import closeIcon from '../assets/x.svg';
 import type { McpTool, UserToken } from '../api/users';
+import { fetchWorkspaces } from '../api/workspaces';
 import { timeAgo } from '../api/tools';
 import { t, tf } from '../i18n';
 import { CopyButton } from './CopyButton';
@@ -52,6 +53,14 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
       })
       .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : t('Could not load the tools.')));
   }, [mode, catalog]);
+  /**
+   * Custom: whether it reaches every workspace its owner sees or only the ones
+   * ticked. Every one is the default, as a token always was; Only these is a
+   * list held by the server, so a workspace made later is not reached.
+   */
+  const [reach, setReach] = useState<'all' | 'some'>('all');
+  const [places, setPlaces] = useState<{ id: string; name: string }[] | null>(null);
+  const [placesPicked, setPlacesPicked] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** Shown once, and then never again by anybody. */
@@ -73,12 +82,32 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
     };
   }, [userId]);
 
+  const wantsPlaces = mode === 'custom' || (tokens ?? []).some((one) => one.workspaces !== null);
+  useEffect(() => {
+    if (!wantsPlaces || places !== null) return;
+    fetchWorkspaces(0, 500)
+      .then((found) => setPlaces(found.content.map((one) => ({ id: one.id, name: one.name }))))
+      .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : t('Could not load the workspaces.')));
+  }, [wantsPlaces, places]);
+
+  /** What the next token cannot be made without, for Custom. */
+  const customIncomplete = mode === 'custom' && (picked.size === 0 || (reach === 'some' && placesPicked.size === 0));
+
+  /** A token's workspaces by name where they are known, by id where not. */
+  const placeNames = (ids: string[]) => ids.map((id) => places?.find((one) => one.id === id)?.name ?? `#${id}`);
+
   async function mint() {
-    if (busy || name.trim() === '' || (mode === 'custom' && picked.size === 0)) return;
+    if (busy || name.trim() === '' || customIncomplete) return;
     setBusy(true);
     setError(null);
     try {
-      const made = await createUserToken(name.trim(), userId, mode === 'read', mode === 'custom' ? [...picked] : undefined);
+      const made = await createUserToken(
+        name.trim(),
+        userId,
+        mode === 'read',
+        mode === 'custom' ? [...picked] : undefined,
+        mode === 'custom' && reach === 'some' ? [...placesPicked] : undefined,
+      );
       setTokens((held) => [...(held ?? []), made.token]);
       setMinted(made.secret);
       setName('');
@@ -130,6 +159,17 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
                         ? tf('Custom: {count} tools', { count: String(token.tools.length) })
                         : token.readOnly ? t('Read-only') : t('Read and write')}
                     </span>
+                    {token.workspaces !== null && (
+                      <span
+                        className={`${styles.access} ${styles.accessRead} ${styles.accessPlaces}`}
+                        data-token-workspaces={token.workspaces.length}
+                        title={placeNames(token.workspaces).join(', ')}
+                      >
+                        {token.workspaces.length === 1
+                          ? placeNames(token.workspaces)[0]
+                          : tf('{count} workspaces', { count: String(token.workspaces.length) })}
+                      </span>
+                    )}
                   </td>
                   <td className={styles.when}>{timeAgo(token.createdAt)}</td>
                   <td className={styles.when}>{token.lastUsedAt === null ? t('never used') : timeAgo(token.lastUsedAt)}</td>
@@ -184,7 +224,7 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
           type="button"
           className={buttonClassName}
           onClick={() => void mint()}
-          disabled={busy || name.trim() === '' || (mode === 'custom' && picked.size === 0)}
+          disabled={busy || name.trim() === '' || customIncomplete}
         >{t('Generate Token')}</button>
       </div>
 
@@ -194,6 +234,53 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
       */}
       {mode === 'custom' && (
         <div className={styles.custom} data-testid="token-custom">
+          {/*
+            Which workspaces it reaches: every one its owner sees, or only the
+            ticked ones. Held to some, it administers no installation, so an
+            administrator's token cannot reach the rest through Admin either.
+          */}
+          <fieldset className={styles.customGroup} data-testid="token-workspaces">
+            <legend className={styles.customHead}>
+              <span className={styles.customAll}>{t('Workspaces')}</span>
+            </legend>
+            <div className={styles.reach}>
+              <label className={styles.customAll}>
+                <input type="radio" name="token-reach" checked={reach === 'all'} onChange={() => setReach('all')} data-testid="token-reach-all" />
+                {t('Every workspace you can see')}
+              </label>
+              <label className={styles.customAll}>
+                <input type="radio" name="token-reach" checked={reach === 'some'} onChange={() => setReach('some')} data-testid="token-reach-some" />
+                {t('Only these')}
+                {reach === 'some' && places !== null && (
+                  <span className={styles.customCount}>{`${placesPicked.size} / ${places.length}`}</span>
+                )}
+              </label>
+            </div>
+            {reach === 'some' && (places === null ? (
+              <p className={styles.note}>{t('Loading…')}</p>
+            ) : (
+              <div className={styles.customList}>
+                {places.map((one) => (
+                  <label key={one.id} className={styles.customTool}>
+                    <input
+                      type="checkbox"
+                      checked={placesPicked.has(one.id)}
+                      onChange={() =>
+                        setPlacesPicked((held) => {
+                          const next = new Set(held);
+                          if (next.has(one.id)) next.delete(one.id);
+                          else next.add(one.id);
+                          return next;
+                        })
+                      }
+                      data-testid={`token-workspace-${one.id}`}
+                    />
+                    <span className={styles.placeName}>{one.name}</span>
+                  </label>
+                ))}
+              </div>
+            ))}
+          </fieldset>
           <p className={styles.note}>
             {t('The MCP tools this token may call, and no others. Through the API it may only read.')}
           </p>

@@ -63,9 +63,11 @@ export interface UserToken {
   readOnly: boolean;
   /** Custom: the MCP tools it may call, and no others; null for a token that is not Custom. */
   tools: string[] | null;
+  /** The workspaces it may reach, by id, and no others; null for every workspace its owner sees. */
+  workspaces: string[] | null;
 }
 
-const TOKEN_FIELDS = 'id name createdAt lastUsedAt readOnly tools';
+const TOKEN_FIELDS = 'id name createdAt lastUsedAt readOnly tools workspaces';
 
 /** One tool the MCP endpoint can offer, as the Custom token form lists it. */
 export interface McpTool {
@@ -252,12 +254,14 @@ export async function createUserToken(
   readOnly = false,
   /** Custom: the MCP tools it may call; absent for read and write or read-only. */
   tools?: string[],
+  /** Custom: the workspaces it may reach; absent for every workspace its owner sees. */
+  workspaces?: string[],
 ): Promise<{ token: UserToken; secret: string }> {
   const data = await graphql<{ createUserToken: { token: UserToken; secret: string } }>(
-    `mutation ($id: ID, $name: String!, $readOnly: Boolean, $tools: [String!]) {
-       createUserToken(id: $id, name: $name, readOnly: $readOnly, tools: $tools) { secret token { ${TOKEN_FIELDS} } }
+    `mutation ($id: ID, $name: String!, $readOnly: Boolean, $tools: [String!], $workspaces: [ID!]) {
+       createUserToken(id: $id, name: $name, readOnly: $readOnly, tools: $tools, workspaces: $workspaces) { secret token { ${TOKEN_FIELDS} } }
      }`,
-    { id: id ?? null, name, readOnly, tools: tools ?? null },
+    { id: id ?? null, name, readOnly, tools: tools ?? null, workspaces: workspaces ?? null },
   );
   return data.createUserToken;
 }

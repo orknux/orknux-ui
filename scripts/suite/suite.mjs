@@ -101,6 +101,12 @@ export const TESTS = [
     /* It makes a token on alice's page and revokes it. */
   },
   {
+    name: 'token-workspaces-check',
+    what: 'a Custom access token chooses which workspaces it reaches, and through GraphQL reaches those and no others',
+    needs: [],
+    /* It makes two workspaces and a token on alice's page, and removes all three. */
+  },
+  {
     name: 'quick-chat-copy-check',
     what: "the quick chat's copy button shows only while the pointer is on its message, and leaves no blank row in a one-word question",
     needs: ['workspace'],
