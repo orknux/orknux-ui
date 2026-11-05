@@ -63,7 +63,7 @@ record(said, 'the second is refused, and the refusal is drawn in the table');
 if (!said) await clean();
 
 record(
-  await note.innerText().then((text) => text.includes('already holds') && text.includes(NAME)),
+  await note.innerText().then((text) => text.startsWith('This catalog already holds') && text.includes(NAME)),
   `it names the clash (${JSON.stringify(await note.innerText())})`,
 );
 record(await note.getAttribute('role').then((role) => role === 'alert'), 'and is announced');

@@ -74,7 +74,7 @@ const PL: Record<string, string> = {
   ToolNameTaken: 'Narzędzie o nazwie „{name}” już istnieje w tej przestrzeni roboczej',
   TriggerNameTaken: 'Wyzwalacz o nazwie „{name}” już istnieje w tej przestrzeni roboczej',
   VariableCatalogNameTaken: 'Katalog o nazwie „{name}” już istnieje w tej przestrzeni roboczej',
-  VariableNameTaken: 'Katalog {catalog} zawiera już zmienną o nazwie „{name}”',
+  VariableNameTaken: 'Katalog „{catalog}” zawiera już zmienną o nazwie „{name}”',
   WorkflowNameTaken: 'Przepływ pracy o nazwie „{name}” już istnieje',
   WorkspaceNameTaken: 'Przestrzeń robocza o nazwie „{name}” już istnieje',
   UserNameTaken: 'Użytkownik o nazwie „{username}” już istnieje',
