@@ -46,7 +46,7 @@ const addOnce = async () => {
   await values.getByRole('button', { name: '+ Add Value' }).click();
   await values.getByLabel('New value name').fill(NAME);
   await values.getByLabel('New value', { exact: true }).fill('once');
-  await values.getByRole('button', { name: 'Add this one' }).click();
+  await page.getByTestId('variables-save').click();
   await page.waitForTimeout(1500);
 };
 

@@ -5077,6 +5077,19 @@ export const TESTS = [
      */
   },
   {
+    name: 'variables-save-bar-check',
+    what: 'the variables page saves from the floating strip: one Save writes every changed row in both tables and the new row, Discard puts them back',
+    needs: ['workspace'],
+    /*
+     * Each row had a tick of its own beside the bin, shown only on the row
+     * being edited, and the add row another. Asserts there are none, that one
+     * press writes a value, a secret and a new row together, that Discard
+     * reverts an edit and drops an add row, and that Enter still saves.
+     *
+     * Makes a catalog of its own and deletes it.
+     */
+  },
+  {
     name: 'variable-workspace-switch-check',
     what: "switching workspace on the variables page opens the other workspace's catalogs, refusing nothing",
     needs: ['workspace'],

@@ -4451,4 +4451,6 @@ export const PL: Record<string, string> = {
   "The AI clients connected to this installation over MCP, in every workspace: who, from which address and host, and every call they made.": "Klienci AI połączeni z tą instalacją przez MCP, we wszystkich przestrzeniach roboczych: kto, z jakiego adresu i hosta, oraz każde ich wywołanie.",
   "The AI clients connected to this workspace over MCP: who, from which address and host, and every call they made.": "Klienci AI połączeni z tą przestrzenią roboczą przez MCP: kto, z jakiego adresu i hosta, oraz każde ich wywołanie.",
   "since {when}": "od {when}",
+  "{count} unsaved": "Niezapisane: {count}",
+  "Give it a name first.": "Najpierw nadaj nazwę.",
 };

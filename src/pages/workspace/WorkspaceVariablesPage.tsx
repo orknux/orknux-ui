@@ -1,4 +1,5 @@
-import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import type { Ref } from 'react';
 import { useReadsSecrets } from './readsSecrets';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
@@ -25,7 +26,6 @@ import { ListValueField } from '../../components/ListValueField';
 import { MoveToCatalog } from '../../components/MoveToCatalog';
 import { TypedValueField } from '../../components/TypedValueField';
 import typed from '../../components/TypedValueField.module.css';
-import checkIcon from '../../assets/check.svg';
 import chevronDown12Icon from '../../assets/chevron-down-12.svg';
 import folderOpenIcon from '../../assets/folder-open.svg';
 import folderIcon from '../../assets/folder.svg';
@@ -38,12 +38,13 @@ import { CatalogNameDialog } from '../../components/CatalogNameDialog';
 import { ColumnHeader } from '../../components/ColumnHeader';
 import { Loader } from '../../components/Loader';
 import { RevealToggle } from '../../components/RevealToggle';
+import { DiscardButton, SaveBar } from '../../components/SaveBar';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { useTableSort } from '../../components/tableSort';
 import { shellUser } from '../../session/user';
 import styles from './WorkspaceMemoryPage.module.css';
 import table from './WorkspaceVariablesPage.module.css';
-import { t } from '../../i18n';
+import { t, tf } from '../../i18n';
 import { Select } from '../../components/Select';
 
 export interface WorkspaceVariablesPageProps {
@@ -78,6 +79,14 @@ const EMPTY: Draft = {
   args: {},
   value: '',
 };
+
+/** What the page's Save and Discard reach into each table for. */
+interface TableHandle {
+  /** Writes every changed row and the row being added; false when one was refused, which then says why under itself. */
+  saveAll: () => Promise<boolean>;
+  /** Puts every row back to what was last loaded, and drops the row being added. */
+  discard: () => void;
+}
 
 
 /**
@@ -151,6 +160,12 @@ function fromChoice(choice: string, types: VariableTypeOffer[], current: Draft):
  * and a dialog to change one of them is a dialog for every rename; the row is
  * already the right shape for it. Adding is the same act: a blank row appears
  * where the new variable will be, under the table it belongs to.
+ *
+ * Saved by the page's Save in the strip at the foot of the window, as every
+ * other page saves, rather than by a tick on each row: one press writes every
+ * changed row in both tables and the rows being added, and Discard puts them
+ * all back. A tick that appeared beside the bin on the row being edited was a
+ * control found only by somebody already looking at that row.
  *
  * A value is read from the list, because a channel name or a threshold is only
  * awkward hidden. A secret is not: its box stays covered until somebody presses
@@ -227,6 +242,38 @@ export function WorkspaceVariablesPage({ session, onSignOut }: WorkspaceVariable
   }, [workspaceId]);
 
   const current = catalogs?.find((catalog) => catalog.id === selected) ?? null;
+
+  /*
+   * The strip's Save, over both tables. Each table keeps its own drafts and
+   * says how many rows it holds unsaved; the page adds them up and presses
+   * both. Values first, and the secrets only once the values went through, so
+   * a refusal stops the press where it is shown rather than under it.
+   */
+  const valuesTable = useRef<TableHandle>(null);
+  const secretsTable = useRef<TableHandle>(null);
+  const [pending, setPending] = useState<Record<VariableKind, number>>({ VALUE: 0, SECRET: 0 });
+  const pendingValues = useCallback((count: number) => setPending((held) => (held.VALUE === count ? held : { ...held, VALUE: count })), []);
+  const pendingSecrets = useCallback((count: number) => setPending((held) => (held.SECRET === count ? held : { ...held, SECRET: count })), []);
+  const unsaved = pending.VALUE + pending.SECRET;
+  const [saving, setSaving] = useState(false);
+
+  async function saveAll() {
+    if (saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const valuesWent = (await valuesTable.current?.saveAll()) ?? true;
+      if (valuesWent) await secretsTable.current?.saveAll();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function discardAll() {
+    setError(null);
+    valuesTable.current?.discard();
+    secretsTable.current?.discard();
+  }
 
   async function guard(work: () => Promise<void>) {
     setError(null);
@@ -546,6 +593,9 @@ export function WorkspaceVariablesPage({ session, onSignOut }: WorkspaceVariable
                 note={t("Read and edited here: configuration rather than credentials.")}
                 addLabel={t("+ Add Value")}
                 kind="VALUE"
+                handle={valuesTable}
+                onPending={pendingValues}
+                onSubmit={() => void saveAll()}
                 types={types}
                 connections={connections}
                 workspaceId={workspaceId}
@@ -564,6 +614,9 @@ export function WorkspaceVariablesPage({ session, onSignOut }: WorkspaceVariable
                 note={t("Kept out of sight. Show one to read it; the audit log records that you did.")}
                 addLabel={t("+ Add Secret")}
                 kind="SECRET"
+                handle={secretsTable}
+                onPending={pendingSecrets}
+                onSubmit={() => void saveAll()}
                 types={types}
                 connections={connections}
                 workspaceId={workspaceId}
@@ -576,6 +629,24 @@ export function WorkspaceVariablesPage({ session, onSignOut }: WorkspaceVariable
                 onChanged={(made) => guard(() => afterChange(made))}
                 onError={setError}
               />
+
+              <SaveBar>
+                {unsaved > 0 && (
+                  <span className={table.pageUnsaved} data-testid="variables-unsaved">
+                    {tf('{count} unsaved', { count: unsaved })}
+                  </span>
+                )}
+                <DiscardButton onDiscard={discardAll} disabled={saving || unsaved === 0} />
+                <button
+                  type="button"
+                  className={table.pageSave}
+                  disabled={saving || unsaved === 0}
+                  onClick={() => void saveAll()}
+                  data-testid="variables-save"
+                >
+                  {t('Save')}
+                </button>
+              </SaveBar>
             </>
           )}
         </section>
@@ -606,6 +677,9 @@ function VariableTable({
   note,
   addLabel,
   kind,
+  handle,
+  onPending,
+  onSubmit,
   types,
   connections,
   workspaceId,
@@ -622,6 +696,12 @@ function VariableTable({
   note: string;
   addLabel: string;
   kind: VariableKind;
+  /** What the page's Save and Discard press. */
+  handle: Ref<TableHandle>;
+  /** How many rows this table holds unsaved, told whenever that changes; stable, or it is told every render. */
+  onPending: (count: number) => void;
+  /** Enter in a row: the page's Save, which writes every table. */
+  onSubmit: () => void;
   /** The plugins' types on offer, and the connections one may be told. Issue #377. */
   types: VariableTypeOffer[];
   connections: WorkspaceConnection[];
@@ -679,7 +759,6 @@ function VariableTable({
   useEffect(() => {
     if (adding === null) setAddingShown(false);
   }, [adding]);
-  const [busy, setBusy] = useState<string | null>(null);
   /**
    * The refusal, kept beside the row it is about.
    *
@@ -721,20 +800,29 @@ function VariableTable({
     );
   }
 
+  /** Says under the row why it was not written, and tells the page. */
+  function refuse(id: string, cause: unknown) {
+    const message = cause instanceof Error ? cause.message : typeof cause === 'string' ? cause : t('That could not be saved.');
+    setRefused({ id, message });
+    onError(message);
+  }
+
   async function run(id: string, work: () => Promise<void>) {
-    setBusy(id);
     onError(null);
     setRefused(null);
     try {
       await work();
     } catch (cause) {
-      const message = cause instanceof Error ? cause.message : t('That could not be saved.');
-      setRefused({ id, message });
-      onError(message);
-    } finally {
-      setBusy(null);
+      refuse(id, cause);
     }
   }
+
+  /** Whether the row being added holds anything typed; an untouched blank row is not unsaved work. */
+  const addingTyped = adding !== null && JSON.stringify(adding) !== JSON.stringify(EMPTY);
+  const pendingCount = variables.filter(dirty).length + (addingTyped ? 1 : 0);
+  useEffect(() => onPending(pendingCount), [onPending, pendingCount]);
+  // Nothing of this table is pending once it is gone - a catalog with none chosen draws no tables.
+  useEffect(() => () => onPending(0), [onPending]);
 
   /** The refusal under one row, where there is one for it. */
   const refusalUnder = (id: string) =>
@@ -744,72 +832,109 @@ function VariableTable({
       </p>
     ) : null;
 
-  async function save(variable: Variable) {
-    const draft = draftFor(variable);
-    if (draft.name.trim() === '') return;
+  /**
+   * Writes every changed row, then the row being added, and reads the list
+   * once after. Stops at the first refusal, which is said under its row; what
+   * went through before it stays written and leaves the count.
+   */
+  async function saveAll(): Promise<boolean> {
+    const changed = variables.filter(dirty);
+    const adding_ = addingTyped ? adding : null;
+    if (changed.length === 0 && adding_ === null) return true;
+    onError(null);
+    setRefused(null);
 
-    await run(variable.id, async () => {
-      await updateVariable(variable.id, {
-        name: draft.name.trim(),
-        description: draft.description.trim(),
-        type: draft.type,
-        elementType: draft.type === 'LIST' ? draft.elementType : null,
-        // Empty takes the plugin type off; the server reads absent as "leave it".
-        customType: draft.customType ?? '',
-        typeArguments: JSON.stringify(draft.args),
-        // A covered secret's box is empty whatever is stored, so only a box the
-        // person can actually read may say "empty means clear it".
-        value:
-          kind === 'SECRET' && variable.valueSet && !(variable.id in shown) ? undefined : draft.value,
-      });
-      /*
-       * The list first, the draft after.
-       *
-       * Dropping the draft before the reload landed put the row back on the
-       * variable it still had — the old value — for as long as the query took,
-       * so a save flickered through what it had just replaced.
-       */
-      await onChanged();
-      setDrafts((held) => {
-        const rest = { ...held };
-        delete rest[variable.id];
-        return rest;
-      });
-      /*
-       * Covered again once it is saved. The draft was holding the revealed
-       * text; dropping that while the row still counted as shown left a secret
-       * rendered as an empty box, which reads as "the value is gone".
-       */
-      setShown((held) => {
-        const rest = { ...held };
-        delete rest[variable.id];
-        return rest;
-      });
-    });
+    const written: string[] = [];
+    let made: Variable | undefined;
+    let went = true;
+    for (const variable of changed) {
+      const draft = draftFor(variable);
+      if (draft.name.trim() === '') {
+        refuse(variable.id, t('Give it a name first.'));
+        went = false;
+        break;
+      }
+      try {
+        await updateVariable(variable.id, {
+          name: draft.name.trim(),
+          description: draft.description.trim(),
+          type: draft.type,
+          elementType: draft.type === 'LIST' ? draft.elementType : null,
+          // Empty takes the plugin type off; the server reads absent as "leave it".
+          customType: draft.customType ?? '',
+          typeArguments: JSON.stringify(draft.args),
+          // A covered secret's box is empty whatever is stored, so only a box the
+          // person can actually read may say "empty means clear it".
+          value:
+            kind === 'SECRET' && variable.valueSet && !(variable.id in shown) ? undefined : draft.value,
+        });
+        written.push(variable.id);
+      } catch (cause) {
+        refuse(variable.id, cause);
+        went = false;
+        break;
+      }
+    }
+
+    if (went && adding_ !== null) {
+      if (adding_.name.trim() === '') {
+        refuse('new', t('Give it a name first.'));
+        went = false;
+      } else {
+        try {
+          made = await createVariable({
+            workspaceId,
+            catalogId,
+            name: adding_.name.trim(),
+            description: adding_.description.trim(),
+            type: adding_.type,
+            kind,
+            elementType: adding_.type === 'LIST' ? adding_.elementType : null,
+            customType: adding_.customType,
+            typeArguments: JSON.stringify(adding_.args),
+            value: adding_.value === '' ? undefined : adding_.value,
+          });
+        } catch (cause) {
+          refuse('new', cause);
+          went = false;
+        }
+      }
+    }
+
+    if (written.length === 0 && made === undefined) return went;
+    /*
+     * The list first, the drafts after.
+     *
+     * Dropping a draft before the reload landed put the row back on the
+     * variable it still had - the old value - for as long as the query took,
+     * so a save flickered through what it had just replaced. The new row is
+     * handed on, so it lands where the blank one was rather than where its
+     * name sorts, and is still there when the catalog is a long one.
+     */
+    await onChanged(made);
+    const forget = (held: Record<string, unknown>) => {
+      const rest = { ...held };
+      for (const id of written) delete rest[id];
+      return rest;
+    };
+    setDrafts((held) => forget(held) as Record<string, Draft>);
+    /*
+     * Covered again once it is saved. The draft was holding the revealed
+     * text; dropping that while the row still counted as shown left a secret
+     * rendered as an empty box, which reads as "the value is gone".
+     */
+    setShown((held) => forget(held) as Record<string, string>);
+    if (made !== undefined) setAdding(null);
+    return went;
   }
 
-  async function add() {
-    if (adding === null || adding.name.trim() === '') return;
-
-    await run('new', async () => {
-      const made = await createVariable({
-        workspaceId,
-        catalogId,
-        name: adding.name.trim(),
-        description: adding.description.trim(),
-        type: adding.type,
-        kind,
-        elementType: adding.type === 'LIST' ? adding.elementType : null,
-        customType: adding.customType,
-        typeArguments: JSON.stringify(adding.args),
-        value: adding.value === '' ? undefined : adding.value,
-      });
-      // Handed on, so the row lands where the blank one was rather than where
-      // its name sorts, and is still there when the catalog is a long one.
-      await onChanged(made);
-      setAdding(null);
-    });
+  function discard() {
+    setDrafts({});
+    setAdding(null);
+    setRefused(null);
   }
+
+  useImperativeHandle(handle, () => ({ saveAll, discard }));
 
   async function remove(variable: Variable) {
     if (!window.confirm(`Delete "${variable.name}"? Whatever it holds goes with it.`)) return;
@@ -1125,7 +1250,7 @@ function VariableTable({
                 spellCheck={false}
                 onChange={(event) => edit(variable, { name: nameable(event.target.value) })}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter') void save(variable);
+                  if (event.key === 'Enter') onSubmit();
                 }}
               />
 
@@ -1142,7 +1267,7 @@ function VariableTable({
                     label: `Value of ${variable.name}`,
                     placeholder: variable.valueSet ? 'Hidden' : t('Not set'),
                     hint: readable ? undefined : t('Show it to edit'),
-                    onEnter: () => void save(variable),
+                    onEnter: onSubmit,
                   })}
                   {toldFor(draft, (next) => edit(variable, next), variable.name)}
                 </span>
@@ -1167,7 +1292,7 @@ function VariableTable({
                 aria-label={`Description of ${variable.name}`}
                 onChange={(event) => edit(variable, { description: event.target.value })}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter') void save(variable);
+                  if (event.key === 'Enter') onSubmit();
                 }}
               />
 
@@ -1185,23 +1310,6 @@ function VariableTable({
               </span>
 
               <span className={table.colActions}>
-                {/*
-                  Only while there is something to save: nothing is written as
-                  you type. A tick rather than the word, so it sits beside the
-                  bin as one of a pair rather than a button next to an icon.
-                */}
-                {dirty(variable) && (
-                  <button
-                    type="button"
-                    className={styles.iconButton}
-                    disabled={busy === variable.id || draft.name.trim() === ''}
-                    onClick={() => void save(variable)}
-                    aria-label={`Save ${variable.name}`}
-                    title={t('Save')}
-                  >
-                    <img src={checkIcon} alt="" width={14} height={14} />
-                  </button>
-                )}
                 <MoveToCatalog
                   name={variable.name}
                   catalogs={catalogs}
@@ -1237,7 +1345,7 @@ function VariableTable({
               autoFocus
               onChange={(event) => setAdding((held) => ({ ...(held ?? EMPTY), name: nameable(event.target.value) }))}
               onKeyDown={(event) => {
-                if (event.key === 'Enter') void add();
+                if (event.key === 'Enter') onSubmit();
                 if (event.key === 'Escape') setAdding(null);
               }}
             />
@@ -1249,7 +1357,7 @@ function VariableTable({
                   typedBlind: true,
                   label: t('New value'),
                   placeholder: t('Value'),
-                  onEnter: () => void add(),
+                  onEnter: onSubmit,
                   onEscape: () => setAdding(null),
                 })}
                 {toldFor(adding, (next) => setAdding((held) => ({ ...(held ?? EMPTY), ...next })), t('the new one'))}
@@ -1275,7 +1383,7 @@ function VariableTable({
               aria-label={t('New description')}
               onChange={(event) => setAdding((held) => ({ ...(held ?? EMPTY), description: event.target.value }))}
               onKeyDown={(event) => {
-                if (event.key === 'Enter') void add();
+                if (event.key === 'Enter') onSubmit();
                 if (event.key === 'Escape') setAdding(null);
               }}
             />
@@ -1294,16 +1402,6 @@ function VariableTable({
               <img src={chevronDown12Icon} alt="" width={12} height={12} />
             </span>
             <span className={table.colActions}>
-              <button
-                type="button"
-                className={styles.iconButton}
-                disabled={busy === 'new' || adding.name.trim() === ''}
-                onClick={() => void add()}
-                aria-label={t('Add this one')}
-                title={t('Add')}
-              >
-                <img src={checkIcon} alt="" width={14} height={14} />
-              </button>
               <button
                 type="button"
                 className={styles.iconButton}

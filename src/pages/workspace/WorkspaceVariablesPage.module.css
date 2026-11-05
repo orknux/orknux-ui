@@ -349,3 +349,28 @@
   font-size: var(--text-md);
   color: var(--color-text-muted);
 }
+
+/* How many rows the strip's Save would write, beside it. */
+.pageUnsaved {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* The same Save every page's strip wears, to the pixel; see WorkspacePluginsPage. */
+.pageSave {
+  padding: var(--space-10) var(--space-16);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
+  border: 0;
+  border-radius: var(--radius-6);
+  font-family: inherit;
+  font-weight: 600;
+  font-size: var(--text-md);
+  line-height: 1.2;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.pageSave:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

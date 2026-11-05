@@ -145,7 +145,7 @@ if (!suggested) await clean();
 await suggestion.first().click();
 record(await value.inputValue().then((held) => held === 'green'), 'taking one puts the value the plugin said to store');
 
-await page.getByRole('button', { name: 'Add this one' }).click();
+await page.getByTestId('variables-save').click();
 await page.waitForTimeout(1500);
 
 let held = await variables();
@@ -158,7 +158,7 @@ record(favourite !== null && favourite.typeArguments === '{"shade":"dark"}', 'an
 /* ------------------------------------------- the plugin refuses one ----- */
 
 await page.getByLabel('Value of favourite').fill('mauve');
-await page.getByRole('button', { name: 'Save favourite' }).click();
+await page.getByTestId('variables-save').click();
 const refused = await page
   .getByText(/mauve is not a colour/)
   .first()
@@ -168,6 +168,10 @@ const refused = await page
 record(refused, "a value the plugin refuses is refused on screen, with the plugin's own reason");
 held = await variables();
 record(held.find((one) => one.name === 'favourite')?.value === 'green', 'and was not saved');
+
+// Still held as typed, so the strip's Discard is what puts it back - or the next Save would try it again.
+await page.getByTestId('save-bar-discard').click();
+record(await page.getByLabel('Value of favourite').inputValue().then((shown) => shown === 'green'), 'Discard puts the stored value back');
 
 /* --------------------------------------------------------- a list ------ */
 
@@ -181,7 +185,7 @@ await list.locator('[data-list-add]').click();
 await page.getByLabel('New value 1', { exact: true }).fill('1');
 await list.locator('[data-list-add]').click();
 await page.getByLabel('New value 2', { exact: true }).fill('2.5');
-await page.getByRole('button', { name: 'Add this one' }).click();
+await page.getByTestId('variables-save').click();
 await page.waitForTimeout(1500);
 
 held = await variables();
