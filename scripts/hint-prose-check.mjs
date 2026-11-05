@@ -236,6 +236,48 @@ const IN_THE_OPEN = [
     why: 'the workspace menu narrowed to nothing by what was typed into its box',
   },
   {
+    file: 'src/pages/explore/DiagramLinkSearch.tsx',
+    says: 'Nothing by that name. An address starts with https://',
+    because: 'status',
+    why: "a link search narrowed to nothing by what was typed, in place of the rows; the second sentence is what would have been offered instead",
+  },
+  {
+    file: 'src/pages/explore/DiagramHistory.tsx',
+    says: 'Pick a version to see it.',
+    because: 'status',
+    why: 'the history preview with nothing picked, saying what fills it',
+  },
+  {
+    file: 'src/pages/explore/DiagramHistory.tsx',
+    says: 'This is the diagram as the canvas shows it now.',
+    because: 'status',
+    why: 'the newest row picked, which has no saved picture: the canvas behind the panel is it',
+  },
+  {
+    file: 'src/pages/explore/DiagramHistory.tsx',
+    says: 'This version cannot be drawn.',
+    because: 'error',
+    why: 'a saved version whose picture could not be made, in place of the picture',
+  },
+  {
+    file: 'src/pages/admin/AdminUpdatesPage.tsx',
+    says: 'Asking orknux.ai for a newer package…',
+    because: 'status',
+    why: 'the desktop package check while it waits, in the place its answer will be',
+  },
+  {
+    file: 'src/components/AccessTokens.tsx',
+    says: 'The MCP tools this token may call, and no others.',
+    because: 'label',
+    why: "the Custom choice's own label for the list under it: what ticking a tool means, and that outside MCP the token only reads",
+  },
+  {
+    file: 'src/components/McpConnect.tsx',
+    says: '. It is you by another door',
+    because: 'label',
+    why: 'a numbered step of the connect dialog, whose whole content is the steps; it says where the token in the step comes from, around the link to it',
+  },
+  {
     file: 'src/pages/design/DesignImageEditorPage.tsx',
     says: 'Describe a picture on the right and generate it.',
     because: 'status',
