@@ -2,14 +2,16 @@ import { useCallback, useEffect, useState } from 'react';
 
 import type { PageOf } from '../api/client';
 import { fetchMcpCalls, fetchMcpSessions } from '../api/mcpClients';
-import type { McpClientCall, McpClientSession, McpSessionPage } from '../api/mcpClients';
+import type { McpCallOrder, McpClientCall, McpClientSession, McpSessionOrder, McpSessionPage } from '../api/mcpClients';
 import refreshIcon from '../assets/refresh-cw.svg';
 import { t, tf } from '../i18n';
 import { zoned } from '../session/timeZone';
 import { AutoRefresh } from './AutoRefresh';
+import { ColumnHeader } from './ColumnHeader';
 import { CompactPagination } from './CompactPagination';
 import { Loader } from './Loader';
 import { PAGE_SIZES, usePageSize } from './pageSize';
+import { useTableSort } from './tableSort';
 import styles from './McpClients.module.css';
 
 export interface McpClientsProps {
@@ -33,6 +35,13 @@ export function McpClients({ workspaceId }: McpClientsProps) {
   const [sessionPage, setSessionPage] = useState(1);
   const [sessionSize, setSessionSize] = usePageSize(`mcp-sessions-${scope}`);
   const [connectedOnly, setConnectedOnly] = useState(false);
+  // Ordered by the server, because a page of a list in order is not the list in order.
+  const [sessionOrder, sessionAscending, sortSessions] = useTableSort<McpSessionOrder>(
+    `mcp-sessions-${scope}`, 'LAST_SEEN', false, ['LAST_SEEN', 'CALLS'],
+  );
+  const [callOrder, callAscending, sortCalls] = useTableSort<McpCallOrder>(
+    `mcp-calls-${scope}`, 'AT', false, ['AT', 'DURATION', 'RESULT'],
+  );
 
   const [calls, setCalls] = useState<PageOf<McpClientCall> | null>(null);
   const [callPage, setCallPage] = useState(1);
@@ -43,15 +52,15 @@ export function McpClients({ workspaceId }: McpClientsProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => setSessionPage(1), [connectedOnly, workspaceId]);
-  useEffect(() => setCallPage(1), [failedOnly, picked, workspaceId]);
+  useEffect(() => setSessionPage(1), [connectedOnly, workspaceId, sessionOrder, sessionAscending]);
+  useEffect(() => setCallPage(1), [failedOnly, picked, workspaceId, callOrder, callAscending]);
 
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
     Promise.all([
-      fetchMcpSessions(workspaceId, sessionPage - 1, sessionSize, connectedOnly),
-      fetchMcpCalls(workspaceId, picked?.id ?? null, callPage - 1, callSize, failedOnly),
+      fetchMcpSessions(workspaceId, sessionPage - 1, sessionSize, connectedOnly, sessionOrder, sessionAscending),
+      fetchMcpCalls(workspaceId, picked?.id ?? null, callPage - 1, callSize, failedOnly, callOrder, callAscending),
     ])
       .then(([sessionsNow, callsNow]) => {
         setSessions(sessionsNow);
@@ -62,9 +71,21 @@ export function McpClients({ workspaceId }: McpClientsProps) {
         setError(cause instanceof Error ? cause.message : t('Could not load the MCP clients.'));
         setLoading(false);
       });
-  }, [workspaceId, sessionPage, sessionSize, connectedOnly, picked, callPage, callSize, failedOnly]);
+  }, [workspaceId, sessionPage, sessionSize, connectedOnly, sessionOrder, sessionAscending, picked, callPage, callSize, failedOnly, callOrder, callAscending]);
 
   useEffect(load, [load]);
+
+  /* A heading of either table: the shared column header, inside the cell the table lays out. */
+  const SessionHead = ({ label, order, number = false }: { label: string; order: McpSessionOrder; number?: boolean }) => (
+    <th className={number ? styles.number : undefined}>
+      <ColumnHeader label={label} order={order} current={sessionOrder} ascending={sessionAscending} onSort={sortSessions} className={styles.head} />
+    </th>
+  );
+  const CallHead = ({ label, order, number = false }: { label: string; order: McpCallOrder; number?: boolean }) => (
+    <th className={number ? styles.number : undefined}>
+      <ColumnHeader label={label} order={order} current={callOrder} ascending={callAscending} onSort={sortCalls} className={styles.head} />
+    </th>
+  );
 
   return (
     <div className={styles.view} data-testid="mcp-clients">
@@ -105,13 +126,13 @@ export function McpClients({ workspaceId }: McpClientsProps) {
           <table className={styles.table} data-testid="mcp-sessions">
             <thead>
               <tr>
-                <th>{t('Status')}</th>
-                <th>{t('Client')}</th>
-                <th>{t('Person')}</th>
-                <th>{t('Address')}</th>
-                {everywhere && <th>{t('Workspace')}</th>}
-                <th>{t('Last seen')}</th>
-                <th className={styles.number}>{t('Calls')}</th>
+                <SessionHead label={t('Status')} order="STATUS" />
+                <SessionHead label={t('Client')} order="CLIENT" />
+                <SessionHead label={t('Person')} order="PERSON" />
+                <SessionHead label={t('Address')} order="ADDRESS" />
+                {everywhere && <SessionHead label={t('Workspace')} order="WORKSPACE" />}
+                <SessionHead label={t('Last seen')} order="LAST_SEEN" />
+                <SessionHead label={t('Calls')} order="CALLS" number />
               </tr>
             </thead>
             <tbody>
@@ -207,13 +228,14 @@ export function McpClients({ workspaceId }: McpClientsProps) {
           <table className={styles.table} data-testid="mcp-calls">
             <thead>
               <tr>
-                <th>{t('When')}</th>
-                <th>{t('Called')}</th>
-                <th>{t('Person')}</th>
-                <th>{t('From')}</th>
-                {everywhere && <th>{t('Workspace')}</th>}
-                <th>{t('Result')}</th>
-                <th className={styles.number}>{t('Took')}</th>
+                <CallHead label={t('When')} order="AT" />
+                <CallHead label={t('Called')} order="CALLED" />
+                <CallHead label={t('Person')} order="PERSON" />
+                <CallHead label={t('From')} order="ADDRESS" />
+                {everywhere && <CallHead label={t('Workspace')} order="WORKSPACE" />}
+                <CallHead label={t('Result')} order="RESULT" />
+                <CallHead label={t('Took')} order="DURATION" number />
+                {/* What a call was passed, cut short: nothing to put in order. */}
                 <th>{t('Arguments')}</th>
               </tr>
             </thead>

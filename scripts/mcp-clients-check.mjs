@@ -90,6 +90,25 @@ try {
   record(tables.every((one) => one.table <= one.room), `at 1440 pixels both tables fit their cards without scrolling (${JSON.stringify(tables)})`);
   record(sideways.scroll <= sideways.width, `the page does not scroll sideways (${sideways.scroll} <= ${sideways.width})`);
 
+  // ---- Every heading but Arguments puts its table in order, by the server ----
+  const sessionHeads = await page.getByTestId('mcp-sessions').locator('thead button').allInnerTexts();
+  const callHeads = await page.getByTestId('mcp-calls').locator('thead button').allInnerTexts();
+  record(sessionHeads.length === 7, `every column of the sessions is pressable (${sessionHeads.join(', ')})`);
+  record(callHeads.length === 7 && !callHeads.includes('ARGUMENTS') && !callHeads.includes('Arguments'), `and every column of the history but its arguments (${callHeads.join(', ')})`);
+  const callsOf = () => page.locator('[data-testid="mcp-session"] td:last-child').allInnerTexts().then((all) => all.map(Number));
+  const heading = page.getByTestId('mcp-sessions').locator('thead button', { hasText: /^calls$/i });
+  await heading.click();
+  await page.waitForTimeout(1500);
+  let counts = await callsOf();
+  const most = [...counts].sort((a, b) => b - a);
+  record(JSON.stringify(counts) === JSON.stringify(most), `Calls puts the sessions most first (${counts.join(' ')})`);
+  await heading.click();
+  await page.waitForTimeout(1500);
+  counts = await callsOf();
+  record(JSON.stringify(counts) === JSON.stringify([...counts].sort((a, b) => a - b)), `and pressed again, fewest first (${counts.join(' ')})`);
+  record((await heading.locator('..').getAttribute('aria-sort')) === 'ascending', 'and says which way it is in');
+  await page.getByTestId('mcp-sessions').locator('thead button', { hasText: /^last seen$/i }).click();
+
   // ---- One workspace's MCP page: that workspace alone ----
   await page.goto(`${BASE}/workspace/${WORKSPACE}/mcp`, { waitUntil: 'domcontentloaded' });
   await page.locator('[data-testid="mcp-session"]', { hasText: here }).waitFor({ timeout: 20_000 });

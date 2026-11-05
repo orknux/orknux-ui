@@ -208,3 +208,12 @@
 .noticeError {
   color: var(--color-danger);
 }
+
+/* A sortable heading inside its cell; a number's sits at the right, over its figures. */
+.head {
+  display: flex;
+}
+
+.number .head {
+  justify-content: flex-end;
+}
