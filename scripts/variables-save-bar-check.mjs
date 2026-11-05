@@ -74,6 +74,20 @@ const unsaved = page.getByTestId('variables-unsaved');
 record((await save.count()) === 1, 'Save is in the strip at the foot of the window');
 const strip = await page.getByTestId('save-bar').boundingBox({ timeout: 5_000 }).catch(() => null);
 record(strip !== null && strip.y + strip.height > 900, `and floats at the window's foot (${JSON.stringify(strip)})`);
+// Where every other page puts Save: 40px from the window's right edge, with the content above ending there too.
+const gaps = await page.evaluate(() => ({
+  save: Math.round(innerWidth - document.querySelector('[data-testid="variables-save"]').getBoundingClientRect().right),
+  content: Math.round(innerWidth - document.querySelector('h1').parentElement.getBoundingClientRect().right),
+}));
+record(gaps.save === 40, `Save sits 40px from the window's edge, as on every other page (${gaps.save})`);
+record(gaps.content === 40, `and so does the content above it (${gaps.content})`);
+const fill = await page.getByRole('button', { name: '+ Add Value' }).evaluate((one) => getComputedStyle(one).backgroundColor);
+const saveFill = await save.evaluate((one) => getComputedStyle(one).backgroundColor);
+record(fill === saveFill, `+ Add Value wears the primary fill Save does (${fill})`);
+record(
+  (await page.getByRole('button', { name: '+ Add Secret' }).evaluate((one) => getComputedStyle(one).backgroundColor)) === saveFill,
+  'and so does + Add Secret',
+);
 record(await save.isDisabled(), 'Save is off while nothing is changed');
 record(await discard.isDisabled(), 'and so is Discard');
 record((await page.getByRole('button', { name: `Save ${VALUE}` }).count()) === 0, 'no row carries a save tick of its own');

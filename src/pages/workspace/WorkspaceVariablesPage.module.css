@@ -48,21 +48,22 @@
 }
 
 /* Each table adds its own kind, so which one it is never has to be asked. */
+/* The primary fill every page's Add wears - Integrations' + Add Connection - at the size of a section's button. */
 .addButton {
   flex-shrink: 0;
   padding: var(--space-6) var(--space-12);
-  background: none;
-  border: 1px solid var(--color-border);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
+  border: 0;
   border-radius: var(--radius-6);
   font-family: inherit;
+  font-weight: 600;
   font-size: var(--text-sm);
-  color: var(--color-text-secondary);
+  color: var(--color-text-primary);
   cursor: pointer;
 }
 
 .addButton:hover {
-  border-color: var(--color-accent-brand);
-  color: var(--color-text-primary);
+  filter: brightness(1.1);
 }
 
 .sectionTitle {
