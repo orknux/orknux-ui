@@ -65,15 +65,29 @@ try {
   let shown = await listedTools();
   record(shown.length > 0 && shown.every((one) => one.includes('__')), `MCP servers shows their tools and nothing else (${shown.length})`);
   record((await chip('MCP_SERVER').getAttribute('aria-pressed')) === 'true', 'and says it is the filter in force');
+  // Pressed beside MCP servers, Built-in adds its tools to theirs: the filters are chosen together.
   await chip('BUILT_IN').click();
   shown = await listedTools();
-  record(shown.includes('orknux_issues') && !shown.some((one) => one.includes('__')), `Built-in shows Orknux's own tools (${shown.length})`);
+  record(
+    shown.includes('orknux_issues') && shown.some((one) => one.includes('__')),
+    `MCP servers and Built-in together show both (${shown.length})`,
+  );
+  record((await chip('MCP_SERVER').getAttribute('aria-pressed')) === 'true' && (await chip('BUILT_IN').getAttribute('aria-pressed')) === 'true', 'and both say they are on');
+  await chip('MCP_SERVER').click();
+  shown = await listedTools();
+  record(shown.includes('orknux_issues') && !shown.some((one) => one.includes('__')), `pressed again, MCP servers goes and Built-in stays (${shown.length})`);
   if ((await chip('PLUGIN').count()) === 1) {
+    await chip('BUILT_IN').click();
     await chip('PLUGIN').click();
     shown = await listedTools();
     record(shown.length > 0 && !shown.includes('orknux_issues') && !shown.some((one) => one.includes('__')), `Plugins shows the plugins' tools alone (${shown.slice(0, 3).join(', ')})`);
   }
   await chip('ALL').click();
+  // All of them, and every one drawn in the page - not in a box that scrolls on its own and stops short.
+  const boxed = await page.locator('[data-testid^="token-custom-"] [class*="customList"]').evaluateAll((all) =>
+    all.map((list) => list.scrollHeight - list.clientHeight),
+  );
+  record(boxed.length === 2 && boxed.every((hidden) => hidden <= 1), `the tool lists are drawn whole, nothing scrolled out of sight inside them (${boxed.join(', ')})`);
 
   await entry.locator('input[type=checkbox]').check();
   await page.getByTestId('token-tool-search').fill('');

@@ -54,8 +54,8 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
   const [picked, setPicked] = useState<Set<string>>(new Set());
   /** Custom: what the tool list is narrowed to, by name or by what a tool does. */
   const [toolSearch, setToolSearch] = useState('');
-  /** Custom: the tools of one source - MCP servers, built-in, plugins, a workspace's own - or null for all of them. */
-  const [toolSource, setToolSource] = useState<McpToolSource | null>(null);
+  /** Custom: the sources shown - MCP servers, built-in, plugins, a workspace's own - any of them; none chosen is all. */
+  const [toolSources, setToolSources] = useState<Set<McpToolSource>>(new Set());
   useEffect(() => {
     if (mode !== 'custom' || catalog !== null) return;
     fetchMcpTools()
@@ -336,9 +336,9 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
             <div className={styles.sourceChips} role="group" aria-label={t('Where the tools come from')} data-testid="token-tool-sources">
               <button
                 type="button"
-                className={toolSource === null ? `${styles.sourceChip} ${styles.sourceChipOn}` : styles.sourceChip}
-                aria-pressed={toolSource === null}
-                onClick={() => setToolSource(null)}
+                className={toolSources.size === 0 ? `${styles.sourceChip} ${styles.sourceChipOn}` : styles.sourceChip}
+                aria-pressed={toolSources.size === 0}
+                onClick={() => setToolSources(new Set())}
                 data-source="ALL"
               >
                 {t('All')}
@@ -347,9 +347,17 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
                 <button
                   key={one.source}
                   type="button"
-                  className={toolSource === one.source ? `${styles.sourceChip} ${styles.sourceChipOn}` : styles.sourceChip}
-                  aria-pressed={toolSource === one.source}
-                  onClick={() => setToolSource((held) => (held === one.source ? null : one.source))}
+                  className={toolSources.has(one.source) ? `${styles.sourceChip} ${styles.sourceChipOn}` : styles.sourceChip}
+                  aria-pressed={toolSources.has(one.source)}
+                  // Each one on or off by itself, so two sources can be read together.
+                  onClick={() =>
+                    setToolSources((held) => {
+                      const next = new Set(held);
+                      if (next.has(one.source)) next.delete(one.source);
+                      else next.add(one.source);
+                      return next;
+                    })
+                  }
                   data-source={one.source}
                 >
                   {t(one.label)} <span className={styles.customCount}>{one.count}</span>
@@ -365,11 +373,11 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
               const said = toolSearch.trim().toLowerCase();
               const whole = catalog.filter((one) => (kind === 'read') === one.readOnly);
               // What is shown is what the box ticks: a search narrows the select-all too.
-              const fromSource = (one: McpTool) => toolSource === null || one.source === toolSource;
+              const fromSource = (one: McpTool) => toolSources.size === 0 || toolSources.has(one.source);
               const group = whole.filter(
                 (one) => fromSource(one) && (said === '' || one.name.toLowerCase().includes(said) || one.summary.toLowerCase().includes(said)),
               );
-              if ((said !== '' || toolSource !== null) && group.length === 0) return null;
+              if ((said !== '' || toolSources.size > 0) && group.length === 0) return null;
               const all = group.length > 0 && group.every((one) => picked.has(one.name));
               return (
                 <fieldset key={kind} className={styles.customGroup} data-testid={`token-custom-${kind}`}>

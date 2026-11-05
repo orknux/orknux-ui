@@ -245,12 +245,16 @@
   font-size: var(--text-sm);
 }
 
+/*
+ * Drawn whole, the page scrolling it rather than a box of its own. It was held
+ * to 360px and scrolled inside the page, so it stopped short with the page's
+ * room still below it and cut rows at its edges; the search and the source
+ * filters are what make it short.
+ */
 .customList {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: var(--space-2) var(--space-12);
-  max-height: 360px;
-  overflow-y: auto;
 }
 
 .customTool {
