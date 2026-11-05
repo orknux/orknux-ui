@@ -488,6 +488,11 @@ export const PAGES = [
     goTo: { label: t('Audit Log'), where: 'Workspace', icon: clipboardListIcon, also: 'activity history' },
   },
   {
+    path: '/workspace/:workspaceId/mcp',
+    access: 'workspace-admin',
+    goTo: { label: t('MCP'), where: 'Workspace', icon: radarIcon, also: 'clients sessions connected claude code addresses hosts calls history' },
+  },
+  {
     path: '/workspace/:workspaceId/integrations',
     access: 'signed-in',
     goTo: { label: t('Integrations'), where: 'Workspace', icon: plugIcon, also: 'connections slack mcp' },
@@ -571,6 +576,11 @@ export const PAGES = [
   // ---- The installation ----
   { path: '/admin', access: 'admin', goTo: { label: t('Workspaces'), where: 'Admin', icon: commandIcon } },
   { path: '/admin/audit', access: 'admin', goTo: { label: t('Audit Log'), where: 'Admin', icon: fileTextIcon } },
+  {
+    path: '/admin/mcp',
+    access: 'admin',
+    goTo: { label: t('MCP'), where: 'Admin', icon: radarIcon, also: 'clients sessions connected claude code addresses hosts calls history' },
+  },
   { path: '/admin/users', access: 'admin', goTo: { label: t('Users'), where: 'Admin', icon: userIcon } },
   { path: '/admin/users/new', access: 'admin', goTo: false },
   { path: '/admin/users/:userId', access: 'admin', goTo: false },

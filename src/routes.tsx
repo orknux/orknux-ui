@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { SessionUser } from './api/session';
 import type { PagePath } from './navigation';
 import { AdminAuditPage } from './pages/admin/AdminAuditPage';
+import { AdminMcpPage } from './pages/admin/AdminMcpPage';
 import { AdminDoctorPage } from './pages/admin/AdminDoctorPage';
 import { AdminIntegrationsPage } from './pages/admin/AdminIntegrationsPage';
 import { AdminLibrariesPage } from './pages/admin/AdminLibrariesPage';
@@ -67,6 +68,7 @@ import { WorkflowEditorPage } from './pages/workspace/WorkflowEditorPage';
 import { WorkflowSettingsPage } from './pages/workspace/WorkflowSettingsPage';
 import { WorkspaceActionsPage } from './pages/workspace/WorkspaceActionsPage';
 import { WorkspaceAuditPage } from './pages/workspace/WorkspaceAuditPage';
+import { WorkspaceMcpPage } from './pages/workspace/WorkspaceMcpPage';
 import { WorkspaceConditionsPage } from './pages/workspace/WorkspaceConditionsPage';
 import { WorkspaceFunctionsPage } from './pages/workspace/WorkspaceFunctionsPage';
 import { WorkspaceIntegrationsPage } from './pages/workspace/WorkspaceIntegrationsPage';
@@ -163,6 +165,7 @@ export const PAGE_ELEMENTS: Record<PagePath, PageElement> = {
   '/workspace/:workspaceId/models': (session, onSignOut) => <WorkspaceModelsPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/integrations': (session, onSignOut) => <WorkspaceIntegrationsPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/audit': (session, onSignOut) => <WorkspaceAuditPage session={session} onSignOut={onSignOut} />,
+  '/workspace/:workspaceId/mcp': (session, onSignOut) => <WorkspaceMcpPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/settings': (session, onSignOut) => <WorkspaceSettingsPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/executions/:executionId': (session, onSignOut) => <ExecutionDetailPage session={session} onSignOut={onSignOut} />,
   /* Before the one with an id in it: `new` is a page, not an action called new. */
@@ -195,6 +198,7 @@ export const PAGE_ELEMENTS: Record<PagePath, PageElement> = {
   '/docs/:page': (session, onSignOut) => <DocsPage session={session} onSignOut={onSignOut} />,
   '/admin': (session, onSignOut) => <AdminPage session={session} onSignOut={onSignOut} />,
   '/admin/audit': (session, onSignOut) => <AdminAuditPage session={session} onSignOut={onSignOut} />,
+  '/admin/mcp': (session, onSignOut) => <AdminMcpPage session={session} onSignOut={onSignOut} />,
   '/admin/integrations': (session, onSignOut) => <AdminIntegrationsPage session={session} onSignOut={onSignOut} />,
   '/admin/plugins': (session, onSignOut) => <AdminPluginsPage session={session} onSignOut={onSignOut} />,
   '/admin/libraries': (session, onSignOut) => <AdminLibrariesPage session={session} onSignOut={onSignOut} />,

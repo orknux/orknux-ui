@@ -2726,6 +2726,11 @@ export const TESTS = [
     /* Two tabs of one person; waits out the away delay, about half a minute. */
   },
   {
+    name: 'mcp-clients-check',
+    what: "Admin -> MCP lists every workspace's MCP clients with their address, host name, token and calls, picking one shows its calls, and a workspace's MCP page lists only its own",
+    needs: ['workspace'],
+  },
+  {
     name: 'mcp-connect-check',
     what: "Orknux MCP sits left of Ask AI and level with it, opens this workspace's MCP address with where a token is made and each client's own setup, and the attribution strip ends short of both buttons",
     needs: ['workspace'],

@@ -1,0 +1,210 @@
+.view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  width: 100%;
+  min-width: 0;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-16);
+}
+
+.summary {
+  font-weight: 600;
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.watch {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-8);
+  margin-left: auto;
+}
+
+.refresh {
+  composes: rowAction from '../styles/rowAction.module.css';
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-20);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+}
+
+.cardHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.cardTitle {
+  margin: 0;
+  font-weight: 600;
+  font-size: var(--text-lg);
+  color: var(--color-text-primary);
+}
+
+.cardHead .toggle {
+  margin-left: auto;
+}
+
+/* A table wider than the page scrolls inside its card, never the page. */
+.scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}
+
+.table th {
+  padding: var(--space-8) var(--space-12);
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  letter-spacing: 0.55px;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--color-text-muted);
+}
+
+.table td {
+  padding: var(--space-10) var(--space-12);
+  vertical-align: top;
+  border-top: 1px solid var(--color-border);
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.clickable:hover td {
+  background: var(--color-surface-hover, rgba(255, 255, 255, 0.03));
+}
+
+.chosen td {
+  background: var(--color-accent-brand-soft, rgba(139, 92, 246, 0.12));
+}
+
+.strong {
+  display: block;
+  font-weight: 500;
+}
+
+.sub {
+  display: block;
+  max-width: 240px;
+  overflow: hidden;
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--color-text-muted);
+}
+
+.muted {
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.when {
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  color: var(--color-text-secondary);
+}
+
+.number {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.table th.number {
+  text-align: right;
+}
+
+.arguments code {
+  display: block;
+  max-width: 300px;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--color-text-secondary);
+}
+
+.pill {
+  display: inline-block;
+  padding: 2px var(--space-8);
+  font-weight: 600;
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  border-radius: var(--radius-full);
+}
+
+.pillOk {
+  color: var(--color-success);
+  background: var(--color-success-soft);
+}
+
+.pillFailed {
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
+
+.pillQuiet {
+  color: var(--color-text-muted);
+  background: var(--color-surface-raised, rgba(255, 255, 255, 0.06));
+}
+
+.chip {
+  padding: var(--space-4) var(--space-10);
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  background: var(--color-accent-brand-soft, rgba(139, 92, 246, 0.12));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+}
+
+.notice {
+  margin: 0;
+  padding: var(--space-12) 0;
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+}
+
+.noticeError {
+  color: var(--color-danger);
+}

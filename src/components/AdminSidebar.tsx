@@ -9,6 +9,7 @@ import layersIcon from '../assets/layers.svg';
 import packageIcon from '../assets/package.svg';
 import plugIcon from '../assets/plug.svg';
 import puzzleIcon from '../assets/puzzle.svg';
+import radarIcon from '../assets/radar.svg';
 import settingsIcon from '../assets/settings.svg';
 import stethoscopeIcon from '../assets/activity.svg';
 import shieldIcon from '../assets/lock-keyhole.svg';
@@ -22,6 +23,7 @@ export type AdminSection =
   | 'users'
   | 'roles'
   | 'audit'
+  | 'mcp'
   | 'integrations'
   | 'plugins'
   | 'libraries'
@@ -48,6 +50,8 @@ export function AdminSidebar({ active }: { active: AdminSection }) {
         active={active === 'audit'}
         to="/admin/audit"
       />
+      {/* Beside the Audit Log: both say who did what, and this one who came in over MCP and from where. */}
+      <SidebarNavItem label={t('MCP')} icon={radarIcon} active={active === 'mcp'} to="/admin/mcp" />
       <SidebarNavItem
         label={t('Integrations')}
         icon={plugIcon}
