@@ -3,7 +3,7 @@ import { AdminSidebar } from '../../components/AdminSidebar';
 import { AppShell } from '../../components/AppShell';
 import { McpClients } from '../../components/McpClients';
 import { shellUser } from '../../session/user';
-import styles from '../workspace/WorkspaceMcpPage.module.css';
+import styles from './AdminMcpPage.module.css';
 import { t } from '../../i18n';
 
 export interface AdminMcpPageProps {

@@ -272,6 +272,18 @@ const IN_THE_OPEN = [
     why: "the Custom choice's own label for the list under it: what ticking a tool means, and that outside MCP the token only reads",
   },
   {
+    file: 'src/components/AccessTokens.tsx',
+    says: 'Every workspace you can see. Add one to hold the token to the ones listed.',
+    because: 'status',
+    why: 'what the Custom token reaches while its list of workspaces is empty, in the place the list would be',
+  },
+  {
+    file: 'src/components/McpConnect.tsx',
+    says: 'A directory account cannot make its own. An administrator makes it under',
+    because: 'label',
+    why: "the connect dialog's token step for a directory account, which cannot make one: who does, and where, around the link to it",
+  },
+  {
     file: 'src/components/McpConnect.tsx',
     says: '. It is you by another door',
     because: 'label',

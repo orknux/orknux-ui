@@ -547,7 +547,6 @@ export const PL: Record<string, string> = {
   "Remove?": "Usunąć?",
   "Edit": "Edytuj",
   "Add": "Dodaj",
-  "Add this one": "Dodaj ten",
   "+ New": "+ Nowy",
   "New": "Nowy",
   "Copy": "Kopiuj",

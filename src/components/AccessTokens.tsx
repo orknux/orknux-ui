@@ -15,12 +15,21 @@ import { Select } from './Select';
 const SERVER_SUFFIX = '__*';
 
 /** The quick filters over the tools, in the order they are drawn; a source with no tools draws no chip. */
-const SOURCES: { source: McpToolSource; label: string }[] = [
-  { source: 'MCP_SERVER', label: 'MCP servers' },
-  { source: 'BUILT_IN', label: 'Built-in' },
-  { source: 'PLUGIN', label: 'Plugins' },
-  { source: 'WORKSPACE', label: 'Workspace tools' },
-];
+const SOURCES: McpToolSource[] = ['MCP_SERVER', 'BUILT_IN', 'PLUGIN', 'WORKSPACE'];
+
+/** A source's chip, said where it is drawn so the language chosen is the one read - and so the catalogue check sees each sentence. */
+function sourceLabel(source: McpToolSource): string {
+  switch (source) {
+    case 'MCP_SERVER':
+      return t('MCP servers');
+    case 'BUILT_IN':
+      return t('Built-in');
+    case 'PLUGIN':
+      return t('Plugins');
+    case 'WORKSPACE':
+      return t('Workspace tools');
+  }
+}
 
 export interface AccessTokensProps {
   /**
@@ -108,7 +117,7 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
   /** The workspaces not on a row yet, which is what + Add Workspace offers next. */
   const unplaced = (places ?? []).filter((one) => !placeIds.includes(one.id));
   /** The sources the catalogue holds tools from, each with how many, for the quick filters. */
-  const sources = SOURCES.map((one) => ({ ...one, count: (catalog ?? []).filter((tool) => tool.source === one.source).length })).filter(
+  const sources = SOURCES.map((source) => ({ source, count: (catalog ?? []).filter((tool) => tool.source === source).length })).filter(
     (one) => one.count > 0,
   );
 
@@ -360,7 +369,7 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
                   }
                   data-source={one.source}
                 >
-                  {t(one.label)} <span className={styles.customCount}>{one.count}</span>
+                  {sourceLabel(one.source)} <span className={styles.customCount}>{one.count}</span>
                 </button>
               ))}
             </div>
