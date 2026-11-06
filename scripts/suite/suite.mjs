@@ -4475,6 +4475,18 @@ export const TESTS = [
     // Builds and deletes a scratch tool of its own, so nothing else is edited.
   },
   {
+    name: 'python-function-check',
+    what: 'a workspace function written in Python is chosen while it is a stub, follows its panel, validates, is created and runs',
+    needs: ['workspace'],
+    // Makes its function in the editor and deletes it through the API.
+  },
+  {
+    name: 'python-tool-check',
+    what: 'a tool written in Python is made from the dialog, edited, validated by the Python parser and saved',
+    needs: ['workspace'],
+    // Makes its tool through the dialog and deletes it through the API.
+  },
+  {
     name: 'function-run-check',
     what: 'running a function from its editor, with parameters, and reading what came back',
     needs: ['workspace'],

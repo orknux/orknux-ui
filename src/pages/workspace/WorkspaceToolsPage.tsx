@@ -5,7 +5,7 @@ import { fetchPluginTools } from '../../api/plugins';
 import type { PluginAgentTool } from '../../api/plugins';
 import type { SessionUser } from '../../api/session';
 import { createTool, fetchWorkspaceTools, setToolEnabled, timeAgo } from '../../api/tools';
-import type { Tool, ToolOrder } from '../../api/tools';
+import type { Tool, CodeLanguage, ToolOrder } from '../../api/tools';
 import externalLinkIcon from '../../assets/external-link.svg';
 import settingsIcon from '../../assets/settings-14.svg';
 import toggleOffIcon from '../../assets/toggle-off.svg';
@@ -32,6 +32,7 @@ import { useTableSort } from '../../components/tableSort';
 import { useSieve } from '../../components/sieve';
 import { shellUser } from '../../session/user';
 import styles from './CatalogueTable.module.css';
+import dialogStyles from '../../components/Dialog.module.css';
 import { t } from '../../i18n';
 import { Select } from '../../components/Select';
 
@@ -98,6 +99,8 @@ export function WorkspaceToolsPage({ session, onSignOut }: WorkspaceToolsPagePro
   const [pluginChoices, setPluginChoices] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  /** What the tool being made will be written in; decided here, at its birth. */
+  const [language, setLanguage] = useState<CodeLanguage>('TYPESCRIPT');
 
   useEffect(() => {
     let current = true;
@@ -431,14 +434,31 @@ export function WorkspaceToolsPage({ session, onSignOut }: WorkspaceToolsPagePro
       <NameDialog
         open={creating}
         title={t('Create Tool')}
-        message={t("A tool is JavaScript an agent may call while it runs.")}
+        message={t('A tool is code an agent may call while it runs, written in TypeScript or Python.')}
         nameLabel="Name"
         namePlaceholder="httpRequest"
         descriptionPlaceholder={t("Make HTTP requests to external APIs")}
         submitLabel={t("Create Tool")}
         onClose={() => setCreating(false)}
+        fields={
+          <div className={dialogStyles.field}>
+            <label className={dialogStyles.label} htmlFor="new-tool-language">
+              {t('Language')}
+            </label>
+            <Select
+              id="new-tool-language"
+              className={dialogStyles.input}
+              value={language}
+              data-testid="new-tool-language"
+              onChange={(chosen) => setLanguage(chosen === 'PYTHON' ? 'PYTHON' : 'TYPESCRIPT')}
+            >
+              <option value="TYPESCRIPT">TypeScript</option>
+              <option value="PYTHON">Python</option>
+            </Select>
+          </div>
+        }
         onSubmit={async (name, description) => {
-          const created = await createTool(workspaceId, { name, description: description || undefined });
+          const created = await createTool(workspaceId, { name, description: description || undefined, language });
           navigate(`/workspace/${workspaceId}/tools/${created.id}`);
         }}
       />

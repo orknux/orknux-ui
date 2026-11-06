@@ -42,9 +42,11 @@ export interface Tool {
    * characters at most, or null where nobody wrote one. Issue #481.
    */
   summary: string | null;
-  /** The JavaScript that runs. */
+  /** What it is written in. Python runs as written, so its two halves are the same text. */
+  language: CodeLanguage;
+  /** What runs: the JavaScript compiled from `typescript`, or the Python as written. */
   source: string;
-  /** The TypeScript it was compiled from, which is what the editor opens. */
+  /** What the editor opens: the TypeScript it was compiled from, or the Python. */
   typescript: string;
   /** What it takes, in the order the sandbox passes it. */
   params: ToolParam[];
@@ -97,7 +99,7 @@ function asInput(param: ToolParam): { name: string; type: ValueType; objectId?: 
 }
 
 const TOOL_FIELDS =
-  'id workspaceId name description summary source typescript ' +
+  'id workspaceId name description summary language source typescript ' +
   'params { name type objectId objectName } ' +
   'externals { variableId name type } ' +
   'imports { functionId name function { name description signature returnType returnObjectName } } ' +
@@ -146,10 +148,15 @@ export async function fetchTool(id: string): Promise<Tool | null> {
   return data.tool;
 }
 
+/** What a tool is written in. */
+export type CodeLanguage = 'TYPESCRIPT' | 'PYTHON';
+
 export interface CreateToolInput {
   name: string;
   description?: string;
   summary?: string;
+  /** Left out means TypeScript. */
+  language?: CodeLanguage;
   /**
    * The compiled JavaScript. Sent together with `typescript` or not at all: a
    * tool whose halves were written apart is one whose editor and sandbox
@@ -187,6 +194,8 @@ export interface UpdateToolInput {
   name?: string;
   description?: string;
   summary?: string;
+  /** Left out leaves it alone; a new one comes with code written in it. */
+  language?: CodeLanguage;
   /** The compiled JavaScript. Sent together with `typescript` or not at all. */
   source?: string;
   typescript?: string;
@@ -244,12 +253,16 @@ export async function setToolTimeout(id: string, seconds: number | null): Promis
   return data.setToolTimeout;
 }
 
-export async function validateToolSource(workspaceId: string, source: string): Promise<SourceValidation> {
+export async function validateToolSource(
+  workspaceId: string,
+  source: string,
+  language: CodeLanguage = 'TYPESCRIPT',
+): Promise<SourceValidation> {
   const data = await graphql<{ validateToolSource: SourceValidation }>(
-    `mutation ValidateToolSource($workspaceId: ID!, $source: String!) {
-       validateToolSource(workspaceId: $workspaceId, source: $source) { valid message line column }
+    `mutation ValidateToolSource($workspaceId: ID!, $source: String!, $language: CodeLanguage) {
+       validateToolSource(workspaceId: $workspaceId, source: $source, language: $language) { valid message line column }
      }`,
-    { workspaceId, source },
+    { workspaceId, source, language },
   );
   return data.validateToolSource;
 }
@@ -315,6 +328,64 @@ export function withToolParameters(source: string, name: string, declarations: s
   const wanted = declarations.join(', ');
   if (source.slice(found.from, found.to) === wanted) return source;
   return source.slice(0, found.from) + wanted + source.slice(found.to);
+}
+
+/**
+ * The same Python, its `def main(...)` taking exactly these parameters.
+ *
+ * The Python twin of `withToolParameters`. A parameter already written is kept
+ * as it was written - a default or an annotation on it survives - and only the
+ * list's names and order follow the panel. Code with no `def main(` this can
+ * find is left as it was.
+ */
+export function withPythonParameters(source: string, names: string[]): string {
+  const opened = /^def\s+main\s*\(/m.exec(source);
+  if (opened === null) return source;
+  const from = opened.index + opened[0].length;
+  let depth = 1;
+  let to = -1;
+  for (let at = from; at < source.length; at += 1) {
+    const ch = source[at];
+    if (ch === '(' || ch === '[' || ch === '{') depth += 1;
+    else if (ch === ')' || ch === ']' || ch === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        to = at;
+        break;
+      }
+    }
+  }
+  if (to === -1) return source;
+
+  const written = splitParameters(source.slice(from, to)).map((piece) => piece.trim()).filter((piece) => piece !== '');
+  const nameOf = (piece: string) => piece.split(/[=:]/)[0].trim();
+  const wanted = names.map((name) => written.find((piece) => nameOf(piece) === name) ?? name).join(', ');
+  if (written.join(', ') === wanted) return source;
+  return source.slice(0, from) + wanted + source.slice(to);
+}
+
+/**
+ * The names a Python `def main(...)` takes, in order, or null where there is
+ * no such line this can read - mid-edit, usually.
+ */
+export function pythonParameterNames(source: string): string[] | null {
+  const opened = /^def\s+main\s*\(/m.exec(source);
+  if (opened === null) return null;
+  const from = opened.index + opened[0].length;
+  let depth = 1;
+  for (let at = from; at < source.length; at += 1) {
+    const ch = source[at];
+    if (ch === '(' || ch === '[' || ch === '{') depth += 1;
+    else if (ch === ')' || ch === ']' || ch === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        return splitParameters(source.slice(from, at))
+          .map((piece) => piece.split(/[=:]/)[0].trim())
+          .filter((piece) => piece !== '' && piece !== '*' && piece !== '/');
+      }
+    }
+  }
+  return null;
 }
 
 /**

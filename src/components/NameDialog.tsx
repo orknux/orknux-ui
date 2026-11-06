@@ -29,6 +29,8 @@ export interface NameDialogProps {
   onSubmit: (name: string, description: string) => Promise<void>;
   /** Another way to make the thing, offered at the foot beside Cancel: a button that opens its own dialog. */
   extra?: ReactNode;
+  /** More fields, under the description, for a thing that is decided at birth - a tool's language. */
+  fields?: ReactNode;
   /** What the Name box holds when it opens; empty where nothing would be accepted as a start. */
   initialName?: string;
   /**
@@ -55,7 +57,7 @@ export function NameDialog({
   descriptionPlaceholder,
   submitLabel,
   onClose,
-  onSubmit, placement = 'modal', extra, initialName = '', besideRight }: NameDialogProps) {
+  onSubmit, placement = 'modal', extra, fields, initialName = '', besideRight }: NameDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   const [name, setName] = useState('');
@@ -150,6 +152,7 @@ export function NameDialog({
               />
             </div>
           </div>
+          {fields}
         </div>
 
         {error !== null && (

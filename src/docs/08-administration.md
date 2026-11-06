@@ -1169,11 +1169,11 @@ says which of them is wrong rather than that something is.
 
 ![The plugins loaded into this installation](/screens/plugins.png)
 
-JavaScript loaded into the sandbox to give workflows functions the platform does
+Code loaded into the sandbox to give workflows functions the platform does
 not ship. A plugin can be installed from the marketplace, uploaded, fetched from
 a URL, or written from the starter this server generates — in JavaScript or
 TypeScript — and downloaded again later as whichever of the two it was written
-in.
+in. A plugin can also be written in **Python**; see *A plugin in Python* below.
 
 A plugin brings more than functions. It may also bring **tools** an agent can be
 granted, which appear in the workspace's Tools list with the plugin's name
@@ -1227,6 +1227,49 @@ whose readers should be on the record. Saving the box empty clears it.
 What a plugin can reach is exactly that list and nothing else. There is no way
 for one to ask the server for anything it was not given, which is why declaring
 parameters is also the answer to "what data does this plugin see?".
+
+### A plugin in Python
+
+A Python plugin is one `.py` file - or a zip with that file at its root - that
+imports its base class from `orknux` and defines one class extending it. It
+declares what a JavaScript plugin declares, in the same shapes and under the
+same rules, written in snake_case:
+
+```python
+from orknux import OrknuxPlugin, OrknuxFunction, OrknuxFunctionTool, OrknuxParameter
+
+class Words(OrknuxPlugin):
+    def id(self):
+        return 'words'
+
+    def api_version(self):
+        return 1
+
+    def parameters(self):
+        return [OrknuxParameter('greeting', 'string', required=False)]
+
+    def functions(self):
+        return [OrknuxFunction('count', self.count, 'number',
+                               description='How many words a text has',
+                               params=[{'name': 'text', 'type': 'string'}])]
+
+    def tools(self):
+        return [OrknuxFunctionTool('count', description='Counts the words in a text')]
+
+    def count(self, text):
+        return len(text.split())
+```
+
+`self.settings` holds what the workspace answered, and `orknux` the same helpers
+a JavaScript plugin has - reaching outside only by the capabilities it declared
+and somebody accepted. Skills, objects, types, actions and connection types are
+declared the same way, as `OrknuxSkill`, `OrknuxObject`, `OrknuxType` or plain
+dicts. It is checked by the same reader as a JavaScript plugin when it is
+loaded, so a declaration the contract refuses is refused in the same words.
+
+Two things differ. A Python plugin is **one file**: it cannot ship libraries.
+And `permissions()` has nothing to switch on - the builtins it names are
+JavaScript's. A Python plugin is downloaded again as the `.py` it was.
 
 ### What a plugin may use
 

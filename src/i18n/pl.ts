@@ -1333,7 +1333,10 @@ export const PL: Record<string, string> = {
   "A reusable block a workflow node points at. What it asks for follows its type, and the parameters below are read off those settings.": "Blok wielokrotnego użytku, na który wskazuje węzeł przepływu pracy. To, o co pyta, wynika z jego rodzaju, a parametry poniżej odczytywane są z tych ustawień.",
   "A reusable question, for workflow branching and action triggers. What it asks is read off the definition below and shown wherever the condition is used.": "Pytanie wielokrotnego użytku, do rozgałęziania przepływów pracy i wyzwalania akcji. To, o co pyta, odczytywane jest z definicji poniżej i pokazywane wszędzie tam, gdzie warunek jest używany.",
   "An object names a shape — what a trigger emits, or what a function takes — so a mapping can be offered instead of typed blind.": "Obiekt nazywa kształt — to, co emituje wyzwalacz, albo to, co przyjmuje funkcja — dzięki czemu odwzorowanie można zaproponować, zamiast wpisywać je na ślepo.",
-  "A tool is JavaScript an agent may call while it runs.": "Narzędzie to JavaScript, który agent może wywołać w trakcie działania.",
+  'A tool is code an agent may call while it runs, written in TypeScript or Python.':
+    'Narzędzie to kod, który agent może wywołać w trakcie działania, napisany w TypeScripcie albo w Pythonie.',
+  "the sandbox's Python parser accepts the code": 'parser Pythona w piaskownicy akceptuje ten kod',
+  'The language is chosen before the code is written': 'Język wybiera się, zanim powstanie kod',
   "An agent calling this tool fills these in by name. The declaration below takes them in this order.": "Agent wywołujący to narzędzie wypełnia je po nazwie. Deklaracja poniżej przyjmuje je w tej kolejności.",
   "This one has no fields yet, so any JSON matches it. Open it in Objects to say what a caller has to send.": "Ten nie ma jeszcze pól, więc pasuje do niego dowolny JSON. Otwórz go w Obiektach, aby powiedzieć, co ma przysłać wywołujący.",
   "A caller the function turns down is answered 401, and the refusal is written into this trigger's history.": "Wywołujący odrzucony przez funkcję dostaje odpowiedź 401, a odmowa zapisywana jest w historii tego wyzwalacza.",

@@ -19,6 +19,7 @@ import {
   sameParameters,
   setFunctionTimeout,
   starterSource,
+  pythonStarterSource,
   tsType,
   updateFunction,
   validateFunctionSource,
@@ -29,6 +30,8 @@ import {
 } from '../../api/functions';
 import type { FunctionParam, ScriptImport, WorkspaceFunction } from '../../api/functions';
 import { askFunction, functionCompletion } from '../../api/functions';
+import { pythonParameterNames, withPythonParameters } from '../../api/tools';
+import type { CodeLanguage } from '../../api/tools';
 import type { EditorTurn } from '../../api/attachments';
 import { fetchWorkspace } from '../../api/workspaces';
 import { CompletionSwitch } from '../../components/CompletionSwitch';
@@ -231,6 +234,15 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
   const [timeoutSeconds, setTimeoutSeconds] = useState('');
   /** The left column: what somebody writes. */
   const [source, setSource] = useState('');
+  /** What a function being created will be written in; one that exists says so itself. */
+  const [newLanguage, setNewLanguage] = useState<CodeLanguage>('TYPESCRIPT');
+  /**
+   * Whether this function is Python. Then nothing is compiled, the declaration
+   * kept in step with the panel is `def main(...)` and names alone, and there
+   * are no imports, because what a function imports is JavaScript.
+   */
+  const language: CodeLanguage = creating ? newLanguage : (fn?.language ?? 'TYPESCRIPT');
+  const python = language === 'PYTHON';
   /*
    * Map, not object, until something says otherwise.
    *
@@ -711,7 +723,7 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
     try {
       const answered = await askFunction(
         workspaceId,
-        { functionId: creating ? null : functionId, name: creating ? name.trim() : (fn?.name ?? ''), code: source },
+        { functionId: creating ? null : functionId, name: creating ? name.trim() : (fn?.name ?? ''), code: source, language },
         modelId,
         sent,
       );
@@ -753,7 +765,8 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
     if (offered === null || saving) return;
     setSaving(true);
     try {
-      const emitted = await compile(offered.code);
+      // Python is not compiled: what was offered is what runs, and the server parses it when it is saved.
+      const emitted = python ? { ok: true as const, javascript: offered.code } : await compile(offered.code);
       if (!emitted.ok) {
         const reason = emitted.line === null ? emitted.reason : `line ${emitted.line}: ${emitted.reason}`;
         failOffer(
@@ -774,7 +787,7 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
        * A declaration this cannot describe is refused rather than half-saved,
        * with what is wrong with it, which the assistant is then told.
        */
-      const read = parametersOf(offered.code, handed, objects, params);
+      const read = readParameters(offered.code);
       if ('problem' in read) {
         failOffer(
           `The parameters could not be read — ${read.problem}.`,
@@ -916,17 +929,42 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
   );
 
   const declarations = useMemo(
-    () => [
-      ...params
-        .filter((param) => param.name.trim() !== '')
-        .map((param) => `${param.name.trim()}: ${tsType(param.type, objectNameOf(param.objectId))}`),
-      ...externals.map((variableId) => {
-        const held = variables.find((candidate) => candidate.id === variableId);
-        return held === undefined ? 'external: string' : `${held.name}: ${held.type.toLowerCase()}`;
-      }),
-    ],
-    [params, externals, variables, objects],
+    () =>
+      python
+        ? // Python's list is names alone: the types are the panel's to say.
+          [
+            ...params.filter((param) => param.name.trim() !== '').map((param) => param.name.trim()),
+            ...externals.map((variableId) => variables.find((candidate) => candidate.id === variableId)?.name ?? 'external'),
+          ]
+        : [
+            ...params
+              .filter((param) => param.name.trim() !== '')
+              .map((param) => `${param.name.trim()}: ${tsType(param.type, objectNameOf(param.objectId))}`),
+            ...externals.map((variableId) => {
+              const held = variables.find((candidate) => candidate.id === variableId);
+              return held === undefined ? 'external: string' : `${held.name}: ${held.type.toLowerCase()}`;
+            }),
+          ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [python, params, externals, variables, objects],
   );
+
+  /**
+   * The parameter list, read back off code: the TypeScript declaration, or for
+   * Python the names `def main(...)` takes. A Python name says no type, so a
+   * parameter already in the panel keeps the one it has there, and a new one
+   * starts as a string; the workspace's variables are the last names, by count.
+   */
+  function readParameters(code: string): { params: FunctionParam[] } | { problem: string } {
+    if (!python) return parametersOf(code, handed, objects, params);
+    const names = pythonParameterNames(code);
+    if (names === null) return { problem: 'there is no def main(...) line to read' };
+    if (names.length < handed.length) {
+      return { problem: 'the workspace variables it is handed have to come last in def main(...)' };
+    }
+    const own = names.slice(0, names.length - handed.length);
+    return { params: own.map((one) => params.find((held) => held.name.trim() === one) ?? { name: one, type: 'STRING' }) };
+  }
 
   /**
    * Whether the panel says something about the parameters the server has not
@@ -1041,7 +1079,7 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
     // leave alone: the first change is somebody's own and belongs in the code.
     if (!creating && !panelMoved) return;
     setSource((current) => {
-      const next = withParameters(current, declarations);
+      const next = python ? withPythonParameters(current, declarations) : withParameters(current, declarations);
       if (next !== current) {
         // Remembered so the effect below does not read this page's own rewrite
         // back as somebody having edited the declaration by hand.
@@ -1050,7 +1088,7 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
       }
       return next;
     });
-  }, [fn, creating, declarations, panelMoved]);
+  }, [fn, creating, python, declarations, panelMoved]);
 
   /**
    * The declaration this page wrote into the code, so it is not read back as an
@@ -1103,7 +1141,7 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
        * this page last wrote, so telling it the new name means it sees nothing
        * to do rather than rewriting the declaration back.
        */
-      const written = sourceName(source);
+      const written = python ? null : sourceName(source);
       // Only somebody's own edit. Code that is still exactly what was
       // opened has not been renamed by anybody, however much it
       // disagrees with the details beside it.
@@ -1121,7 +1159,7 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
        * read back where the panel names an object keeps the object, by the
        * parameters' rule, since an unresolved object is written as a map.
        */
-      const returned = returnTypeOf(source, objects);
+      const returned = python ? null : returnTypeOf(source, objects);
       if (
         returned !== null &&
         !(returned.type === 'MAP' && returnType === 'OBJECT') &&
@@ -1132,7 +1170,7 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
         setSaved(false);
       }
 
-      const read = parametersOf(source, handed, objects, params);
+      const read = readParameters(source);
       if ('problem' in read) return;
       if (sameParameters(declared(read.params), declared(params))) return;
       setParams(read.params);
@@ -1159,13 +1197,19 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
    */
   const stub = useMemo(
     () =>
-      starterSource(
-        identifier(name),
-        declarations,
-        params.filter((param) => param.name.trim() !== '').map((param) => param.name.trim()),
-        returnType,
-      ),
-    [name, declarations, params, returnType],
+      python
+        ? pythonStarterSource(
+            declarations,
+            params.filter((param) => param.name.trim() !== '').map((param) => param.name.trim()),
+            returnType,
+          )
+        : starterSource(
+            identifier(name),
+            declarations,
+            params.filter((param) => param.name.trim() !== '').map((param) => param.name.trim()),
+            returnType,
+          ),
+    [python, name, declarations, params, returnType],
   );
 
   /*
@@ -1219,6 +1263,7 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
     const was = declaredAs.current;
     declaredAs.current = now;
     if (was === null || was === now) return;
+    if (python) return;
     setSource((current) => {
       const next = withName(current, was, now);
       if (next !== current) setSaved(false);
@@ -1430,16 +1475,16 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
        * is a moment behind, and validating the version before the last keystroke
        * would answer a question nobody asked.
        */
-      const emitted = await compile(source);
+      const emitted = python ? { ok: true as const, javascript: source } : await compile(source);
       if (!emitted.ok) {
         setStatus({ ok: false, message: said(emitted.reason, emitted.line) });
         return;
       }
 
-      const checked = await validateFunctionSource(workspaceId, emitted.javascript);
+      const checked = await validateFunctionSource(workspaceId, emitted.javascript, language);
       setStatus(
         checked.valid
-          ? { ok: true, message: "the code compiles and the sandbox's parser accepts it" }
+          ? { ok: true, message: python ? t("the sandbox's Python parser accepts the code") : "the code compiles and the sandbox's parser accepts it" }
           : {
               ok: false,
               message:
@@ -1470,7 +1515,8 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
     setSaving(true);
     setSaved(false);
     try {
-      const emitted = await compile(source);
+      // Python is not compiled: what is in the column is what runs, sent as both halves.
+      const emitted = python ? { ok: true as const, javascript: source } : await compile(source);
       if (!emitted.ok) {
         setStatus({ ok: false, message: said(emitted.reason, emitted.line) });
         return false;
@@ -1479,6 +1525,7 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
       const details = {
         name: name.trim(),
         description,
+        language,
         source: emitted.javascript,
         typescript: source,
         returnType,
@@ -1487,9 +1534,9 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
         externalVariableIds: externals,
         // A row nobody has named is not an import yet, and sending it would be
         // refused for a name no code can call it by.
-        imports: named(imports),
+        imports: python ? [] : named(imports),
         // The same rule for a library: a row nobody has named is not one yet.
-        libraries: chosen(libraries),
+        libraries: python ? [] : chosen(libraries),
       };
 
       const stored = creating
@@ -1507,7 +1554,10 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
       const settled =
         wanted === (stored.timeoutSeconds ?? null) ? stored : await setFunctionTimeout(stored.id, wanted);
       setFn(settled);
-      setStatus({ ok: true, message: "the code compiles and the sandbox's parser accepts it" });
+      setStatus({
+        ok: true,
+        message: python ? t("the sandbox's Python parser accepts the code") : "the code compiles and the sandbox's parser accepts it",
+      });
       setSaved(true);
       /*
        * The same page, now with somewhere to go back to. Replaced rather than
@@ -1717,11 +1767,19 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
                   status={status}
                   saved={saved}
                   explains={
-                    <>
-                      Validate compiles the TypeScript in the column and hands the JavaScript to the parser that
-                      will actually run it — the sandbox's, not the editor's. It answers whether this function
-                      would load, and says which line stopped it if it would not. It does not run the function.
-                    </>
+                    python ? (
+                      <>
+                        Validate hands the Python in the column to the parser that will actually run it — the
+                        sandbox's. It answers whether this function would load, and says which line stopped it if it
+                        would not. It does not run the function.
+                      </>
+                    ) : (
+                      <>
+                        Validate compiles the TypeScript in the column and hands the JavaScript to the parser that
+                        will actually run it — the sandbox's, not the editor's. It answers whether this function
+                        would load, and says which line stopped it if it would not. It does not run the function.
+                      </>
+                    )
                   }
                 />
                 <button type="button" className={styles.ghostButton} onClick={handleValidate}>
@@ -2115,6 +2173,8 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
                 </div>
               </section>
 
+              {/* Python cannot call the workspace's JavaScript, so a Python function has no imports to choose. */}
+              {!python && (<>
               {/*
                 What this function calls, as opposed to what it is handed.
 
@@ -2364,6 +2424,7 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
                   </button>
                 </div>
               </section>
+              </>)}
 
               <section className={styles.panelSection}>
                 <span className={styles.headingWithHint}>
@@ -2593,7 +2654,30 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
                   onClick={() => editor.current?.format()}
                   title={`Lay the code out again (${format})`}
                 >{t('Format')}</button>
-                <span className={styles.languageBadge}>TypeScript</span>
+                {creating ? (
+                  /*
+                   * Chosen while the function is still its stub, and fixed from then on: switching
+                   * languages over code somebody wrote would throw it away, so the choice is closed
+                   * the moment they start typing.
+                   */
+                  <Select
+                    className={styles.languageBadge}
+                    value={newLanguage}
+                    aria-label={t('Language')}
+                    data-testid="function-language"
+                    disabled={source !== stub}
+                    title={source !== stub ? t('The language is chosen before the code is written') : undefined}
+                    onChange={(chosen) => {
+                      printed.current = null;
+                      setNewLanguage(chosen === 'PYTHON' ? 'PYTHON' : 'TYPESCRIPT');
+                    }}
+                  >
+                    <option value="TYPESCRIPT">TypeScript</option>
+                    <option value="PYTHON">Python</option>
+                  </Select>
+                ) : (
+                  <span className={styles.languageBadge} data-testid="function-language">{python ? 'Python' : 'TypeScript'}</span>
+                )}
               </header>
 
               {/*
@@ -2641,7 +2725,7 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
                   <CodeEditor
                     ref={editor}
                     value={source}
-                    language="typescript"
+                    language={python ? 'python' : 'typescript'}
                     ariaLabel={t('Function source')}
                     complete={
                       completing && completionPause !== null

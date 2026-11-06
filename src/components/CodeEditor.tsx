@@ -63,7 +63,7 @@ export interface CodeEditorProps {
   onChange: (value: string) => void;
   /** Line and column, 1-based, for whatever shows the caret position. */
   onCaretChange?: (line: number, column: number) => void;
-  language?: 'javascript' | 'typescript' | 'json';
+  language?: 'javascript' | 'typescript' | 'json' | 'python';
   readOnly?: boolean;
   ariaLabel?: string;
   /**
@@ -315,5 +315,6 @@ export function CodeEditor({
     if (model != null) monaco.editor.setModelLanguage(model, language);
   }, [language]);
 
-  return <div className={styles.host} ref={host} />;
+  // The language on the element, so a check can read what the editor was told without reaching into Monaco.
+  return <div className={styles.host} ref={host} data-language={language} />;
 }

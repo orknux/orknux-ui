@@ -1851,7 +1851,7 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
                   ref={picker}
                   className={styles.picker}
                   type="file"
-                  accept=".js,.mjs,.ts,.mts,.zip,text/javascript,text/plain,application/zip"
+                  accept=".js,.mjs,.ts,.mts,.py,.zip,text/javascript,text/x-python,text/plain,application/zip"
                   onChange={(event) => void onPicked(event.target.files?.[0])}
                 />
                 <div className={styles.actions}>

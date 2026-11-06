@@ -1,3 +1,4 @@
+import type { CodeLanguage } from './tools';
 import { ApiError, graphql } from './client';
 import { editorTurnsInput } from './attachments';
 import type { EditorTurn } from './attachments';
@@ -97,7 +98,9 @@ export interface WorkspaceFunction {
   plugin: FunctionPlugin | null;
   name: string;
   description: string | null;
-  /** The JavaScript that runs, compiled from the TypeScript below. */
+  /** What it is written in. Python runs as written, so its two halves are the same text. */
+  language: CodeLanguage;
+  /** What runs: the JavaScript compiled from the TypeScript below, or the Python as written. */
   source: string;
   /**
    * What it was written in. Null for a plugin's function, and for nothing else —
@@ -152,7 +155,7 @@ export interface FunctionValidation {
  * the first save turns that reading into the truth.
  */
 const FUNCTION_FIELDS =
-  `id workspaceId scope editable plugin { id name enabled } name description source typescript returnType
+  `id workspaceId scope editable plugin { id name enabled } name description language source typescript returnType
    returnObjectId returnObjectName params { name type objectId objectName }
    externals { variableId name type }
    imports { functionId name function { name description signature returnType returnObjectName } }
@@ -202,8 +205,8 @@ const SET_FUNCTION_TIMEOUT_MUTATION = `
 `;
 
 const VALIDATE_MUTATION = `
-  mutation ValidateFunctionSource($workspaceId: ID!, $source: String!) {
-    validateFunctionSource(workspaceId: $workspaceId, source: $source) { valid message line column }
+  mutation ValidateFunctionSource($workspaceId: ID!, $source: String!, $language: CodeLanguage) {
+    validateFunctionSource(workspaceId: $workspaceId, source: $source, language: $language) { valid message line column }
   }
 `;
 
@@ -315,6 +318,8 @@ export async function createFunction(input: {
   workspaceId: string;
   name: string;
   description?: string;
+  /** Left out means TypeScript. A Python function's code goes in `source` and `typescript` alike. */
+  language?: CodeLanguage;
   /**
    * The compiled JavaScript. Left out for a new function, which starts from a
    * stub the server writes in both languages; sent only with the TypeScript it
@@ -370,6 +375,8 @@ export async function duplicateFunction(fn: WorkspaceFunction): Promise<Workspac
         workspaceId: fn.workspaceId ?? '',
         name,
         description: fn.description ?? undefined,
+        // A Python function's code names no function, so renaming leaves it as it was.
+        language: fn.language,
         /*
          * Both halves, each with its own declaration renamed. Not a compile of the
          * copy's TypeScript: this runs where no editor is, and a duplicate is a copy
@@ -779,6 +786,31 @@ export function sameParameters(one: FunctionParam[], other: FunctionParam[]): bo
  * does not exist, and made the first thing anybody did after choosing nothing
  * deleting a line the editor had written a moment earlier.
  */
+/**
+ * What a new Python function says before anybody writes anything: `main`,
+ * taking the panel's parameters and the workspace's variables after them, and
+ * handing its own parameters on. Line for line what the server writes for one
+ * it is asked to start, so saving the stub does not read as the code changing.
+ */
+export function pythonStarterSource(names: string[], returned: string[], returnType: ValueType): string {
+  const lines = [
+    `def main(${names.join(', ')}):`,
+    '    # What this server will do for you, and there is nothing else:',
+    "    #   orknux.log.info('what is happening')         what you say while this runs",
+    '    #   orknux.http.get(url, headers)                a request, made by the server',
+    "    #   orknux.http.post(url, {'a': 1})              a dict body goes as JSON",
+    '    #   orknux.slack.thread(connection, ch, ts)      the messages in one thread',
+    '    #   orknux.slack.post(connection, ch, text)      send a message, or a reply',
+    "    #   orknux.connections.query({'type': 'SLACK'})  this workspace's connections",
+    "    # Each answers a dict with 'error' in it when it could not; check that first.",
+    '    # The standard library is here; files, sockets and processes are not.',
+    '',
+  ];
+  if (returnType === 'NONE') return [...lines, '    # Nothing goes on from here; this runs for what it does.', '    return None', ''].join('\n');
+  const gives = returned.length === 0 ? '{}' : `{${returned.map((one) => `'${one}': ${one}`).join(', ')}}`;
+  return [...lines, '    # What this returns is handed to the next node.', `    return ${gives}`, ''].join('\n');
+}
+
 export function starterSource(
   name: string,
   declarations: string[],
@@ -835,6 +867,8 @@ export async function updateFunction(
   input: {
     name?: string;
     description?: string;
+    /** Left out leaves it alone; a new one comes with code written in it. */
+    language?: CodeLanguage;
     /** The compiled JavaScript, sent with the TypeScript it came from. */
     source?: string;
     /** The TypeScript `source` was compiled from. Neither moves without the other. */
@@ -880,10 +914,15 @@ export async function setFunctionTimeout(id: string, seconds: number | null): Pr
 }
 
 /** The editor's Validate: answers rather than failing when the source is broken. */
-export async function validateFunctionSource(workspaceId: string, source: string): Promise<FunctionValidation> {
+export async function validateFunctionSource(
+  workspaceId: string,
+  source: string,
+  language: CodeLanguage = 'TYPESCRIPT',
+): Promise<FunctionValidation> {
   const data = await graphql<{ validateFunctionSource: FunctionValidation }>(VALIDATE_MUTATION, {
     workspaceId,
     source,
+    language,
   });
   return data.validateFunctionSource;
 }
@@ -1145,13 +1184,13 @@ export interface FunctionAnswer {
  */
 export async function askFunction(
   workspaceId: string,
-  asked: { functionId: string | null; name: string; code: string },
+  asked: { functionId: string | null; name: string; code: string; language?: CodeLanguage },
   modelId: string,
   messages: EditorTurn[],
 ): Promise<FunctionAnswer> {
   const data = await graphql<{ askFunction: FunctionAnswer }>(
-    `mutation ($workspaceId: ID!, $functionId: ID, $name: String, $code: String!, $modelId: ID!, $messages: [FunctionChatTurnInput!]!) {
-       askFunction(workspaceId: $workspaceId, functionId: $functionId, name: $name, code: $code, modelId: $modelId, messages: $messages) {
+    `mutation ($workspaceId: ID!, $functionId: ID, $name: String, $code: String!, $modelId: ID!, $messages: [FunctionChatTurnInput!]!, $language: CodeLanguage) {
+       askFunction(workspaceId: $workspaceId, functionId: $functionId, name: $name, code: $code, modelId: $modelId, messages: $messages, language: $language) {
          answer suggestion { code note }
        }
      }`,

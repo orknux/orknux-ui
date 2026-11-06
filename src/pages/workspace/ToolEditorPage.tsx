@@ -25,6 +25,7 @@ import {
   toolParametersOf,
   updateTool,
   validateToolSource,
+  withPythonParameters,
   withToolParameters,
 } from '../../api/tools';
 import type { Tool, ToolParam } from '../../api/tools';
@@ -154,6 +155,12 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
   const [offered, setOffered] = useState<{ note: string | null; code: string } | null>(null);
   /** Why the last accept did not land, shown in the bar it was pressed in. */
   const [offerFailed, setOfferFailed] = useState<string | null>(null);
+  /**
+   * Whether this tool is Python. Then nothing is compiled: the code column is
+   * what runs, the declaration the panel keeps in step is `def main(...)`, and
+   * there are no imports, because what a tool imports is JavaScript.
+   */
+  const python = tool?.language === 'PYTHON';
 
   useEffect(() => {
     if (toolId === '') return;
@@ -422,16 +429,24 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
    * and not just a label.
    */
   const declarations = useMemo(
-    () => [
-      ...params
-        .filter((param) => param.name.trim() !== '')
-        .map((param) => `${param.name.trim()}: ${tsType(param.type, objectNameOf(param.objectId))}`),
-      ...externals.map((variableId) => {
-        const held = variables.find((candidate) => candidate.id === variableId);
-        return held === undefined ? 'external: string' : `${held.name}: ${held.type.toLowerCase()}`;
-      }),
-    ],
-    [params, externals, variables, objects],
+    () =>
+      python
+        ? // Python's list is names alone: the types are the panel's to say.
+          [
+            ...params.filter((param) => param.name.trim() !== '').map((param) => param.name.trim()),
+            ...externals.map((variableId) => variables.find((candidate) => candidate.id === variableId)?.name ?? 'external'),
+          ]
+        : [
+            ...params
+              .filter((param) => param.name.trim() !== '')
+              .map((param) => `${param.name.trim()}: ${tsType(param.type, objectNameOf(param.objectId))}`),
+            ...externals.map((variableId) => {
+              const held = variables.find((candidate) => candidate.id === variableId);
+              return held === undefined ? 'external: string' : `${held.name}: ${held.type.toLowerCase()}`;
+            }),
+          ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [python, params, externals, variables, objects],
   );
 
   /**
@@ -478,11 +493,11 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
   useEffect(() => {
     if (tool === null || !panelMoved) return;
     setSource((current) => {
-      const next = withToolParameters(current, tool.name, declarations);
+      const next = python ? withPythonParameters(current, declarations) : withToolParameters(current, tool.name, declarations);
       if (next !== current) setSaved(false);
       return next;
     });
-  }, [tool, declarations, panelMoved]);
+  }, [tool, python, declarations, panelMoved]);
 
   useEffect(() => {
     function onSuggested(event: Event) {
@@ -548,6 +563,14 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
     if (offered === null || tool === null || saving) return;
     setSaving(true);
     try {
+      if (python) {
+        // Nothing to compile and no typed declaration to read: the code is what runs, and the server checks it.
+        apply(await updateTool(tool.id, { source: offered.code, typescript: offered.code }));
+        setSaved(true);
+        setStatus({ ok: true, message: t('The suggested change is saved.'), whole: true });
+        settleOffer(t('I accepted the change and it is saved.'));
+        return;
+      }
       const emitted = await compile(offered.code);
       if (!emitted.ok) {
         const reason = emitted.line === null ? emitted.reason : `line ${emitted.line}: ${emitted.reason}`;
@@ -602,6 +625,21 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
 
   async function handleValidate() {
     try {
+      if (python) {
+        const checked = await validateToolSource(workspaceId, source, 'PYTHON');
+        setStatus(
+          checked.valid
+            ? { ok: true, message: t("the sandbox's Python parser accepts the code") }
+            : {
+                ok: false,
+                message:
+                  checked.line === null
+                    ? (checked.message ?? t('Could not be parsed'))
+                    : `Line ${checked.line}: ${checked.message ?? 'could not be parsed'}`,
+              },
+        );
+        return;
+      }
       const emitted = await compile(source);
       if (!emitted.ok) {
         setStatus({
@@ -642,7 +680,8 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
     setSaveError(null);
     setSaved(false);
     try {
-      const emitted = await compile(source);
+      // Python is not compiled: what is in the column is what runs, sent as both halves.
+      const emitted = python ? { ok: true as const, javascript: source } : await compile(source);
       if (!emitted.ok) {
         setStatus({
           ok: false,
@@ -662,9 +701,9 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
         params: params.filter((param) => param.name.trim() !== ''),
         externalVariableIds: externals,
         // The same rule for an import: a row nobody has named is not one yet.
-        imports: named(imports),
+        imports: python ? [] : named(imports),
         // And for a library.
-        libraries: chosen(libraries),
+        libraries: python ? [] : chosen(libraries),
       });
       /*
        * The timeout travels apart from the rest, because the server keeps it out
@@ -677,7 +716,10 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
       const wanted = timeoutSeconds.trim() === '' ? null : Number(timeoutSeconds);
       apply(wanted === (stored.timeoutSeconds ?? null) ? stored : await setToolTimeout(stored.id, wanted));
       setSaved(true);
-      setStatus({ ok: true, message: "the code compiles and the sandbox's parser accepts it" });
+      setStatus({
+        ok: true,
+        message: python ? t("the sandbox's Python parser accepts the code") : "the code compiles and the sandbox's parser accepts it",
+      });
       return true;
     } catch (cause) {
       setSaveError(cause instanceof Error ? cause.message : t('Could not save the tool.'));
@@ -850,11 +892,19 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
               status={status}
               saved={saved}
               explains={
-                <>
-                  Validate compiles the TypeScript in the column and hands the JavaScript to the parser that will
-                  actually run it — the sandbox's, not the editor's. It answers whether this tool would load, and
-                  says which line stopped it if it would not. It does not call the tool.
-                </>
+                python ? (
+                  <>
+                    Validate hands the Python in the column to the parser that will actually run it — the
+                    sandbox's. It answers whether this tool would load, and says which line stopped it if it would
+                    not. It does not call the tool.
+                  </>
+                ) : (
+                  <>
+                    Validate compiles the TypeScript in the column and hands the JavaScript to the parser that will
+                    actually run it — the sandbox's, not the editor's. It answers whether this tool would load, and
+                    says which line stopped it if it would not. It does not call the tool.
+                  </>
+                )
               }
             />
             <button type="button" className={styles.secondaryButton} onClick={() => void handleValidate()}>{t('Validate')}</button>
@@ -884,7 +934,7 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
                   <img src={codeIcon} alt="" width={16} height={16} />
                   {t('Editor')}
                 </span>
-                <span className={styles.formatBadge}>TypeScript</span>
+                <span className={styles.formatBadge} data-testid="tool-language">{python ? 'Python' : 'TypeScript'}</span>
               </header>
 
               {/*
@@ -922,7 +972,7 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
                   <CodeEditor
                     ref={editor}
                     value={source}
-                    language="typescript"
+                    language={python ? 'python' : 'typescript'}
                     ariaLabel={t('Tool source')}
                     onChange={(next) => {
                       setSource(next);
@@ -1297,6 +1347,8 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
                 </div>
               </div>
 
+              {/* Python cannot call the workspace's JavaScript, so a Python tool has no imports to choose. */}
+              {!python && (<>
               {/*
                 What this tool calls, as opposed to what it is given.
 
@@ -1547,6 +1599,7 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
                   </button>
                 </div>
               </div>
+              </>)}
 
               {tool !== null && (
                 <div className={styles.metadata}>

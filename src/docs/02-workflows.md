@@ -528,6 +528,45 @@ Admin → Settings; without one nothing is suggested.
 **Objects** are the shapes that travel between nodes: named fields with types,
 which an object node fills in and later nodes read field by field.
 
+## Functions in Python
+
+A function can be written in **Python** instead of TypeScript. A new function's
+editor has a language picker beside the code, offered while the code is still
+the starter it opens with; once somebody has written in it the choice is
+closed, since switching would throw their code away. A function that exists
+says which it is in the same place. Changing it later means saving code
+written in the other language in the same save.
+
+A Python function defines `main`, and is called with its parameters in the
+order the panel lists them, the workspace variables it is handed after them.
+The panel and the `def main(...)` line follow each other the way a TypeScript
+declaration does - by name, since a Python parameter says no type; the panel
+holds the types. What `main` returns goes to the next node as JSON: a dict, a
+list, a string, a number, `True`, `False` or `None`.
+
+```python
+import statistics
+
+def main(scores, threshold):
+    passed = [one for one in scores if one >= threshold]
+    orknux.log.info('passed', len(passed), 'of', len(scores))
+    return {'passed': len(passed), 'mean': statistics.mean(scores) if scores else 0}
+```
+
+It runs in the same sandbox as any function, with the same limits, and is
+given the same `orknux` helpers as the global `orknux`; `print` writes to the
+run's log. The standard library is there; files, sockets, processes, threads
+and pip packages are not. Validate asks the sandbox's own Python parser, and the
+assistant beside the code and the wand both write Python for a Python function,
+and are refused if they offer anything else.
+
+**A Python function takes part in no imports.** It cannot import the
+workspace's functions or libraries, which are JavaScript, and nothing can import
+it - what an import brings in runs as JavaScript beside the code that imported
+it. A workflow reaches a Python function through an action, like any other, and
+a function something already imports stays TypeScript until the import is
+taken off.
+
 ## One function calling another
 
 What was written once and pasted into three functions can be written once. A

@@ -33,13 +33,17 @@ export interface ToolSuggestionProps {
  *
  * Accepting compiles in the browser, exactly as the tool editor's Save does:
  * what runs is the JavaScript stored beside the TypeScript it came from, and
- * there is no compiler on the server to make that pair afterwards.
+ * there is no compiler on the server to make that pair afterwards. A Python
+ * tool is not compiled: what was offered is what runs, and the server parses
+ * it as Python when it is saved.
  */
 export function ToolSuggestion({ suggestion, onSettled }: ToolSuggestionProps) {
   const [before, setBefore] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [settled, setSettled] = useState<'accepted' | 'rejected' | null>(null);
+  /** Whether the tool is Python, read with the code it has now; then nothing is compiled. */
+  const [python, setPython] = useState(false);
 
   useEffect(() => {
     let current = true;
@@ -47,6 +51,7 @@ export function ToolSuggestion({ suggestion, onSettled }: ToolSuggestionProps) {
       .then((found) => {
         if (!current) return;
         setBefore(found === null ? '' : (found.typescript ?? found.source));
+        setPython(found?.language === 'PYTHON');
       })
       .catch(() => {
         if (current) setBefore('');
@@ -61,6 +66,13 @@ export function ToolSuggestion({ suggestion, onSettled }: ToolSuggestionProps) {
     setSaving(true);
     setFailed(null);
     try {
+      if (python) {
+        await updateTool(suggestion.toolId, { source: suggestion.code, typescript: suggestion.code });
+        setSettled('accepted');
+        window.dispatchEvent(new CustomEvent('orknux:tool-saved', { detail: { id: suggestion.toolId } }));
+        onSettled(t('I accepted the change and it is saved.'));
+        return;
+      }
       const emitted = await compile(suggestion.code);
       if (!emitted.ok) {
         const reason = emitted.line === null ? emitted.reason : `line ${emitted.line}: ${emitted.reason}`;

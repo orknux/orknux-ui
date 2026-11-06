@@ -579,7 +579,7 @@ workspace's own.
 
 ![The workspace's tools](/screens/tools.png)
 
-A **tool** is JavaScript an agent may call while it answers. Unlike a function,
+A **tool** is code an agent may call while it answers. Unlike a function,
 which a workflow node calls with arguments it mapped, a tool is offered to the
 model and called if the model decides to. A tool an agent has been granted
 cannot be deleted while the grant is there, for the reason a skill catalog
@@ -606,6 +606,43 @@ Nothing is written before that, and whichever you press is said back into the
 conversation, so a change that will not compile can be answered rather than
 silently dropped. The function editor has a chat of its own instead; see
 Workflows.
+
+### Tools in Python
+
+A tool can be written in **Python** instead of TypeScript. The language is
+chosen in the **Create Tool** dialog and shown in the editor's corner; it is
+part of what the tool is, so changing it later means saving code written in the
+other language at the same time.
+
+A Python tool defines `main`, and is called with its parameters in the order the
+panel lists them, the workspace variables it is handed after them - the same
+order a TypeScript tool takes them in. Adding or renaming a parameter rewrites
+the `def main(...)` line, keeping a default written on a parameter that stays.
+What `main` returns is handed to the agent as JSON, so it has to be something
+JSON can say: a dict, a list, a string, a number, `True`, `False` or `None`.
+
+```python
+def main(text, times):
+    words = text.split()
+    orknux.log.info('counting', len(words), 'words')
+    return {'words': len(words), 'loud': (text.upper() + '!') * times}
+```
+
+It runs in the same sandbox, with the same limits, and is given the same
+`orknux` helpers - `orknux.http.get(url)`, `orknux.slack.postMessage(...)`,
+`orknux.session.store.put(...)` and the rest - as `orknux`, without importing
+anything. A helper's last options object can be written as keyword arguments,
+and one that refuses raises `OrknuxError` with the helper's own sentence.
+`print` writes to the tool's log, as `orknux.log.info` does.
+
+What it does not get is anything outside the sandbox: no files, no network but
+`orknux.http`, no processes, no threads, no native code. The Python standard
+library is there for everything that needs none of those - `json`, `re`,
+`datetime`, `math`, `statistics`, `hashlib`, `base64` and the like. A Python
+tool cannot import the workspace's functions or libraries, which are
+JavaScript, so its editor has no **Imports** or **Libraries** sections. The
+first Python call after the server starts takes a second or two while Python is
+loaded; after that a call costs about what a TypeScript one does.
 
 ### What an MCP server brings
 
