@@ -2617,6 +2617,12 @@ export const TESTS = [
     /* Makes its own document and wireframe and removes them; the picture is drawn in the page and kept as a Design picture. */
   },
   {
+    name: 'document-table-pages-check',
+    what: 'a table longer than a page breaks between its rows, so no row lies under the gap between two sheets',
+    needs: ['workspace'],
+    /* Makes its own document of a 46-row table and removes it. */
+  },
+  {
     name: 'document-assist-check',
     what: "the document editor's suggestion while typing - drawn after the caret, taken with Tab - and its grammar marks and replacements, and that switched off neither asks anything",
     needs: ['workspace'],

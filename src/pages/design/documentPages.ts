@@ -18,9 +18,16 @@ import type { EditorView } from '@tiptap/pm/view';
  * same for the block after it. Spacers are decorations, so they are never in
  * the document, never in its history and never sent anywhere.
  *
- * The unit that moves is a top-level block, or an item of a list or a quote at
- * the top level, so a long list breaks between its items. A block taller than
- * a page - a large table - runs across the gap rather than being cut.
+ * The unit that moves is a top-level block, an item of a list or a quote at
+ * the top level, or a row of a table, so a long list breaks between its items
+ * and a long table between its rows. A table was one unit until a report's
+ * table of forty rows ran across the gap between two sheets, which is drawn
+ * dark behind the document and hid the rows it lay over. A row's spacer is a
+ * row itself - a `tr` holding one empty cell across every column - because
+ * anything else inside a table body is not a table any more; the first row's
+ * spacer goes before the table, so a table that moves whole keeps its top
+ * border on the sheet it moved to. A block still taller than a page - one
+ * enormous row, a picture - runs across the gap rather than being cut.
  */
 export interface PageGeometry {
   /** The sheet, in CSS pixels. */
@@ -46,23 +53,46 @@ export interface DocumentPagesOptions {
 interface Gap {
   pos: number;
   height: number;
+  /** For a spacer between two rows of a table, how many columns its one cell spans; 0 for a block. */
+  columns: number;
+}
+
+interface Unit {
+  pos: number;
+  dom: HTMLElement;
+  breaks: boolean;
+  columns: number;
 }
 
 /** Where the blocks that may move to a new page are, in document order, with their DOM. */
-function units(view: EditorView): { pos: number; dom: HTMLElement; breaks: boolean }[] {
-  const found: { pos: number; dom: HTMLElement; breaks: boolean }[] = [];
+function units(view: EditorView): Unit[] {
+  const found: Unit[] = [];
   view.state.doc.forEach((node, offset) => {
     const dom = view.nodeDOM(offset);
     if (!(dom instanceof HTMLElement)) return;
+    if (node.type.name === 'table' && node.childCount > 1) {
+      node.forEach((row, inner) => {
+        const pos = offset + 1 + inner;
+        const rowDom = view.nodeDOM(pos);
+        if (!(rowDom instanceof HTMLElement)) return;
+        let columns = 0;
+        row.forEach((cell) => {
+          columns += Number(cell.attrs.colspan ?? 1) || 1;
+        });
+        // The first row moves the whole table, so its spacer stands before the table rather than inside it.
+        found.push(inner === 0 ? { pos: offset, dom: rowDom, breaks: false, columns: 0 } : { pos, dom: rowDom, breaks: false, columns });
+      });
+      return;
+    }
     const splits = (node.type.name === 'bulletList' || node.type.name === 'orderedList' || node.type.name === 'blockquote') && node.childCount > 1;
     if (!splits) {
-      found.push({ pos: offset, dom, breaks: node.type.name === 'pageBreak' });
+      found.push({ pos: offset, dom, breaks: node.type.name === 'pageBreak', columns: 0 });
       return;
     }
     node.forEach((child, inner) => {
       const pos = offset + 1 + inner;
       const childDom = view.nodeDOM(pos);
-      if (childDom instanceof HTMLElement) found.push({ pos, dom: childDom, breaks: false });
+      if (childDom instanceof HTMLElement) found.push({ pos, dom: childDom, breaks: false, columns: 0 });
       void child;
     });
   });
@@ -104,7 +134,7 @@ function layout(view: EditorView, geometry: PageGeometry): { gaps: Gap[]; pages:
     if (target !== page || top < contentTop(target) - 0.5) {
       const move = contentTop(target) - top;
       if (move > 0.5) {
-        gaps.push({ pos: unit.pos, height: Math.round(move) });
+        gaps.push({ pos: unit.pos, height: Math.round(move), columns: unit.columns });
         shift += Math.round(move);
         top += Math.round(move);
       }
@@ -124,13 +154,24 @@ function decorations(state: EditorState, gaps: Gap[]): DecorationSet {
       Decoration.widget(
         gap.pos,
         () => {
+          if (gap.columns > 0) {
+            // Between two rows: a row of its own, empty, borderless and out of the pointer's way.
+            const row = document.createElement('tr');
+            row.setAttribute('data-page-gap', '');
+            row.setAttribute('contenteditable', 'false');
+            const filler = document.createElement('td');
+            filler.colSpan = gap.columns;
+            filler.style.cssText = `height: ${gap.height}px; padding: 0; border: none; background: none; pointer-events: none;`;
+            row.appendChild(filler);
+            return row;
+          }
           const spacer = document.createElement('div');
           spacer.setAttribute('data-page-gap', '');
           spacer.setAttribute('contenteditable', 'false');
           spacer.style.height = `${gap.height}px`;
           return spacer;
         },
-        { side: -1, key: `gap-${gap.pos}-${gap.height}`, ignoreSelection: true },
+        { side: -1, key: `gap-${gap.pos}-${gap.height}-${gap.columns}`, ignoreSelection: true },
       ),
     ),
   );
