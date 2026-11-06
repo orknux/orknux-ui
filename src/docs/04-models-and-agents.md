@@ -1196,6 +1196,23 @@ sends, uploads or packs a file takes.
   unpacks one somebody sent into pads, so it can be read and changed.
 - **Looking.** `picture_view` shows the model the picture behind a key: an
   attachment it read, a chart it drew.
+- **Computing.** `code_run` runs a short program the model writes - Python,
+  or JavaScript - over the session's scratchpads and keys, in the sandbox
+  workspace functions run in: join a CSV with a list of IDs, count, filter,
+  rewrite every row, and write the result into a pad. It is for the work that
+  would otherwise be one tool call per row. The program can call the agent's
+  own tools too - `orknux.tools.call(name, arguments)` - so a list of ids is
+  queried a page at a time in its loop, within the agent's grants and the bounds
+  Admin Settings sets (Code run seconds, Code run tool calls), which the agent
+  is told in the tool's description. Unlike a function, the program has no web
+  requests and no Slack of its own: whatever it reaches beyond the session's
+  files, it reaches through one of the agent's tools. Switch `code_run` off on
+  an agent's Tools list and that agent runs no programs.
+
+A key is the conversation's, not one session's: an agent asked by another
+reads the keys of the conversation that asked it - an attached file, a drawn
+picture - so the asker names the key in its question rather than pasting what
+it holds. What the asked agent keeps is copied back when it answers.
 
 ![A task that drew a mountain lake and a city at night, laid them out as a PDF and
 saved it: under its outcome the pictures, and the saved PDF drawn small by its
