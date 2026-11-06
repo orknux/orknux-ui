@@ -28,7 +28,7 @@ import {
   withPythonParameters,
   withToolParameters,
 } from '../../api/tools';
-import type { Tool, ToolParam } from '../../api/tools';
+import type { CodeLanguage, Tool, ToolParam } from '../../api/tools';
 import { VARIABLE_TYPE_LABEL } from '../../api/variables';
 import chevronDown12Icon from '../../assets/chevron-down-12.svg';
 import codeIcon from '../../assets/code.svg';
@@ -160,7 +160,16 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
    * what runs, the declaration the panel keeps in step is `def main(...)`, and
    * there are no imports, because what a tool imports is JavaScript.
    */
-  const python = tool?.language === 'PYTHON';
+  /**
+   * The language chosen on this page and not yet saved; null is the stored one.
+   * Offered only while the code is still the starter it was made with - see
+   * `starterOnly` - because switching over code somebody wrote would throw it
+   * away. A tool made as TypeScript by somebody who never saw the dialog's
+   * choice had no way to Python short of deleting it.
+   */
+  const [chosenLanguage, setChosenLanguage] = useState<CodeLanguage | null>(null);
+  const language: CodeLanguage = chosenLanguage ?? tool?.language ?? 'TYPESCRIPT';
+  const python = language === 'PYTHON';
 
   useEffect(() => {
     if (toolId === '') return;
@@ -198,6 +207,7 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
 
   function apply(found: Tool) {
     setTool(found);
+    setChosenLanguage(null);
     setName(found.name);
     setDescription(found.description ?? '');
     setSummary(found.summary ?? '');
@@ -696,6 +706,8 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
         summary: summary.trim(),
         source: emitted.javascript,
         typescript: source,
+        // Only when it moved: the server takes a new language with the code written in it, which this is.
+        ...(language !== tool.language ? { language } : {}),
         // A half-written row is not a parameter yet, and sending it would be
         // refused for a name no script can be called by.
         params: params.filter((param) => param.name.trim() !== ''),
@@ -934,7 +946,39 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
                   <img src={codeIcon} alt="" width={16} height={16} />
                   {t('Editor')}
                 </span>
-                <span className={styles.formatBadge} data-testid="tool-language">{python ? 'Python' : 'TypeScript'}</span>
+                {tool !== null && starterOnly(source) ? (
+                  <Select
+                    className={styles.languageChoice}
+                    value={language}
+                    aria-label={t('Language')}
+                    data-testid="tool-language"
+                    onChange={(chosen) => {
+                      const next: CodeLanguage = chosen === 'PYTHON' ? 'PYTHON' : 'TYPESCRIPT';
+                      if (next === language) return;
+                      setChosenLanguage(next === tool.language ? null : next);
+                      const named = params.filter((param) => param.name.trim() !== '');
+                      const held = externals.map((variableId) => variables.find((candidate) => candidate.id === variableId));
+                      // The declarations the panel keeps in step, in the language switched to.
+                      const list = next === 'PYTHON'
+                        ? [...named.map((param) => param.name.trim()), ...held.map((variable) => variable?.name ?? 'external')]
+                        : [
+                            ...named.map((param) => `${param.name.trim()}: ${tsType(param.type, objectNameOf(param.objectId))}`),
+                            ...held.map((variable) => variable === undefined ? 'external: string' : `${variable.name}: ${variable.type.toLowerCase()}`),
+                          ];
+                      setSource(starterIn(next, tool.name, list));
+                      setSaved(false);
+                    }}
+                  >
+                    <option value="TYPESCRIPT">TypeScript</option>
+                    <option value="PYTHON">Python</option>
+                  </Select>
+                ) : (
+                  <span
+                    className={styles.formatBadge}
+                    data-testid="tool-language"
+                    title={t('The language is chosen before the code is written')}
+                  >{python ? 'Python' : 'TypeScript'}</span>
+                )}
               </header>
 
               {/*
@@ -1682,4 +1726,28 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
       </SaveBar>
     </AppShell>
   );
+}
+
+/** The line both starters carry, which is how a starter is told from code somebody wrote. */
+const STARTER_NOTE = 'What this returns is handed back to the agent that called it.';
+
+/**
+ * Whether [source] is still a starter, in either language, whatever its
+ * parameter list now says - the panel rewrites that as parameters are added,
+ * and a starter with a parameter added is still nobody's code.
+ */
+function starterOnly(source: string): boolean {
+  const bare = source.replace(/\([^)]*\)/, '()').trim();
+  return (
+    /^export default async function [A-Za-z_$][\w$]*\(\) \{\s*\/\/ (.+)\s*return \{ ok: true \};\s*\}$/.exec(bare)?.[1]?.trim() === STARTER_NOTE ||
+    /^def main\(\):\s*# (.+)\s*return \{"ok": True\}$/.exec(bare)?.[1]?.trim() === STARTER_NOTE
+  );
+}
+
+/** The starter the server writes for a new tool, in [language], taking [declarations]. */
+function starterIn(language: CodeLanguage, name: string, declarations: string[]): string {
+  if (language === 'PYTHON') {
+    return `def main(${declarations.join(', ')}):\n    # ${STARTER_NOTE}\n    return {"ok": True}\n`;
+  }
+  return `export default async function ${name}(${declarations.join(', ')}) {\n  // ${STARTER_NOTE}\n  return { ok: true };\n}\n`;
 }

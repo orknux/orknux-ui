@@ -1152,3 +1152,19 @@
   border-color: color-mix(in srgb, var(--color-violet) 55%, var(--color-border));
   color: var(--color-text-primary);
 }
+
+/*
+ * The language while it can still be changed: the ordinary bordered choice,
+ * in the badge's type, so it reads as something to open rather than a label.
+ * Drawn as the plain badge it was not seen as a control at all.
+ */
+.languageChoice {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  border-color: var(--color-text-muted);
+}
+
+.languageChoice:hover {
+  border-color: var(--color-text-secondary);
+}

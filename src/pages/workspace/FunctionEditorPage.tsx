@@ -2661,7 +2661,7 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
                    * the moment they start typing.
                    */
                   <Select
-                    className={styles.languageBadge}
+                    className={styles.languageChoice}
                     value={newLanguage}
                     aria-label={t('Language')}
                     data-testid="function-language"

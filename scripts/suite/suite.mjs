@@ -4481,6 +4481,12 @@ export const TESTS = [
     // Makes its function in the editor and deletes it through the API.
   },
   {
+    name: 'tool-language-switch-check',
+    what: 'a tool still holding its starter changes language in the editor, keeps it on Save, and loses the choice once code is written',
+    needs: ['workspace'],
+    // Makes its tool and deletes it through the API.
+  },
+  {
     name: 'python-tool-check',
     what: 'a tool written in Python is made from the dialog, edited, validated by the Python parser and saved',
     needs: ['workspace'],
