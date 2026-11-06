@@ -189,6 +189,9 @@ export interface InstallationSettings {
    */
   workflowStepHeartbeatSeconds: number;
   workflowStepHeartbeatSecondsConfigured: number;
+  /** Temporal: how long one attempt at a step may take before it is asked again, in seconds. */
+  workflowStepTimeoutSeconds: number;
+  workflowStepTimeoutSecondsConfigured: number;
   /** Inline engine: how many goes an agent step cut short by restarts gets. Issue #601. */
   workflowRestartAttempts: number;
   workflowRestartAttemptsConfigured: number;
@@ -415,7 +418,7 @@ const FIELDS =
   'pluginMaxSourceKb pluginMaxSourceKbConfigured pluginTimeoutSeconds pluginTimeoutSecondsConfigured ' +
   'chatCompletionModelId chatMaxRounds chatMaxRoundsConfigured chatRetitleEvery chatRetitleEveryConfigured chatTitleSeconds chatTitleSecondsConfigured chatCompletionContextTurns chatCompletionContextTurnsConfigured chatCompletionMaxTokens chatCompletionMaxTokensConfigured chatCompletionTimeoutMillis chatCompletionTimeoutMillisConfigured chatCompletionPauseMillis chatCompletionPauseMillisConfigured chatReplySuggestions chatReplySuggestionsConfigured chatReplySuggestionsMaxTokens chatReplySuggestionsMaxTokensConfigured chatReplySuggestionsTimeoutMillis chatReplySuggestionsTimeoutMillisConfigured chatVideoMaxMb chatVideoMaxMbConfigured objectMaxDepth objectMaxDepthConfigured imageMaxPrompt imageMaxPromptConfigured imageDrawsAtOnce imageDrawsAtOnceConfigured imageHarmonizeStrength imageHarmonizeStrengthConfigured imageHarmonizeSize imageHarmonizeSizeConfigured ' +
   'agentSleepSeconds agentSleepSecondsConfigured agentSleepTimes agentSleepTimesConfigured ' +
-  'agentMaxSubagents agentMaxSubagentsConfigured agentMaxSubagentsAtOnce agentMaxSubagentsAtOnceConfigured workflowStepsAtOnce workflowStepsAtOnceConfigured workflowCallCheckSeconds workflowCallCheckSecondsConfigured workflowStepHeartbeatSeconds workflowStepHeartbeatSecondsConfigured workflowRestartAttempts workflowRestartAttemptsConfigured clusterLeaseSeconds clusterLeaseSecondsConfigured maxRepeatedToolCalls maxRepeatedToolCallsConfigured repeatedToolCallsWindowSeconds repeatedToolCallsWindowSecondsConfigured repeatedToolCallWarnings repeatedToolCallWarningsConfigured maxToolCallsAtOnce maxToolCallsAtOnceConfigured longestStoredValue longestStoredValueConfigured drawingScale drawingScaleConfigured sessionCompactAfterTokens sessionCompactAfterTokensConfigured sessionCompactionKeepTurns sessionCompactionKeepTurnsConfigured sessionCompactionSummaryTokens sessionCompactionSummaryTokensConfigured sessionCompactionAttempts sessionCompactionAttemptsConfigured scratchpadBudgetBytes scratchpadBudgetBytesConfigured commandMarker commandMarkerConfigured ' +
+  'agentMaxSubagents agentMaxSubagentsConfigured agentMaxSubagentsAtOnce agentMaxSubagentsAtOnceConfigured workflowStepsAtOnce workflowStepsAtOnceConfigured workflowCallCheckSeconds workflowCallCheckSecondsConfigured workflowStepHeartbeatSeconds workflowStepHeartbeatSecondsConfigured workflowStepTimeoutSeconds workflowStepTimeoutSecondsConfigured workflowRestartAttempts workflowRestartAttemptsConfigured clusterLeaseSeconds clusterLeaseSecondsConfigured maxRepeatedToolCalls maxRepeatedToolCallsConfigured repeatedToolCallsWindowSeconds repeatedToolCallsWindowSecondsConfigured repeatedToolCallWarnings repeatedToolCallWarningsConfigured maxToolCallsAtOnce maxToolCallsAtOnceConfigured longestStoredValue longestStoredValueConfigured drawingScale drawingScaleConfigured sessionCompactAfterTokens sessionCompactAfterTokensConfigured sessionCompactionKeepTurns sessionCompactionKeepTurnsConfigured sessionCompactionSummaryTokens sessionCompactionSummaryTokensConfigured sessionCompactionAttempts sessionCompactionAttemptsConfigured scratchpadBudgetBytes scratchpadBudgetBytesConfigured commandMarker commandMarkerConfigured ' +
   'toolsNamedInSearch toolsNamedInSearchConfigured scratchpadFileBudgetBytes scratchpadFileBudgetBytesConfigured ' +
   'scratchpadKeepDays scratchpadKeepDaysConfigured toolSummariesFullUpTo toolSummariesFullUpToConfigured ' +
   'toolSummaryTrimPercent toolSummaryTrimPercentConfigured sessionsRemovable concealedCallsHiddenInChats sessionFlaggingEnabled sessionFlagToolsAdjustable ' +
@@ -802,6 +805,17 @@ export async function setWorkflowStepsAtOnce(count: number): Promise<Installatio
     { count },
   );
   return data.setWorkflowStepsAtOnce;
+}
+
+/** How long one attempt at a step may take on Temporal before it is asked again. */
+export async function setWorkflowStepTimeoutSeconds(seconds: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setWorkflowStepTimeoutSeconds: InstallationSettings }>(
+    `mutation SetWorkflowStepTimeoutSeconds($seconds: Int!) {
+       setWorkflowStepTimeoutSeconds(seconds: $seconds) { ${FIELDS} }
+     }`,
+    { seconds },
+  );
+  return data.setWorkflowStepTimeoutSeconds;
 }
 
 /** How long a step may go without a heartbeat before Temporal hands it on. Issue #601. */

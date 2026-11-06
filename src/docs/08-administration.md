@@ -624,6 +624,16 @@ agent step was five minutes of a message going unanswered. A run already going
 takes a change up from its next step. Zero turns the heartbeat off. Between 0
 and 600 seconds; `ORKNUX_TEMPORAL_STEP_HEARTBEAT_SECONDS` is the starting value.
 
+**Step timeout** is Temporal's too: how long one attempt at a step may run
+before Temporal writes it off and asks again. An agent step is a whole turn -
+everything the agent does to answer one message - so this is how long an
+agent may work on one message, and a turn that outlasts it can lose its Slack
+reply. Thirty minutes until somebody changes it, between 60 and 86,400
+seconds; `ORKNUX_TEMPORAL_STEP_TIMEOUT_SECONDS` is the starting value. It
+bounds each turn of a task the same way. A run or task already going takes a
+change up from its next step or turn. A step that is waiting -
+for a timer, or for a person - is parked and is not held to it.
+
 **Agent step goes after a restart** is the inline engine's. There a step a
 restart cut short is failed, because nothing can say how far it got — with one
 exception: **an agent answering a message is asked again**, since a message
@@ -1035,6 +1045,7 @@ of its own here - boxes, watchers, bulkheads, HTTP tools - that chapter says mor
 | **Steps running at once** | 4 at once | 1-32 | A node with lines to several others sends the run down all of them at the same time, and where the lines meet again the node waits for every one of them. This bounds how many steps of one run are working at once; a step past it waits for another to finish. One walks the lines one after the other. |
 | **Workflow Autosave** | 300 ms | 200-10,000 | How long the workflow editor waits after the last change before it saves, so the others looking at the workflow see it. |
 | **Called workflow check** | 60 seconds | 5-3,600 | A Workflow node waits for the run it called. That run ending wakes it at once; this is how long it waits before looking again when no wake arrives. |
+| **Step timeout** | 1,800 seconds | 60-86,400 | Temporal only. How long one attempt at a step may run before Temporal writes it off and asks again; for an agent step, how long it may work on one message. A run already going takes a change up from its next step. |
 | **Step heartbeat** | 30 seconds | 0-600 | Temporal only. A step says it is still being worked on while it works, and one that falls silent for this long is handed to a server that is alive - which is how a step whose server was killed carries on. A run already going takes a change up from its next step. 0 turns the heartbeat off, and a dead server is then noticed only when the whole step timeout runs out. |
 | **Agent step goes after a restart** | 3 goes | 1-10 | Inline engine only. A step a restart cut short is failed, because nothing can say how far it got - except an agent answering a message, which is asked again so the message is answered. This is how many goes it gets in all, the ones that died included, since the step itself may be what kills the server. |
 | **Cluster lease** | 30 seconds | 5-600 | Where several servers share this database, one of them holds a lease and runs the sweeps, the checks and the Slack sockets. When it dies another takes over within this long. Keep it well above the longest pause a server takes. |

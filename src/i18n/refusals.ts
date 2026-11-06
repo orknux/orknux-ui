@@ -193,9 +193,27 @@ const PL: Record<string, string> = {
   ToolObjectRequired:
     '„{name}” jest zadeklarowane jako obiekt, ale nie wybrano żadnego. Wskaż jeden z obiektów ' +
     'tej przestrzeni roboczej albo użyj mapy dla struktury bez określonego kształtu.',
+  FunctionPythonImports:
+    '{name} jest napisana w Pythonie, a funkcja w Pythonie nie może importować funkcji ani bibliotek ' +
+    'JavaScriptu z przestrzeni roboczej',
+  FunctionLanguageNeedsCode:
+    '{name} może zmienić język na {language} tylko razem z kodem napisanym w tym języku: język funkcji ' +
+    'i jej kod zapisywane są razem',
+  FunctionImportedStaysTypeScript:
+    '{name} jest importowana przez {importers}, więc musi zostać w TypeScripcie: funkcji w Pythonie nie ' +
+    'można importować',
+  ImportPython:
+    '{name} jest napisana w Pythonie, więc nie można jej zaimportować: importować można tylko funkcję w ' +
+    'TypeScripcie. Wskaż ją akcją.',
   FunctionCodeIncomplete:
     'Brakuje: {missing}. TypeScript funkcji i skompilowany z niego JavaScript zapisywane są ' +
     'razem, żeby to, co się wykonuje, było zawsze tym, co napisano.',
+  ToolPythonImports:
+    '{name} jest napisane w Pythonie, a narzędzie w Pythonie nie może importować funkcji ani bibliotek ' +
+    'JavaScriptu z przestrzeni roboczej',
+  ToolLanguageNeedsCode:
+    '{name} może zmienić język na {language} tylko razem z kodem napisanym w tym języku: język narzędzia ' +
+    'i jego kod zapisywane są razem',
   ToolCodeIncomplete:
     'Brakuje: {missing}. TypeScript narzędzia i skompilowany z niego JavaScript zapisywane są ' +
     'razem, żeby to, co się wykonuje, było zawsze tym, co napisano.',
@@ -259,6 +277,7 @@ const PL: Record<string, string> = {
   RetentionOutOfRange: '{days} to nie jest liczba dni, przez jaką da się przechowywać historię.',
   StepsAtOnceOutOfRange: '{count} to nie jest liczba kroków przepływu, które mogą działać naraz. Wybierz od 1 do 32.',
   // How a step a dead server was in the middle of is recovered, #601.
+  StepTimeoutOutOfRange: '{seconds} to nie jest limit czasu kroku. Wybierz od 60 do 86400 sekund.',
   StepHeartbeatOutOfRange: '{seconds} to nie jest sygnał życia kroku. Wybierz od 0 do 600 sekund; 0 go wyłącza.',
   // The first wait on a rate limit inside a stream that named none, #608.
   EmptyAnswerRetriesOutOfRange: '{retries} to nie jest liczba ponowień po pustej odpowiedzi. Wybierz od 0 do 20.',

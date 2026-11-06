@@ -28,6 +28,7 @@ import {
   setWorkflowAutosaveMillis,
   setWorkflowCallCheckSeconds,
   setWorkflowStepHeartbeatSeconds,
+  setWorkflowStepTimeoutSeconds,
   setWorkflowRestartAttempts,
   setClusterLeaseSeconds,
   setMaxRepeatedToolCalls,
@@ -236,6 +237,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
   const [callCheck, setCallCheck] = useState('');
   /** How a step a dead server was in the middle of is recovered. Issue #601. */
   const [stepHeartbeat, setStepHeartbeat] = useState('');
+  const [stepTimeout, setStepTimeout] = useState('');
   const [restartAttempts, setRestartAttempts] = useState('');
   /** How long the lease lasts that decides which server runs the timers. Issue #597. */
   const [clusterLease, setClusterLease] = useState('');
@@ -405,6 +407,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
         setAutosave(String(held.workflowAutosaveMillis));
         setCallCheck(String(held.workflowCallCheckSeconds));
         setStepHeartbeat(String(held.workflowStepHeartbeatSeconds));
+        setStepTimeout(String(held.workflowStepTimeoutSeconds));
         setRestartAttempts(String(held.workflowRestartAttempts));
         setClusterLease(String(held.clusterLeaseSeconds));
         setRepeats(String(held.maxRepeatedToolCalls));
@@ -499,6 +502,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
         { typed: autosave, held: settings.workflowAutosaveMillis, write: setWorkflowAutosaveMillis },
         { typed: callCheck, held: settings.workflowCallCheckSeconds, write: setWorkflowCallCheckSeconds },
         { typed: stepHeartbeat, held: settings.workflowStepHeartbeatSeconds, write: setWorkflowStepHeartbeatSeconds },
+        { typed: stepTimeout, held: settings.workflowStepTimeoutSeconds, write: setWorkflowStepTimeoutSeconds },
         { typed: restartAttempts, held: settings.workflowRestartAttempts, write: setWorkflowRestartAttempts },
         { typed: clusterLease, held: settings.clusterLeaseSeconds, write: setClusterLeaseSeconds },
         { typed: repeats, held: settings.maxRepeatedToolCalls, write: setMaxRepeatedToolCalls },
@@ -3212,6 +3216,32 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
               Issue #601: a killed server says nothing, so on Temporal a step
               heartbeats, and on the inline engine an agent step is asked again.
             */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Step timeout')}</p>
+                  <FieldHint label={t('Step timeout')}>
+                    {t('Temporal only. How long one attempt at a step may run before Temporal writes it off and asks again. An agent step is a whole turn, so this is how long an agent may work on one message; past it, a Slack reply can be lost. A run already going takes a change up from its next step. Between 60 and 86400 seconds.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="workflow-step-timeout-seconds"
+                  name="workflowStepTimeoutSeconds"
+                  className={styles.input}
+                  type="number"
+                  min={60}
+                  max={86400}
+                  value={stepTimeout}
+                  onChange={(event) => setStepTimeout(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Step timeout')}
+                />
+                <span className={styles.retentionUnit}>{t('seconds')}</span>
+              </div>
+            </div>
+
             <div className={styles.setting}>
               <div className={styles.settingText}>
                 <span className={styles.labelWithHint}>
