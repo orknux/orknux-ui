@@ -10,6 +10,7 @@ import { adoptTimeZone } from './session/timeZone';
 import { ForgotPasswordPage } from './pages/login/ForgotPasswordPage';
 import { LoginPage } from './pages/login/LoginPage';
 import { ResetPasswordPage } from './pages/login/ResetPasswordPage';
+import { PairLinkPage } from './pages/login/PairLinkPage';
 import { PAGES } from './navigation';
 import { PAGE_ELEMENTS } from './routes';
 import { t } from './i18n';
@@ -143,6 +144,8 @@ export function App() {
       */}
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      {/* A pairing link opened in a browser rather than pasted into a client: says where it goes. */}
+      <Route path="/pair/:code" element={<PairLinkPage />} />
       {/*
         Every page, from the one list that also feeds Quick actions. Written out as
         forty-nine near-identical blocks before this, each repeating the same guard —

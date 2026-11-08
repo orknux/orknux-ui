@@ -433,6 +433,13 @@
   color: var(--color-amber, #d29922);
 }
 
+/* Held only to hand on to an agent it creates: never the agent's own. */
+.stateDelegate {
+  border-color: var(--color-violet);
+  background: var(--color-violet-soft);
+  color: var(--color-violet);
+}
+
 /*
  * A row switched by the grant it comes with rather than here. It keeps the
  * colour of the state it reads, so the list still says what the model gets,

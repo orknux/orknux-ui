@@ -64,7 +64,8 @@ import { currentLanguage } from '../../session/language';
 import { matches, useSaveShortcut } from '../../session/shortcut';
 import { shellUser } from '../../session/user';
 import shell from './DesignImageEditorPage.module.css';
-import { DesignChat, useChatFiles, useChatModels } from './DesignChat';
+import { CLAUDE_CODE_MODEL, DesignChat, askThroughClaudeCode, useChatFiles, useChatModels } from './DesignChat';
+import { askClaudeCode } from '../../api/chat';
 import type { ChatIdea } from './DesignChat';
 import { DesignPicturePickerDialog } from './DesignPicturePickerDialog';
 import { DocumentColour } from './DocumentColour';
@@ -258,7 +259,7 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
   const ignored = useRef(new Set<string>());
   const checked = useRef(new Map<string, GrammarMatch[]>());
 
-  const { models, modelId, choose } = useChatModels(workspaceId, modelKey);
+  const { models, modelId, choose } = useChatModels(workspaceId, modelKey, true);
   const [talk, setTalk] = useState<DocumentTurn[]>([]);
   const [asking, setAsking] = useState('');
   const files = useChatFiles(workspaceId);
@@ -626,7 +627,12 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
         .catch(() => undefined);
     }, FOLLOW_MS);
     try {
-      const answered = await askDocument(held.id, modelId, sent);
+      const answered =
+        modelId === CLAUDE_CODE_MODEL
+          ? await askThroughClaudeCode(workspaceId, `the document ${held.name}`, sent, revision, () => fetchDocument(held.id)).then(
+              (asked) => ({ answer: asked.answer, changed: asked.changed, document: asked.item }),
+            )
+          : await askDocument(held.id, modelId, sent);
       setTalk([...sent, { role: 'assistant', content: answered.answer }]);
       if (answered.changed && answered.document.revision !== revision) take(answered.document);
     } catch (cause) {
@@ -655,7 +661,10 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
     setTalk(sent);
     setConsulting(true);
     try {
-      const answered = await askDocument(held.id, modelId, sent, true);
+      const answered =
+        modelId === CLAUDE_CODE_MODEL
+          ? { answer: await askClaudeCode(workspaceId, { label: `the document ${held.name}`, path: window.location.pathname }, sent) }
+          : await askDocument(held.id, modelId, sent, true);
       setTalk([...sent, { role: 'assistant', content: answered.answer }]);
     } catch (cause) {
       setTalkError(cause instanceof Error ? cause.message : t('The model could not answer.'));

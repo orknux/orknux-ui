@@ -74,11 +74,13 @@ export async function askQuickChat(
    * rather than as a failure.
    */
   signal?: AbortSignal,
+  /** 'CLAUDE_CODE' to have the person's own Claude Code answer, where it is offered; absent for the workspace's model. */
+  answeredBy?: string,
 ): Promise<QuickChatAnswer> {
   const answer = await fetch(`/api/workspaces/${workspaceId}/quick-chat`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ messages, page }),
+    body: JSON.stringify({ messages, page, ...(answeredBy ? { answeredBy } : {}) }),
     credentials: 'include',
     signal,
   });

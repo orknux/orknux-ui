@@ -8,15 +8,15 @@
 .launcher {
   display: flex;
   align-items: center;
-  gap: var(--space-8);
-  padding: var(--space-6) var(--space-16);
+  gap: var(--space-6);
+  padding: var(--space-2) var(--space-10);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-full);
   box-shadow: var(--shadow-modal);
   font-family: inherit;
   font-weight: 600;
-  font-size: var(--text-md);
+  font-size: var(--text-sm);
   line-height: 1;
   letter-spacing: 0.4px;
   color: var(--color-text-primary);

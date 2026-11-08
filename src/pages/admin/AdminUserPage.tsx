@@ -22,7 +22,7 @@ import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
 import { shellUser } from '../../session/user';
 import styles from './AdminUserPage.module.css';
-import { t } from '../../i18n';
+import { t, tf } from '../../i18n';
 
 export interface AdminUserPageProps {
   session: SessionUser;
@@ -258,6 +258,14 @@ function AdminUserView({ session, onSignOut, onDiscard }: AdminUserPageProps & {
                 // Who somebody is, not a field to edit: renames break every
                 // reference by name, so the username is fixed at creation.
                 disabled={!creating}
+                /*
+                 * Somebody else's name, never the signed-in person's: without
+                 * this a password manager reads this field and the password
+                 * below as a sign-in form and fills in the administrator's own
+                 * saved login - so pressing Set gave this account their password.
+                 */
+                autoComplete="off"
+                name="managed-username"
                 onChange={(event) => setUsername(event.target.value)}
               />
             </div>
@@ -393,6 +401,9 @@ function AdminUserView({ session, onSignOut, onDiscard }: AdminUserPageProps & {
                       placeholder={t('At least 12 characters')}
                       aria-label={t('New password')}
                       autoComplete="new-password"
+                      name="managed-new-password"
+                      data-lpignore="true"
+                      data-1p-ignore="true"
                       onChange={(event) => {
                         setPassword(event.target.value);
                         setPasswordSaid(null);
@@ -407,6 +418,18 @@ function AdminUserView({ session, onSignOut, onDiscard }: AdminUserPageProps & {
                       {hasPassword ? 'Replace' : 'Set'}
                     </button>
                   </div>
+                  {/*
+                    The rule said where it cannot be covered: the placeholder is
+                    the only other place, and a browser filling the box in hides it
+                    while leaving Set switched off, which then explains nothing.
+                  */}
+                  {passwordSaid === null && (
+                    <p className={styles.fieldNote} data-testid="password-rule">
+                      {password.length > 0 && password.length < 12
+                        ? tf('At least 12 characters - {count} more.', { count: 12 - password.length })
+                        : t('At least 12 characters.')}
+                    </p>
+                  )}
                   {passwordSaid !== null && <p className={styles.done}>{passwordSaid}</p>}
                 </div>
 

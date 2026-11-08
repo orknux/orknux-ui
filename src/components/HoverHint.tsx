@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -68,13 +68,40 @@ export function useHoverHint(): { hintFor: (text: string) => HintHandlers; hint:
     shown === null
       ? null
       : createPortal(
-          <div className={styles.hint} role="tooltip" data-hover-hint="" style={{ left: shown.x + 14, top: shown.y + 18 }}>
-            {shown.text}
-          </div>,
+          <HintBox at={shown} />,
           document.body,
         );
 
   return { hintFor, hint };
+}
+
+/** Room kept between the hint and the window's edge. */
+const EDGE_PX = 8;
+
+/**
+ * The hint itself, below and to the right of the pointer where there is room,
+ * and turned above it or to its left where there is not - a hint on something
+ * in the bottom corner of the window would otherwise be drawn off it.
+ */
+function HintBox({ at }: { at: Shown }) {
+  const box = useRef<HTMLDivElement>(null);
+  const [place, setPlace] = useState({ left: at.x + 14, top: at.y + 18 });
+  useLayoutEffect(() => {
+    const element = box.current;
+    if (element === null) return;
+    const { width, height } = element.getBoundingClientRect();
+    const right = at.x + 14 + width > window.innerWidth - EDGE_PX;
+    const below = at.y + 18 + height <= window.innerHeight - EDGE_PX;
+    setPlace({
+      left: Math.max(EDGE_PX, right ? at.x - 10 - width : at.x + 14),
+      top: Math.max(EDGE_PX, below ? at.y + 18 : at.y - 10 - height),
+    });
+  }, [at.x, at.y, at.text]);
+  return (
+    <div ref={box} className={styles.hint} role="tooltip" data-hover-hint="" style={place}>
+      {at.text}
+    </div>
+  );
 }
 
 export interface HintHandlers {

@@ -24,6 +24,8 @@ import { NotificationBell } from './NotificationBell';
 import { QuickChat } from './QuickChat';
 import { CornerButtons } from './CornerButtons';
 import { McpConnect } from './McpConnect';
+import { DeviceIndicators } from './DeviceIndicators';
+import { useMyDevices } from '../api/devices';
 import styles from './AppShell.module.css';
 import { ResizeHandle, useDragSize } from './DragSize';
 import { connectedServer, disconnectFromServer } from '../session/desktop';
@@ -330,6 +332,7 @@ export function AppShell({
     ones in the corner, and whether the floating assistant is drawn.
   */
   const where = whereAt(pathname);
+  const devices = useMyDevices();
 
   useDocumentTitle(title, pathname);
 
@@ -575,7 +578,8 @@ export function AppShell({
       */}
       {where !== 'Chat' && (
         <CornerButtons>
-          <McpConnect workspacePath={workspaceHere} admin={user.admin} />
+          <DeviceIndicators admin={user.admin} />
+          <McpConnect workspacePath={workspaceHere} admin={user.admin} connected={devices?.mcp} />
           {quickChat && <QuickChat workspacePath={workspaceHere} userName={user.name} />}
         </CornerButtons>
       )}
@@ -585,8 +589,20 @@ export function AppShell({
         than on a page, for the same reason: every signed-in screen is drawn
         inside this, so there is no screen it can be missing from.
       */}
-      <footer className={styles.attributionBar} data-shell-footer="">
+      <footer className={where === 'Chat' ? `${styles.attributionBar} ${styles.attributionBarChat}` : styles.attributionBar} data-shell-footer="">
         <Attribution compact />
+        {/*
+          The chat page's corner is its composer's, so the clients and Orknux
+          MCP stand here instead, at the right where the corner is everywhere else, and smaller: whether they are connected is what a
+          person about to ask for something on their own computer needs to see.
+        */}
+        {where === 'Chat' && (
+          <div className={styles.footerClients} data-testid="footer-clients">
+            <DeviceIndicators admin={user.admin} compact />
+            <McpConnect workspacePath={workspaceHere} admin={user.admin} connected={devices?.mcp} compact />
+          </div>
+        )}
+
       </footer>
     </div>
   );

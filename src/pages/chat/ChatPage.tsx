@@ -8,6 +8,8 @@ import {
   CALL_ROLE,
   THOUGHT_ROLE,
   chooseChatAgent,
+  chooseChatClaudeCode,
+  fetchClaudeCodeChat,
   deleteChat,
   fetchChatMessages,
   fetchChatCompletion,
@@ -32,9 +34,13 @@ import {
   tokenCount,
   writingParts,
   readingShare,
+  fetchChatGoal,
+  startChatGoal,
+  stopChatGoal,
 } from '../../api/chat';
 import type {
   ChatCall,
+  ChatGoal,
   ChatCommand,
   ChatMessage,
   ChatSession,
@@ -60,6 +66,7 @@ import type { Attachment } from '../../api/attachments';
 import { AttachmentSound } from '../../components/AttachmentSound';
 import { AttachmentViewer } from '../../components/AttachmentViewer';
 import { CallLine } from '../../components/CallLine';
+import { ClaudeCodeGuide } from '../../components/ClaudeCodeGuide';
 import { ASK_EVERY_MS } from '../../components/NotificationBell';
 import { InteractionCard, PLAN_KIND, placeRequests } from '../../components/InteractionCard';
 import { ChatModeSwitch } from './ChatModeSwitch';
@@ -83,6 +90,7 @@ import type { SessionUser } from '../../api/session';
 import { fetchWorkspaces } from '../../api/workspaces';
 import audioLinesIcon from '../../assets/audio-lines.svg';
 import chevronDown12Icon from '../../assets/chevron-down-12.svg';
+import claudeLogo from '../../assets/claude-logo.svg';
 import copyIcon from '../../assets/copy.svg';
 import cpuIcon from '../../assets/cpu.svg';
 import penIcon from '../../assets/pen.svg';
@@ -201,6 +209,9 @@ function progressLevelName(level: ProgressCommand['level']): string {
   }
 }
 
+/** The picker's entry for "My Claude Code"; never an agent's id, which are numbers. */
+const CLAUDE_CODE_ENTRY = 'claude-code';
+
 export function ChatPage({ session, onSignOut }: ChatPageProps) {
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<ChatSession[] | null>(null);
@@ -310,6 +321,31 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
   const [pickerSearch, setPickerSearch] = useState('');
+  /*
+   * "My Claude Code": the person's own Claude Code answering, through the
+   * Orknux channel plugin. Offered only in the local editions; null until the
+   * server has said, and treated as not offered while it has not.
+   */
+  const [claudeCode, setClaudeCode] = useState<{ available: boolean; connected: boolean } | null>(null);
+  /*
+   * Asked again every half minute, as the corner does elsewhere: the chat page
+   * has no corner (it is the composer's), so the header says whether the
+   * person's Claude Code is there, and it has to follow it starting and stopping.
+   */
+  useEffect(() => {
+    let live = true;
+    const read = () => fetchClaudeCodeChat().then((now) => live && setClaudeCode(now), () => live && setClaudeCode(null));
+    read();
+    const timer = window.setInterval(read, 30_000);
+    return () => {
+      live = false;
+      window.clearInterval(timer);
+    };
+  }, []);
+  const [claudeGuide, setClaudeGuide] = useState(false);
+  const claudeCodeOffered = claudeCode?.available === true;
+  /** Whether their Claude Code is there to answer now: only then can a workspace with no agent chat at all. */
+  const claudeCodeConnected = claudeCodeOffered && claudeCode?.connected === true;
   /** Which agent the arrow keys are on, by id; null until one is pressed. */
   const [pickerFocus, setPickerFocus] = useState<string | null>(null);
 
@@ -322,6 +358,12 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    * open empty and fill in under them.
    */
   const [commands, setCommands] = useState<ChatCommand[]>([]);
+  /** The server's commands and `/goal`, which is the chat's own: it acts on this chat, not the workspace. */
+  const allCommands: ChatCommand[] = [...commands, goalCommand()];
+  /** The open chat's newest goal, for the line under the conversation and for `/goal`. */
+  const [goal, setGoal] = useState<ChatGoal | null>(null);
+  /** The workspace's models, for `/goal ... reviewer <model>` and its completion; read once per workspace. */
+  const [goalModels, setGoalModels] = useState<Model[]>([]);
   /** Which row of the slash menu is under the caret. */
   const [commandAt, setCommandAt] = useState(-1);
   /*
@@ -844,6 +886,44 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
       .catch(() => {
         if (!abandoned) setCommands([]);
       });
+    return () => {
+      abandoned = true;
+    };
+  }, [workspaceId]);
+
+  /*
+   * The goal, read when the chat opens and again every few seconds while one
+   * runs: its turns and reviews happen on the server whether or not anybody
+   * typed, and the line under the conversation is how somebody watches them.
+   */
+  useEffect(() => {
+    if (currentId === null) {
+      setGoal(null);
+      return;
+    }
+    let abandoned = false;
+    const read = () =>
+      fetchChatGoal(currentId)
+        .then((held) => {
+          if (!abandoned) setGoal(held);
+        })
+        .catch(() => undefined);
+    void read();
+    const every = window.setInterval(() => void read(), GOAL_POLL_MS);
+    return () => {
+      abandoned = true;
+      window.clearInterval(every);
+    };
+  }, [currentId]);
+
+  useEffect(() => {
+    if (workspaceId === null) return;
+    let abandoned = false;
+    fetchModels(workspaceId)
+      .then((found) => {
+        if (!abandoned) setGoalModels(found.filter((one) => one.kind === 'CHAT'));
+      })
+      .catch(() => undefined);
     return () => {
       abandoned = true;
     };
@@ -1414,6 +1494,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     return (
       (answer === undefined ? null : messages[answer].actor) ??
       messages[head].actor ??
+      (current?.answeredBy === 'CLAUDE_CODE' ? t('My Claude Code') : null) ??
       current?.agentName ??
       current?.modelName ??
       'assistant'
@@ -1784,8 +1865,10 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
       label: agent.name,
       enabled: agent.enabled && agent.modelId !== null,
     }));
+    // First, where it is offered: the person's own Claude Code is not one of the workspace's agents.
+    if (claudeCodeOffered) entries.unshift({ id: CLAUDE_CODE_ENTRY, label: t('My Claude Code'), enabled: true });
     return needle === '' ? entries : entries.filter((entry) => entry.label.toLowerCase().includes(needle));
-  }, [agents, pickerSearch]);
+  }, [agents, pickerSearch, claudeCodeOffered]);
 
   async function guard(work: () => Promise<void>) {
     setError(null);
@@ -1828,6 +1911,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   const noAgents =
     counted &&
     agentCatalogue.failure === null &&
+    !claudeCodeConnected &&
     !agents.some((one) => one.enabled && one.modelId !== null);
 
   /** The workspaces this visit has already started a chat in by itself, so a failed start is not tried again. */
@@ -1855,7 +1939,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   useEffect(() => {
     if (workspaceId === null || chatId !== null || sessions === null || sessions.length > 0) return;
     if (agentCatalogue.loading || agentCatalogue.failure !== null || noAgents) return;
-    if (!agents.some((one) => one.enabled && one.modelId !== null)) return;
+    if (!claudeCodeConnected && !agents.some((one) => one.enabled && one.modelId !== null)) return;
     if (autoStarted.current.has(workspaceId)) return;
     autoStarted.current.add(workspaceId);
     focusWhenOpen.current = true;
@@ -2488,6 +2572,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     if (!said.startsWith('/') || workspaceId === null) return false;
 
     const [head, ...rest] = said.slice(1).split(' ');
+    if (head.toLowerCase() === GOAL) return runGoal(said, rest.join(' ').trim());
     if (!commands.some((one) => one.name.toLowerCase() === head.toLowerCase())) return false;
 
     setDraft('');
@@ -2507,6 +2592,69 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     return true;
   }
 
+  /** Writes a line into the conversation as the server's answer to a command, without anything being sent. */
+  function noteCommand(said: string, answer: string) {
+    setMessages((present) => [
+      ...present,
+      { role: 'user', content: said, actor: null, takes: [], thinking: null, thinkingMillis: null, at: new Date().toISOString() },
+      { role: 'assistant', content: answer, actor: null, takes: [], thinking: null, thinkingMillis: null, at: new Date().toISOString() },
+    ]);
+  }
+
+  /**
+   * `/goal`: shows the chat's goal, `/goal stop` stops it, and
+   * `/goal <what> until <condition> [max <n>] [reviewer <model>]` sets one.
+   * The server judges everything else; what it refuses is said in its words.
+   */
+  async function runGoal(said: string, argument: string): Promise<boolean> {
+    if (currentId === null) return false;
+    setDraft('');
+    setCommandAt(-1);
+    try {
+      if (argument === '') {
+        const held = await fetchChatGoal(currentId);
+        setGoal(held);
+        noteCommand(said, held === null ? t('This chat has no goal. Set one with /goal <what> until <condition>.') : goalLine(held));
+        return true;
+      }
+      if (argument.toLowerCase() === 'stop') {
+        const held = await stopChatGoal(currentId);
+        setGoal(held);
+        noteCommand(said, held === null ? t('This chat has no goal to stop.') : goalLine(held));
+        return true;
+      }
+      const parsed = parseGoal(argument);
+      if (typeof parsed === 'string') {
+        noteCommand(said, parsed);
+        return true;
+      }
+      let reviewerModelId: string | null = null;
+      if (parsed.reviewer !== null) {
+        const wanted = parsed.reviewer.toLowerCase();
+        const found = goalModels.find((one) => one.name.toLowerCase() === wanted);
+        if (found === undefined) {
+          noteCommand(said, tf('There is no model called {name} in this workspace.', { name: parsed.reviewer }));
+          return true;
+        }
+        reviewerModelId = found.id;
+      }
+      const held = await startChatGoal(currentId, {
+        goal: parsed.goal,
+        condition: parsed.condition,
+        maxIterations: parsed.max,
+        reviewerModelId,
+      });
+      setGoal(held);
+      setMessages((present) => [
+        ...present,
+        { role: 'user', content: said, actor: null, takes: [], thinking: null, thinkingMillis: null, at: new Date().toISOString() },
+      ]);
+    } catch (cause) {
+      noteCommand(said, cause instanceof Error ? cause.message : t('The command could not be run.'));
+    }
+    return true;
+  }
+
   /**
    * Sends what is in the composer, or [chosen] in its place - a suggested reply
    * clicked under the answer, which is only offered while the composer is
@@ -2522,6 +2670,27 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     // way to run a workflow, and asking it to would be asking it to answer as
     // though it had.
     if (typed.trim() !== '' && (await runCommand(typed))) return;
+    /*
+     * A word after a slash that is no command is said to be none, and nothing
+     * is sent: "/gaol" reaching the model as a message is a goal nobody set.
+     * A path - a second slash in the first word - is a message, and so is a
+     * skill command where this workspace's marker is the slash.
+     */
+    const slashed = /^\/([A-Za-z][\w-]*)(\s|$)/.exec(typed.trim());
+    if (
+      slashed !== null &&
+      !(marker === '/' && [...progressOffered, ...skillOffers].some((one) => one.key.toLowerCase() === slashed[1].toLowerCase()))
+    ) {
+      setDraft('');
+      noteCommand(
+        typed.trim(),
+        tf('There is no /{name}. Try: {commands}', {
+          name: slashed[1],
+          commands: allCommands.map((one) => `/${one.name}`).join(', '),
+        }),
+      );
+      return;
+    }
 
     /*
      * What was attached is named in the message.
@@ -2962,7 +3131,7 @@ ${named}`;
    */
   const offered =
     !commandsShut && draft.startsWith('/') && !draft.slice(1).includes(' ')
-      ? commands.filter((one) => one.name.startsWith(draft.slice(1).toLowerCase()))
+      ? allCommands.filter((one) => one.name.startsWith(draft.slice(1).toLowerCase()))
       : [];
 
   /** Which one Enter would run: the row under the caret, or the only match. */
@@ -3180,6 +3349,20 @@ ${named}`;
       }
     }
 
+    /*
+     * Inside `/goal`, Tab completes the keyword being typed - until, then max
+     * and reviewer - and after reviewer, a model's name. Only where something
+     * matches, so Tab otherwise does what it did.
+     */
+    if (event.key === 'Tab' && !event.shiftKey && draft.toLowerCase().startsWith(`/${GOAL} `)) {
+      const completed = completeGoal(draft, goalModels.map((one) => one.name));
+      if (completed !== null) {
+        event.preventDefault();
+        setDraft(completed);
+        return;
+      }
+    }
+
     if (skillsOffered.length > 0) {
       if (event.key === 'ArrowDown') {
         event.preventDefault();
@@ -3291,7 +3474,8 @@ ${named}`;
   async function handleChoose(id: string) {
     if (currentId === null) return;
     await guard(async () => {
-      await chooseChatAgent(currentId, id);
+      if (id === CLAUDE_CODE_ENTRY) await chooseChatClaudeCode(currentId);
+      else await chooseChatAgent(currentId, id);
       await loadSessions(currentId);
     });
     setPickerOpen(false);
@@ -3645,7 +3829,7 @@ ${named}`;
   const waitingNow = sending && messages[messages.length - 1]?.content === '' && !anyWorking(working);
   const waitingLine = (
     <p className={styles.waiting} data-waiting="">
-      {tf('Waiting for {name}…', { name: current?.agentName ?? current?.modelName ?? t('the model') })}
+      {tf('Waiting for {name}…', { name: current?.answeredBy === 'CLAUDE_CODE' ? t('My Claude Code') : (current?.agentName ?? current?.modelName ?? t('the model')) })}
     </p>
   );
   return (
@@ -3773,11 +3957,35 @@ ${named}`;
                 }}
                 aria-expanded={pickerOpen}
               >
-                <span className={current.modelName === null ? styles.modelUnset : styles.modelName}>
-                  {current.agentName ?? current.modelName ?? t('Choose a model')}
+                {/* Claude Code's own mark: this chat is answered by the person's Claude Code, not by one of the workspace's agents. */}
+                {current.answeredBy === 'CLAUDE_CODE' && (
+                  <img src={claudeLogo} alt="" width={16} height={16} className={styles.claudeMark} data-testid="chat-claude-mark" />
+                )}
+                <span className={current.modelName === null && current.answeredBy !== 'CLAUDE_CODE' ? styles.modelUnset : styles.modelName}>
+                  {current.answeredBy === 'CLAUDE_CODE' ? t('My Claude Code') : (current.agentName ?? current.modelName ?? t('Choose a model'))}
                 </span>
                 <img src={chevronDown12Icon} alt="" width={12} height={12} />
               </button>
+
+              {current.answeredBy === 'CLAUDE_CODE' && claudeCode !== null && (
+                <button
+                  type="button"
+                  className={styles.claudeStatus}
+                  onClick={() => setClaudeGuide(true)}
+                  title={claudeCode.connected ? t('Your Claude Code session is connected.') : t('How to connect your Claude Code to Orknux, step by step.')}
+                  data-testid="chat-claude-status"
+                  data-connected={claudeCode.connected ? 'true' : 'false'}
+                >
+                  <span className={claudeCode.connected ? styles.claudeDotOn : styles.claudeDotOff} aria-hidden="true" />
+                  {claudeCode.connected ? t('connected') : t('not connected')}
+                </button>
+              )}
+              <ClaudeCodeGuide
+                open={claudeGuide}
+                onClose={() => setClaudeGuide(false)}
+                connected={claudeCode?.connected === true}
+                admin={session.admin}
+              />
 
               {/*
                 One list, and it is agents.
@@ -3852,7 +4060,9 @@ ${named}`;
                         key={entry.id}
                         type="button"
                         className={[
-                          entry.id === current.agentId ? styles.pickerEntryCurrent : styles.pickerEntry,
+                          entry.id === (current.answeredBy === 'CLAUDE_CODE' ? CLAUDE_CODE_ENTRY : current.agentId)
+                            ? styles.pickerEntryCurrent
+                            : styles.pickerEntry,
                           entry.id === pickerFocus ? styles.pickerEntryFocused : '',
                         ].join(' ')}
                         data-picker-entry={entry.id}
@@ -3864,6 +4074,7 @@ ${named}`;
                         title={entry.enabled ? undefined : t('Not active')}
                         onClick={() => void handleChoose(entry.id)}
                       >
+                        {entry.id === CLAUDE_CODE_ENTRY && <img src={claudeLogo} alt="" width={14} height={14} className={styles.claudeMark} />}
                         {entry.label}
                         {!entry.enabled && <span className={styles.pickerNote}>{t('inactive')}</span>}
                       </button>
@@ -3887,7 +4098,7 @@ ${named}`;
                 a link that went somewhere other than the name it sits next to
                 would be a worse answer than none.
               */}
-              {workspaceId !== null && (current.agentId !== null || current.modelId !== null) && (
+              {workspaceId !== null && current.answeredBy !== 'CLAUDE_CODE' && (current.agentId !== null || current.modelId !== null) && (
                 <Link
                   className={styles.definitionJump}
                   to={
@@ -4616,6 +4827,13 @@ ${named}`;
 
               </Fragment>
             ))}
+
+            {/* Where the chat's goal stands, under everything said: its turns are this conversation's. */}
+            {goal !== null && (
+              <p className={styles.goalLine} data-goal-line={goal.status}>
+                {goalLine(goal)}
+              </p>
+            )}
             {(placedReviews.get(messages.length) ?? []).map(({ review, taken }) => (
                 <ReviewLine key={`review-${review.id}-${taken}`} review={review} taken={taken} />
               ))}
@@ -5411,4 +5629,92 @@ function ReviewLine({ review, taken }: { review: ChatReview; taken: boolean }) {
       </div>
     </div>
   );
+}
+
+/** The command that sets, shows and stops a chat's goal. */
+const GOAL = 'goal';
+
+/** How often the goal's line is read again; its turns happen on the server whether or not anybody types. */
+const GOAL_POLL_MS = 3000;
+
+/** The keywords `/goal` takes, in the order they are written. */
+const GOAL_KEYWORDS = ['until', 'max', 'reviewer'];
+
+/** `/goal` as the slash menu lists it, beside the server's commands. */
+function goalCommand(): ChatCommand {
+  return {
+    name: GOAL,
+    summary: t('Work towards a goal until a condition is met, with a reviewer judging each turn'),
+    argument: t('what to achieve until when it is met [max turns] [reviewer model] - or stop'),
+    warning: null,
+  };
+}
+
+/** One line saying where a goal stands, as the conversation shows it. */
+function goalLine(goal: ChatGoal): string {
+  const feedback = goal.lastFeedback ?? '';
+  switch (goal.status) {
+    case 'RUNNING':
+      return feedback === ''
+        ? tf('Goal · iteration {i} of {n} · working: {goal}', { i: goal.iteration, n: goal.maxIterations, goal: goal.goal })
+        : tf('Goal · iteration {i} of {n} · not met yet: {feedback}', { i: goal.iteration, n: goal.maxIterations, feedback });
+    case 'MET':
+      return tf('Goal met after {i} of {n} turns: {feedback}', { i: goal.iteration, n: goal.maxIterations, feedback });
+    case 'EXHAUSTED':
+      return tf('Goal not met after {n} turns: {feedback}', { n: goal.maxIterations, feedback });
+    case 'STOPPED':
+      return feedback === ''
+        ? tf('Goal stopped at iteration {i} of {n}.', { i: goal.iteration, n: goal.maxIterations })
+        : tf('Goal stopped at iteration {i} of {n}: {feedback}', { i: goal.iteration, n: goal.maxIterations, feedback });
+  }
+}
+
+/**
+ * `<what> until <condition> [max <n>] [reviewer <model>]`, or a sentence
+ * saying what is missing. The two optional parts may come in either order;
+ * a reviewer's name runs to the end of the line or to `max`.
+ */
+function parseGoal(argument: string): { goal: string; condition: string; max: number | null; reviewer: string | null } | string {
+  const until = /\s+until\s+/i.exec(argument);
+  if (until === null) return t('Say when the goal is met: /goal <what> until <condition>.');
+  const goal = argument.slice(0, until.index).trim();
+  let rest = argument.slice(until.index + until[0].length);
+  let max: number | null = null;
+  let reviewer: string | null = null;
+  for (let pass = 0; pass < 2; pass += 1) {
+    const counted = /\s+max\s+(\d+)\s*$/i.exec(rest);
+    if (counted !== null && max === null) {
+      max = Number(counted[1]);
+      rest = rest.slice(0, counted.index);
+    }
+    const named = /\s+reviewer\s+(.+)$/i.exec(rest);
+    if (named !== null && reviewer === null) {
+      reviewer = named[1].trim();
+      rest = rest.slice(0, named.index);
+    }
+  }
+  const condition = rest.trim();
+  if (goal === '') return t('Say what the goal is: /goal <what> until <condition>.');
+  if (condition === '') return t('Say when the goal is met: /goal <what> until <condition>.');
+  return { goal, condition, max, reviewer };
+}
+
+/**
+ * What Tab makes of a `/goal` line: the keyword being typed completed - until
+ * first, max and reviewer once until is there - or after reviewer, a model's
+ * name. Null where nothing matches, and Tab then does what it did.
+ */
+function completeGoal(draft: string, models: string[]): string | null {
+  const afterReviewer = /\sreviewer\s+([^]*)$/i.exec(draft);
+  if (afterReviewer !== null) {
+    const typed = afterReviewer[1].toLowerCase();
+    const found = models.find((name) => name.toLowerCase().startsWith(typed) && name.toLowerCase() !== typed);
+    return found === undefined ? null : draft.slice(0, draft.length - afterReviewer[1].length) + found;
+  }
+  const word = /(\S*)$/.exec(draft)?.[1] ?? '';
+  if (word === '' || draft.slice(0, draft.length - word.length).trim() === `/${GOAL}`) return null;
+  const hasUntil = /\suntil\s/i.test(draft);
+  const allowed = hasUntil ? GOAL_KEYWORDS.filter((one) => one !== 'until') : ['until'];
+  const keyword = allowed.find((one) => one.startsWith(word.toLowerCase()) && one !== word.toLowerCase());
+  return keyword === undefined ? null : `${draft.slice(0, draft.length - word.length)}${keyword} `;
 }

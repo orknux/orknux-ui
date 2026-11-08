@@ -306,6 +306,13 @@ application. All of them but Turn Node and Add Node have to carry a modifier: a
 bare letter would fire while somebody was typing, and those two are only ever
 heard on the canvas, which is not a text field.
 
+**Connected clients** is where your own browser, computer and Claude Code
+join: Orknux Shell, the extension for Chrome, Orknux for Windows and for Linux,
+and My Claude Code each connect with a pairing link made here, and are listed
+here with when they last spoke. The corner of every page shows a pill for each,
+lit while it is connected. [Your browser and your computer](/docs/21-your-computer)
+describes them, and [Orknux Shell](/docs/20-shell) the terminal.
+
 ## What is where
 
 The rest of these pages, by the part of the top bar they are about:

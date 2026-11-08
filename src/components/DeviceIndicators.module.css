@@ -1,0 +1,68 @@
+/* Drawn like Orknux MCP beside it, so the corner reads as one row of pills. */
+.indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  /* The chat footer's size everywhere: small enough to sit beside Ask AI without competing with it. */
+  padding: var(--space-2) var(--space-10);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-modal);
+  font-family: inherit;
+  font-weight: 600;
+  font-size: var(--text-sm);
+  line-height: 1;
+  letter-spacing: 0.4px;
+  color: var(--color-text-primary);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* Every pill, the connected ones too: they are spans, and a highlight only on the links made the row look half dead. */
+.indicator:hover {
+  border-color: var(--color-text-muted);
+}
+
+/* The product's own mark, in its own colours, the size of the icon on Orknux MCP beside it. */
+.mark {
+  display: block;
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+
+/* Whether it is connected, after the name: green or grey. */
+.lightOn,
+.lightOff {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+}
+
+.lightOn {
+  background: var(--color-success);
+}
+
+.lightOff {
+  background: var(--color-text-muted);
+}
+
+/*
+ * In the footer strip, where the chat page has them: its composer owns the
+ * corner. The strip's own height, so the row does not grow it, and no shadow,
+ * since nothing floats there.
+ */
+.compact {
+  gap: var(--space-6);
+  padding: var(--space-2) var(--space-10);
+  box-shadow: none;
+  font-size: var(--text-sm);
+}
+
+.compact .mark {
+  width: 14px;
+  height: 14px;
+}

@@ -3,6 +3,7 @@ import type { FormEvent, ReactNode } from 'react';
 
 import { attachmentUrl, isShowable, uploadAttachments } from '../../api/attachments';
 import type { Attachment, EditorTurn } from '../../api/attachments';
+import { askClaudeCode, fetchClaudeCodeChat } from '../../api/chat';
 import { fetchModels } from '../../api/models';
 import type { Model } from '../../api/models';
 import paperclipIcon from '../../assets/paperclip.svg';
@@ -366,14 +367,33 @@ export function useChatFiles(workspaceId: string): ChatFiles {
  * The workspace's chat models, and the one this person last picked here -
  * remembered per workspace under [key], as the wireframe editor remembers its.
  */
-export function useChatModels(workspaceId: string, key: (workspaceId: string) => string) {
+/**
+ * The model picker's entry for "My Claude Code": the person's own Claude Code
+ * session, through the Orknux channel plugin, where it is offered. Never a
+ * model's id, which are numbers.
+ */
+export const CLAUDE_CODE_MODEL = 'claude-code';
+
+/** The picker entry for My Claude Code, shaped like a model so every picker can draw it. */
+export function claudeCodeModel(models: Model[]): Model {
+  return { ...(models[0] ?? {}), id: CLAUDE_CODE_MODEL, name: t('My Claude Code'), kind: 'CHAT', enabled: true } as Model;
+}
+
+export function useChatModels(
+  workspaceId: string,
+  key: (workspaceId: string) => string,
+  /** Whether this editor can ask the person's own Claude Code; only those that route it through askThroughClaudeCode. */
+  offerClaudeCode = false,
+) {
   const [models, setModels] = useState<Model[] | null>(null);
   const [modelId, setModelId] = useState('');
   useEffect(() => {
     if (workspaceId === '') return;
-    fetchModels(workspaceId)
-      .then((all) => {
+    Promise.all([fetchModels(workspaceId), offerClaudeCode ? fetchClaudeCodeChat().catch(() => null) : Promise.resolve(null)])
+      .then(([all, claudeCode]) => {
         const chat = all.filter((one) => one.kind === 'CHAT' && one.enabled !== false);
+        // First where it is offered: it is the person's own, not one of the workspace's models.
+        if (claudeCode?.available === true) chat.unshift(claudeCodeModel(chat));
         setModels(chat);
         let remembered: string | null = null;
         try {
@@ -381,7 +401,8 @@ export function useChatModels(workspaceId: string, key: (workspaceId: string) =>
         } catch {
           remembered = null;
         }
-        setModelId(chat.some((one) => one.id === remembered) ? (remembered ?? '') : (chat[0]?.id ?? ''));
+        const firstModel = chat.find((one) => one.id !== CLAUDE_CODE_MODEL) ?? chat[0];
+        setModelId(chat.some((one) => one.id === remembered) ? (remembered ?? '') : (firstModel?.id ?? ''));
       })
       .catch(() => setModels([]));
     // `key` names a place in storage; a new function for the same name is not a new place.
@@ -396,4 +417,22 @@ export function useChatModels(workspaceId: string, key: (workspaceId: string) =>
     }
   };
   return { models, modelId, choose };
+}
+
+/**
+ * One turn of an editor's assistant asked of the person's own Claude Code
+ * rather than a model: the question goes with the page, Claude Code changes the
+ * item through the Orknux tools its plugin brings, and the item is read again
+ * to find out whether it did. Shaped like the editors' own answers.
+ */
+export async function askThroughClaudeCode<T extends { revision: number | string }>(
+  workspaceId: string,
+  label: string,
+  turns: { role: string; content: string }[],
+  revision: number | string,
+  reload: () => Promise<T | null>,
+): Promise<{ answer: string; changed: boolean; item: T }> {
+  const answer = await askClaudeCode(workspaceId, { label, path: window.location.pathname }, turns);
+  const item = await reload().catch(() => null);
+  return { answer, changed: item !== null && item.revision !== revision, item: item as T };
 }

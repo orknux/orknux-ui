@@ -120,7 +120,7 @@ import {
   useZoomOutShortcut,
 } from '../../session/shortcut';
 import { shellUser } from '../../session/user';
-import { DesignChat, useChatFiles, useChatModels } from '../design/DesignChat';
+import { CLAUDE_CODE_MODEL, DesignChat, askThroughClaudeCode, useChatFiles, useChatModels } from '../design/DesignChat';
 import type { ChatIdea } from '../design/DesignChat';
 import shell from '../design/DesignImageEditorPage.module.css';
 import chat from '../design/WireframeEditorPage.module.css';
@@ -567,7 +567,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
   /** The label being typed over in place, on the canvas. */
   const [labelling, setLabelling] = useState<{ kind: 'node' | 'edge'; id: string } | null>(null);
 
-  const { models, modelId, choose } = useChatModels(workspaceId, modelKey);
+  const { models, modelId, choose } = useChatModels(workspaceId, modelKey, true);
   const [talk, setTalk] = useState<DiagramTurn[]>([]);
   const [asking, setAsking] = useState('');
   const files = useChatFiles(workspaceId);
@@ -1546,7 +1546,12 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
     setAsking('');
     setAnswering(true);
     try {
-      const answered = await askDiagram(diagram.id, modelId, sent);
+      const answered =
+        modelId === CLAUDE_CODE_MODEL
+          ? await askThroughClaudeCode(workspaceId, `the diagram ${diagram.name}`, sent, diagram.revision, () => fetchDiagram(diagram.id)).then(
+              (asked) => ({ answer: asked.answer, changed: asked.changed, diagram: asked.item }),
+            )
+          : await askDiagram(diagram.id, modelId, sent);
       setTalk([...sent, { role: 'assistant', content: answered.answer }]);
       if (answered.changed) {
         remember(drawing);

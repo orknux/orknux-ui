@@ -22,6 +22,8 @@ export interface ChatSession {
   lastMessageAt: string | null;
   /** Answers that arrived since its owner last had it open; nought where there are none. */
   unreadCount: number;
+  /** CLAUDE_CODE where the person's own Claude Code answers ("My Claude Code"); null for a model or an agent. */
+  answeredBy?: string | null;
   /** Set when an agent is answering rather than a bare model. */
   agentId: string | null;
   /** What that agent is called, or null once it has been deleted. */
@@ -212,7 +214,7 @@ export interface ChatAnswer extends ChatSpend {
 
 const SESSION_FIELDS =
   'id workspaceId title pinned modelId modelName createdAt lastMessageAt unreadCount agentId agentName llmSessionId sharedSession ' +
-  'spentInputTokens spentOutputTokens spentCachedInputTokens spentPictures mode';
+  'spentInputTokens spentOutputTokens spentCachedInputTokens spentPictures mode answeredBy';
 
 export async function fetchChatSessions(workspaceId: string): Promise<ChatSession[]> {
   const data = await graphql<{ chatSessions: ChatSession[] }>(
@@ -394,6 +396,50 @@ export async function chooseChatAgent(id: string, agentId: string): Promise<Chat
     { id, agentId },
   );
   return data.chooseChatAgent;
+}
+
+/** Whether My Claude Code is offered here, and whether the caller's Claude Code is connected now. */
+export interface ClaudeCodeChatStatus {
+  available: boolean;
+  reason: string | null;
+  connected: boolean;
+}
+
+/**
+ * An editor's assistant answered by the person's own Claude Code: the newest
+ * question goes with the page it was asked on, and Claude Code changes the item
+ * through the Orknux tools its plugin brings. The caller reloads the item.
+ */
+export async function askClaudeCode(
+  workspaceId: string,
+  page: { label: string; path: string },
+  messages: { role: string; content: string }[],
+): Promise<string> {
+  const data = await graphql<{ askClaudeCode: { answer: string } }>(
+    `mutation AskClaudeCode($workspaceId: ID!, $label: String, $path: String, $messages: [ClaudeCodeTurnInput!]!) {
+       askClaudeCode(workspaceId: $workspaceId, label: $label, path: $path, messages: $messages) { answer }
+     }`,
+    { workspaceId, label: page.label, path: page.path, messages: messages.map(({ role, content }) => ({ role, content })) },
+  );
+  return data.askClaudeCode.answer;
+}
+
+export async function fetchClaudeCodeChat(): Promise<ClaudeCodeChatStatus> {
+  const data = await graphql<{ claudeCodeChat: ClaudeCodeChatStatus }>('query { claudeCodeChat { available reason connected } }');
+  return data.claudeCodeChat;
+}
+
+/**
+ * Hands the chat to the person's own Claude Code, reached through the Orknux
+ * channel plugin. Offered only in the local editions; the server refuses it
+ * anywhere else.
+ */
+export async function chooseChatClaudeCode(id: string): Promise<ChatSession> {
+  const data = await graphql<{ chooseChatClaudeCode: ChatSession }>(
+    `mutation ChooseChatClaudeCode($id: ID!) { chooseChatClaudeCode(id: $id) { ${SESSION_FIELDS} } }`,
+    { id },
+  );
+  return data.chooseChatClaudeCode;
 }
 
 /** Reads the chat up to now, which clears the count beside its name. */
@@ -1183,4 +1229,58 @@ export async function runChatCommand(
     { workspaceId, name, argument },
   );
   return data.runChatCommand;
+}
+
+/** Where a chat's goal stands. */
+export type ChatGoalStatus = 'RUNNING' | 'MET' | 'STOPPED' | 'EXHAUSTED';
+
+/**
+ * A chat's goal: its agent works turn after turn until a reviewer judges the
+ * condition met. `/goal` in the composer sets, shows and stops it.
+ */
+export interface ChatGoal {
+  id: string;
+  goal: string;
+  condition: string;
+  /** The turn being worked on, or the last one judged. */
+  iteration: number;
+  maxIterations: number;
+  status: ChatGoalStatus;
+  /** What the reviewer said last, met or not. */
+  lastFeedback: string | null;
+  reviewerModelId: string;
+}
+
+const GOAL_FIELDS = 'id goal condition iteration maxIterations status lastFeedback reviewerModelId';
+
+/** The chat's newest goal, whatever became of it; null where it never had one. */
+export async function fetchChatGoal(chatId: string): Promise<ChatGoal | null> {
+  const data = await graphql<{ chatGoal: ChatGoal | null }>(
+    `query ChatGoal($chatId: ID!) { chatGoal(chatId: $chatId) { ${GOAL_FIELDS} } }`,
+    { chatId },
+  );
+  return data.chatGoal;
+}
+
+/** Sets a goal on the chat, stopping one still running, and wakes it for the first turn. */
+export async function startChatGoal(
+  chatId: string,
+  input: { goal: string; condition: string; maxIterations?: number | null; reviewerModelId?: string | null },
+): Promise<ChatGoal> {
+  const data = await graphql<{ startChatGoal: ChatGoal }>(
+    `mutation StartChatGoal($chatId: ID!, $input: StartChatGoalInput!) {
+       startChatGoal(chatId: $chatId, input: $input) { ${GOAL_FIELDS} }
+     }`,
+    { chatId, input },
+  );
+  return data.startChatGoal;
+}
+
+/** Stops the chat's running goal; answers it as it now stands, or null where there was none. */
+export async function stopChatGoal(chatId: string): Promise<ChatGoal | null> {
+  const data = await graphql<{ stopChatGoal: ChatGoal | null }>(
+    `mutation StopChatGoal($chatId: ID!) { stopChatGoal(chatId: $chatId) { ${GOAL_FIELDS} } }`,
+    { chatId },
+  );
+  return data.stopChatGoal;
 }

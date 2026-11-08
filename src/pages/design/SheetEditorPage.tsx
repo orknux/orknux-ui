@@ -37,7 +37,7 @@ import { askBeforeLeaving, useLeaveGuard } from '../../components/leaveGuard';
 import { t, tf } from '../../i18n';
 import { matches, useRedoShortcut, useSaveShortcut, useUndoShortcut } from '../../session/shortcut';
 import { shellUser } from '../../session/user';
-import { DesignChat, useChatFiles, useChatModels } from './DesignChat';
+import { CLAUDE_CODE_MODEL, DesignChat, askThroughClaudeCode, useChatFiles, useChatModels } from './DesignChat';
 import type { ChatIdea } from './DesignChat';
 import shell from './DesignImageEditorPage.module.css';
 import styles from './SheetEditorPage.module.css';
@@ -178,7 +178,7 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
   const [fillTo, setFillTo] = useState<FormulaRef | null>(null);
   const fillOn = useRef(false);
 
-  const { models, modelId, choose } = useChatModels(workspaceId, modelKey);
+  const { models, modelId, choose } = useChatModels(workspaceId, modelKey, true);
   const [talk, setTalk] = useState<SheetTurn[]>([]);
   const [asking, setAsking] = useState('');
   const files = useChatFiles(workspaceId);
@@ -815,7 +815,12 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
     setAsking('');
     setAnswering(true);
     try {
-      const answered = await askSheet(sheet.id, modelId, sent);
+      const answered =
+        modelId === CLAUDE_CODE_MODEL
+          ? await askThroughClaudeCode(workspaceId, `the sheet ${sheet.name}`, sent, sheet.revision, () => fetchSheet(sheet.id)).then(
+              (asked) => ({ answer: asked.answer, changed: asked.changed, sheet: asked.item }),
+            )
+          : await askSheet(sheet.id, modelId, sent);
       setTalk([...sent, { role: 'assistant', content: answered.answer }]);
       if (answered.changed) {
         setPast((held) => [...held, workbook].slice(-UNDO_DEPTH));

@@ -1,13 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type { SessionUser } from '../../api/session';
 import { setChatAvatarShown, setChatCostShown, setChatSpeedShown, setMyLanguage, setMyTimeZone, setUserEmail, setUserEmailNotifications } from '../../api/users';
 import moonIcon from '../../assets/moon.svg';
 import sunIcon from '../../assets/sun.svg';
 import { AccessTokens } from '../../components/AccessTokens';
+import { ConnectedClients } from '../../components/ClientPairing';
 import { AppShell } from '../../components/AppShell';
 import { DiscardButton, SaveBar } from '../../components/SaveBar';
 import { FieldHint } from '../../components/FieldHint';
+import { SectionMenu } from '../../components/SectionMenu';
+import menuStyles from '../../components/SectionMenu.module.css';
 import { currentLanguage, LANGUAGE_NAMES, LANGUAGES, setLanguage } from '../../session/language';
 import type { Language } from '../../session/language';
 import { currentDragEffect, rememberDragEffect } from '../../session/dragEffect';
@@ -671,6 +674,8 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
     setSaving(false);
   }
 
+  const sectionsRef = useRef<HTMLDivElement>(null);
+
   return (
     <AppShell
       scrollContent
@@ -681,7 +686,10 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
       sidebar={null}
     >
       <div className={styles.page}>
-        <div className={styles.container}>
+        {/* The sections down the side, read off the headings below, as on every other settings page. */}
+        <div className={`${menuStyles.withMenu} ${styles.withMenu}`}>
+        <SectionMenu within={sectionsRef} />
+        <div className={styles.container} ref={sectionsRef}>
           <div className={styles.headerRow}>
             <header className={styles.header}>
               <h1 className={styles.title}>{t('User Preferences')}</h1>
@@ -692,7 +700,7 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
           </div>
 
           <section className={styles.card}>
-            <h2 className={styles.sectionTitle}>{t('Profile')}</h2>
+            <h2 className={styles.sectionTitle} id="profile">{t('Profile')}</h2>
 
             <div className={styles.setting}>
               <span className={styles.labelWithHint}>
@@ -735,7 +743,7 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
           */}
           {session.tokensAllowed === true && (
             <section className={styles.card} data-testid="preferences-tokens">
-              <h2 className={styles.sectionTitle}>{t('Access Tokens')}</h2>
+              <h2 className={styles.sectionTitle} id="tokens">{t('Access Tokens')}</h2>
               <div className={styles.setting}>
                 <span className={styles.labelWithHint}>
                   <span className={styles.settingLabel}>{t('Your tokens')}</span>
@@ -748,8 +756,27 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
             </section>
           )}
 
+          {/*
+            The Orknux clients - the Chrome extension, Orknux for Windows, the
+            Claude Code plugin - connected with a one-time code. For everybody,
+            unlike tokens: what a code is traded for opens the client doors and
+            nothing else, so a directory account may have one.
+          */}
+          <section className={styles.card} data-testid="preferences-clients">
+            <h2 className={styles.sectionTitle} id="clients">{t('Connected clients')}</h2>
+            <div className={styles.setting}>
+              <span className={styles.labelWithHint}>
+                <span className={styles.settingLabel}>{t('Your clients')}</span>
+                <FieldHint label={t('Connected clients')}>
+                  {t('The Chrome extension, Orknux for Windows and the Claude Code plugin connect with a one-time code instead of a token. What a code is traded for reaches only what those clients use, and works for every account, a directory one too.')}
+                </FieldHint>
+              </span>
+              <ConnectedClients buttonClassName={styles.save} />
+            </div>
+          </section>
+
           <section className={styles.card}>
-            <h2 className={styles.sectionTitle}>{t('Notifications')}</h2>
+            <h2 className={styles.sectionTitle} id="notifications">{t('Notifications')}</h2>
 
             <div className={styles.setting}>
               <span className={styles.labelWithHint}>
@@ -785,7 +812,7 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
           </section>
 
           <section className={styles.card}>
-            <h2 className={styles.sectionTitle}>{t('Chat')}</h2>
+            <h2 className={styles.sectionTitle} id="chat">{t('Chat')}</h2>
 
             <div className={styles.setting}>
               <span className={styles.labelWithHint}>
@@ -914,7 +941,7 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
             happening would be no use at all.
           */}
           <section className={styles.card}>
-            <h2 className={styles.sectionTitle}>{t('Appearance')}</h2>
+            <h2 className={styles.sectionTitle} id="appearance">{t('Appearance')}</h2>
 
             <div className={styles.setting}>
               <span className={styles.labelWithHint}>
@@ -2009,6 +2036,7 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
               {saving ? t('Saving…') : t('Save')}
             </button>
           </SaveBar>
+        </div>
         </div>
       </div>
     </AppShell>

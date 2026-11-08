@@ -77,6 +77,10 @@ export interface Agent {
   maxTools: number | null;
   /** Which granted tools always travel rather than being found. */
   requiredTools: string[];
+  /** Which tools it holds only to hand on to agents it creates - the Delegate visibility. Never in `tools`. */
+  delegatedTools: string[];
+  /** Which of the workspace's models it may create temporary agents with; empty is none. */
+  creatableModelIds: string[];
   /** Which icon a node drawn from this starts with; null draws the kind's own. */
   icon: string | null;
   /**
@@ -161,7 +165,7 @@ export interface SessionMemoryBudget {
 }
 
 const AGENT_FIELDS =
-  'id workspaceId name type description systemPrompt enabled modelId modelName mcpServers orknuxAccess mayAskForTools memoryCatalogs secretCatalogs variableCatalogs skillCatalogs hiddenSkills requiredSkills tools connectionIds agentIds boxLabels maxTools requiredTools icon memoryShare maxRounds maxSubagentsAtOnce reasoningEffort chattiness';
+  'id workspaceId name type description systemPrompt enabled modelId modelName mcpServers orknuxAccess mayAskForTools memoryCatalogs secretCatalogs variableCatalogs skillCatalogs hiddenSkills requiredSkills tools connectionIds agentIds boxLabels maxTools requiredTools delegatedTools creatableModelIds icon memoryShare maxRounds maxSubagentsAtOnce reasoningEffort chattiness';
 
 /**
  * What switches one of the server's own tools on an agent. Issue #444.
@@ -182,6 +186,8 @@ export type BuiltInToolGovernance =
   | 'BOX_ACCESS'
   | 'VARIABLE_CATALOGS'
   | 'MAY_ASK_FOR_TOOLS'
+  /** Any model the agent may create agents with: agent_create and agent_dismiss. */
+  | 'CREATABLE_MODELS'
   /** The agent's workspace is an admin workspace with this tool switched on, in Admin > Workspaces. */
   | 'ADMIN_WORKSPACE';
 
@@ -383,6 +389,10 @@ export async function updateAgent(
     boxLabels?: string[];
     maxTools?: number | null;
     requiredTools?: string[];
+    /** Which tools it holds only to hand on; left out, unchanged. A name here is taken out of `tools`. */
+    delegatedTools?: string[];
+    /** Which models it may create agents with; left out, unchanged, empty is none. */
+    creatableModelIds?: string[];
     /** Which icon a node drawn from this agent starts with; null clears it. */
     icon?: string | null;
     /**

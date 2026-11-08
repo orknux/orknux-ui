@@ -4,19 +4,26 @@ import hljs from 'highlight.js/lib/core';
 import ini from 'highlight.js/lib/languages/ini';
 import json from 'highlight.js/lib/languages/json';
 
-import plugIcon from '../assets/plug.svg';
 import { commandLine } from './shellGrammar';
 
 import { t } from '../i18n';
 import { CopyButton } from './CopyButton';
 import dialog from './Dialog.module.css';
 import styles from './McpConnect.module.css';
+import indicators from './DeviceIndicators.module.css';
+import { Light } from './DeviceIndicators';
+import { useHoverHint } from './HoverHint';
+import { OrknuxMark } from './OrknuxMark';
 
 export interface McpConnectProps {
   /** The workspace being looked at, as its path: `/workspace/<id>/…`. Nothing is drawn without one. */
   workspacePath?: string;
   /** Whether the viewer administers the installation, who is shown the way to make a token for somebody else. */
   admin?: boolean;
+  /** Whether an MCP client of the viewer's is connected now, drawn as the light after the name; none while unknown. */
+  connected?: boolean;
+  /** Drawn smaller, for the footer strip of the chat page. */
+  compact?: boolean;
 }
 
 /** What the token is written as in the instructions, until somebody puts their own in. */
@@ -106,11 +113,12 @@ const CLIENTS: Client[] = [
  * manual. The token is left for them to put in - the interface never holds one
  * it could print.
  */
-export function McpConnect({ workspacePath, admin = false }: McpConnectProps) {
+export function McpConnect({ workspacePath, admin = false, connected, compact = false }: McpConnectProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
   const [chosen, setChosen] = useState(CLIENTS[0].key);
   const workspaceId = workspacePath?.split('/').filter(Boolean)[1];
+  const { hintFor, hint } = useHoverHint();
 
   useEffect(() => {
     const shown = ref.current;
@@ -130,16 +138,22 @@ export function McpConnect({ workspacePath, admin = false }: McpConnectProps) {
     <>
       <button
         type="button"
-        className={styles.launcher}
+        className={compact ? `${styles.launcher} ${indicators.compact}` : styles.launcher}
         onClick={() => setOpen(true)}
-        title={t('Use this workspace from an AI client, over MCP')}
+        {...hintFor(connected === true
+          ? t('An AI client of yours is connected to Orknux MCP. Press to connect another, or to this workspace.')
+          : t('Use this workspace from an AI client, over MCP'))}
+        data-connected={connected === undefined ? undefined : String(connected)}
         aria-haspopup="dialog"
         data-testid="mcp-connect"
       >
-        <img src={plugIcon} alt="" width={18} height={18} />
+        {/* The Orknux mark in its own colours, as in the top bar: this is Orknux, reached from somewhere else. */}
+        <OrknuxMark width={16} height={14} />
         {/* The product's name and the protocol's, the same in every language. */}
         Orknux MCP
+        {connected !== undefined && <Light on={connected} />}
       </button>
+      {hint}
 
       <dialog
         ref={ref}

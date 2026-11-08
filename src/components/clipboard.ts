@@ -47,7 +47,11 @@ function copyThroughSelection(text: string): boolean {
   area.setAttribute('aria-hidden', 'true');
   // On screen as far as the browser is concerned - a hidden element cannot be selected - but out of sight.
   Object.assign(area.style, { position: 'fixed', top: '0', left: '-9999px', opacity: '0', pointerEvents: 'none' });
-  document.body.appendChild(area);
+  // Inside the open modal dialog where there is one: while a dialog is shown with showModal() everything
+  // outside it is inert, so a textarea on the body could not be focused or selected, and every copy button
+  // in a dialog - the Claude Code guide's, the MCP one's - said it could not copy over plain http.
+  const modal = (focused?.closest('dialog[open]') ?? document.querySelector('dialog[open]')) as HTMLElement | null;
+  (modal ?? document.body).appendChild(area);
 
   let copied = false;
   try {

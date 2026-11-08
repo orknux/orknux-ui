@@ -24,6 +24,11 @@ Beside the name is the arrow that leaves a box, the same one every field naming
 a definition carries: it opens the agent in a tab of its own, so a question about
 what it is set to does not cost you the conversation.
 
+**My Claude Code** stands at the top of that picker on every server: your own
+Claude Code session answering, through the Orknux channel plugin, with Orknux
+carrying the words and nothing else. What it is, how it is connected and the
+two rules it keeps are in [Your browser and your computer](/docs/21-your-computer).
+
 **Ask for a diagram and you get one.** Where the workspace has chosen a
 text-to-image model, the agent is offered a tool that draws from a description
 — so a picture is something you ask for in the conversation rather than a mode
@@ -245,6 +250,17 @@ works too - it sends the review itself. A review is drawn in the chat where it
 was sent, and Admin → Reports → Ratings lists every one. A review taken back
 stays in the chat marked *taken back*, with a line where it was taken back, and
 no longer counts in the reports.
+
+## Goals
+
+`/goal <what> until <condition>` sets the agent a goal rather than a question:
+it works at it, a reviewer judges each iteration against the condition, and it
+goes on until the condition is met or the iterations run out - `max <n>` sets
+how many, `reviewer <model>` which model judges, both optional. The status of
+a running goal is drawn above the message box with its iteration, `/goal` says
+where it stands, and `/goal stop` ends it. Stop ends it too. The reviewer is a
+temporary agent of the conversation's with no tool at all: it is handed what
+it judges and changes nothing.
 
 ## Timers above the message box
 

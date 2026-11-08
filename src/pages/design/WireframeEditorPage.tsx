@@ -51,7 +51,8 @@ import shell from './DesignImageEditorPage.module.css';
 import styles from './WireframeEditorPage.module.css';
 import { boundsOf, WireframeShapes } from './WireframeDrawing';
 import { WireframeExport } from './WireframeExport';
-import { DesignChat, useChatFiles } from './DesignChat';
+import { CLAUDE_CODE_MODEL, DesignChat, askThroughClaudeCode, claudeCodeModel, useChatFiles } from './DesignChat';
+import { fetchClaudeCodeChat } from '../../api/chat';
 import { placedPicture, WireframeImportMenu } from './WireframeImportMenu';
 import { WireframeHost } from './WireframeHost';
 import type { ChatIdea } from './DesignChat';
@@ -311,9 +312,11 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
 
   useEffect(() => {
     if (workspaceId === '') return;
-    fetchModels(workspaceId)
-      .then((all) => {
+    Promise.all([fetchModels(workspaceId), fetchClaudeCodeChat().catch(() => null)])
+      .then(([all, claudeCode]) => {
         const chat = all.filter((one) => one.kind === 'CHAT' && one.enabled !== false);
+        // My Claude Code first where it is offered: the person's own, not one of the workspace's models.
+        if (claudeCode?.available === true) chat.unshift(claudeCodeModel(chat));
         setModels(chat);
         let remembered: string | null = null;
         try {
@@ -321,7 +324,8 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
         } catch {
           remembered = null;
         }
-        setModelId(chat.some((one) => one.id === remembered) ? (remembered ?? '') : (chat[0]?.id ?? ''));
+        const firstModel = chat.find((one) => one.id !== CLAUDE_CODE_MODEL) ?? chat[0];
+        setModelId(chat.some((one) => one.id === remembered) ? (remembered ?? '') : (firstModel?.id ?? ''));
       })
       .catch(() => setModels([]));
   }, [workspaceId]);
@@ -761,7 +765,12 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
     setAsking('');
     setAnswering(true);
     try {
-      const answered = await askWireframe(wireframe.id, modelId, sent);
+      const answered =
+        modelId === CLAUDE_CODE_MODEL
+          ? await askThroughClaudeCode(workspaceId, `the wireframe ${wireframe.name}`, sent, wireframe.revision, () => fetchWireframe(wireframe.id)).then(
+              (asked) => ({ answer: asked.answer, changed: asked.changed, wireframe: asked.item }),
+            )
+          : await askWireframe(wireframe.id, modelId, sent);
       setTalk([...sent, { role: 'assistant', content: answered.answer }]);
       if (answered.changed) {
         remember(elements);

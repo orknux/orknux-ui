@@ -930,6 +930,29 @@ default, set in Admin Settings or a workspace's own settings. What an asked
 agent spends is booked in the usage report to whoever prompted the conversation
 that asked it (see Reports).
 
+### Agents that make agents
+
+An agent allowed to - **Models it may create agents with** on its settings
+page names them - makes a specialist for the conversation it is in with
+`agent_create`: a name, instructions, which of those models, and the tools it
+gets, each at Always, Offer or **Delegate**. Delegate is the fourth state a
+tool row on the agent's page cycles through: a tool held only to hand on, never
+to use itself, so an orchestrator can give `http_get` to the agents it makes
+without fetching anything on its own. A call that names no tools at all is
+refused, since left out it is the parameter forgotten; `tools: []` says none on
+purpose. An optional `question` asks the new agent straight away, as
+`ask_agent` would.
+
+What it makes is the conversation's alone: it appears in no list, no other
+conversation sees or asks it, and its name is its conversation's - two
+conversations may each have a `web-fetcher`, and a name an agent of the
+workspace holds, or one the conversation used already, is given a number
+(`web-fetcher-4821`) and the agent told what it is called. It cannot create
+agents itself. `agent_dismiss` lets it go, stopping whatever it was still doing
+for its creator first; one left behind is swept once its conversation has been
+idle for the hours Admin sets. The conversation's session lists each one under
+the chat's own, as it lists every agent it asked.
+
 ### Reminders
 
 `timer_set` is a reminder an agent sets for itself: "tell me in 30 seconds to
@@ -1846,3 +1869,14 @@ already settled and a field offering to change them would be showing you a
 decision it is not making. Either token can be revealed from its own field
 afterwards, which is the only way to tell which one is stored, and the audit log
 says which of the two was revealed rather than only that something was.
+
+### Recommended integrations
+
+Above the workspace's own connections the page lists what orknux.ai
+recommends for agents like these - GitHub, Blender, Grafana, KiCad and more
+as orknux.ai adds them - each with what it is for, a link, how much effort it
+takes to set up, and **Ask Claude**, which opens Claude with the instructions
+to set it up. orknux.ai is told only the server's version and which kinds of
+connection the workspace already has, never their contents; the icons come
+through this server, so the page reaches orknux.ai for nothing else.
+

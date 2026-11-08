@@ -304,6 +304,8 @@ function fixedBecause(governance: BuiltInToolGovernance | null): string | null {
       return t('Granted by the secret and variable catalogs — switch it there.');
     case 'MAY_ASK_FOR_TOOLS':
       return t('Granted by May ask for more tools — switch it there.');
+    case 'CREATABLE_MODELS':
+      return t('Granted by Dynamic subagents models — switch it there.');
     case 'ADMIN_WORKSPACE':
       return t('Granted by this admin workspace — switch it in Admin > Workspaces.');
     default:
@@ -467,6 +469,14 @@ interface GrantListProps<Item> {
    * none of it is hidden on its own, while each may be marked to travel.
    */
   unhideableOf?: (item: Item) => boolean;
+  /**
+   * Which rows are held only to hand on to agents it creates - the Delegate
+   * state, after Always in the cycle. Absent on every list but the tools, and
+   * there only where the caller passes [onDelegate]. A delegated row is never
+   * in `granted`: the server keeps a name in at most one of the two.
+   */
+  delegated?: string[];
+  onDelegate?: (delegated: string[]) => void;
 }
 
 /**
@@ -529,6 +539,8 @@ function GrantList<Item>({
   unavailableOf,
   countedOf,
   unhideableOf,
+  delegated,
+  onDelegate,
 }: GrantListProps<Item>) {
   const [search, setSearch] = useState('');
   /*
@@ -667,8 +679,9 @@ function GrantList<Item>({
    * are names in the grant list like anything else - except a row that is
    * fixed, which reads the grant it comes with and cannot be pressed.
    */
-  type ToolState = 'hide' | 'offer' | 'always';
+  type ToolState = 'hide' | 'offer' | 'always' | 'delegate';
   const toolState = (row: { item: Item; value: string; ticked: boolean; fixed: string | null }): ToolState => {
+    if (row.fixed === null && (delegated?.includes(row.value) ?? false)) return 'delegate';
     if (!row.ticked) return 'hide';
     // A fixed row is carried whenever the grant it comes with is on - there is
     // no mark to read - so its on-state is Always, never Offer. Issue #444.
@@ -690,6 +703,16 @@ function GrantList<Item>({
       // Offer -> Always.
       touch(row.value);
       onMark?.([...(marked ?? []), row.value]);
+    } else if (state === 'delegate') {
+      // Delegate -> Hide.
+      touch(row.value);
+      onDelegate?.((delegated ?? []).filter((one) => one !== row.value));
+    } else if (onDelegate !== undefined && !(unhideableOf?.(row.item) ?? false)) {
+      // Always -> Delegate: out of the grant and its mark, held only to hand on.
+      touch(row.value);
+      onChange(granted.filter((one) => one !== row.value));
+      onMark?.((marked ?? []).filter((one) => one !== row.value));
+      onDelegate([...(delegated ?? []), row.value]);
     } else {
       // Always -> Hide, dropping any mark it carried.
       touch(row.value);
@@ -700,13 +723,27 @@ function GrantList<Item>({
   /* The rows the status filter leaves, on a list that has statuses. Issue #413. */
   const visible =
     onMark !== undefined && status !== 'all' ? shown.filter((row) => toolState(row) === status) : shown;
-  const STATE_LABEL: Record<ToolState, string> = { hide: t('Hide'), offer: t('Offer'), always: t('Always') };
+  const STATE_LABEL: Record<ToolState, string> = {
+    hide: t('Hide'),
+    offer: t('Offer'),
+    always: t('Always'),
+    delegate: t('Delegate'),
+  };
   const STATE_TITLE: Record<ToolState, string> = {
     hide: t('Hidden — the agent cannot use this. Click to offer it.'),
     offer: t('Offered — available, loaded when a job needs it once a tool limit is set. Click to always carry it.'),
-    always: t('Always — carried in front of the model every turn, once a tool limit is set. Click to hide it.'),
+    always:
+      onDelegate === undefined
+        ? t('Always — carried in front of the model every turn, once a tool limit is set. Click to hide it.')
+        : t('Always — carried in front of the model every turn, once a tool limit is set. Click to delegate it.'),
+    delegate: t('Delegated — the agent cannot use this itself, but may give it to an agent it creates. Click to hide it.'),
   };
-  const STATE_CLASS: Record<ToolState, string> = { hide: own.stateHide, offer: own.stateOffer, always: own.stateAlways };
+  const STATE_CLASS: Record<ToolState, string> = {
+    hide: own.stateHide,
+    offer: own.stateOffer,
+    always: own.stateAlways,
+    delegate: own.stateDelegate,
+  };
   /** What a row's control says on hover: a row that cannot be hidden goes back to Offer. */
   const stateTitle = (row: { item: Item; value: string; ticked: boolean; fixed: string | null }): string => {
     const state = toolState(row);
@@ -729,7 +766,14 @@ function GrantList<Item>({
   // grant it comes with, and a press that reached it would do nothing. #444.
   // Nor a row that cannot be hidden: clearing would hide it, which is not this list's to do.
   const picked = rows.filter(
-    (row) => row.inGroup && row.matches && row.fixed === null && row.unavailable === null && !(unhideableOf?.(row.item) ?? false),
+    (row) =>
+      row.inGroup &&
+      row.matches &&
+      row.fixed === null &&
+      row.unavailable === null &&
+      !(unhideableOf?.(row.item) ?? false) &&
+      // A delegated row is not this press's: granting it too would hold one name twice.
+      !(delegated?.includes(row.value) ?? false),
   );
   const matching = picked.length;
   /*
@@ -858,6 +902,7 @@ function GrantList<Item>({
               <option value="all">{t('Any status')}</option>
               <option value="always">{t('Always')}</option>
               <option value="offer">{t('Offer')}</option>
+              {onDelegate !== undefined && <option value="delegate">{t('Delegate')}</option>}
               <option value="hide">{t('Hide')}</option>
             </Select>
           )}
@@ -1184,6 +1229,10 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
   const [maxTools, setMaxTools] = useState(agent.maxTools === null ? '' : String(agent.maxTools));
   /** Which granted tools always travel rather than being found. #372. */
   const [requiredTools, setRequiredTools] = useState<string[]>(agent.requiredTools);
+  /** Which tools it holds only to hand on to agents it creates: the Delegate state. */
+  const [delegatedTools, setDelegatedTools] = useState<string[]>(agent.delegatedTools ?? []);
+  /** Which models it may create agents with; none is an agent that cannot. */
+  const [creatableModelIds, setCreatableModelIds] = useState<string[]>(agent.creatableModelIds ?? []);
   /**
    * The ceiling as a number, or null where none has been typed.
    *
@@ -1517,6 +1566,8 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         return secretCatalogs.length > 0 || variableCatalogs.length > 0;
       case 'MAY_ASK_FOR_TOOLS':
         return mayAskForTools;
+      case 'CREATABLE_MODELS':
+        return creatableModelIds.length > 0;
       // Listed only while the workspace offers it, so a row drawn is a tool held.
       case 'ADMIN_WORKSPACE':
         return true;
@@ -1787,6 +1838,8 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
     agentIds,
     maxTools: maxTools.trim() === '' ? null : Number(maxTools),
     requiredTools,
+    delegatedTools,
+    creatableModelIds,
     icon,
     // Sent every save rather than left out, which is what lets the slider
     // put it back to the default.
@@ -1829,6 +1882,8 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
       setAgentIds(updated.agentIds);
       setMaxTools(updated.maxTools === null ? '' : String(updated.maxTools));
       setRequiredTools(updated.requiredTools);
+      setDelegatedTools(updated.delegatedTools ?? []);
+      setCreatableModelIds(updated.creatableModelIds ?? []);
       setModelId(updated.modelId ?? '');
       setShare(updated.memoryShare);
       setRounds(updated.maxRounds === null ? '' : String(updated.maxRounds));
@@ -2390,6 +2445,9 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           */
           marked={markedNow}
           onMark={setRequiredTools}
+          // The fourth state: held only to hand on to an agent it creates.
+          delegated={delegatedTools}
+          onDelegate={setDelegatedTools}
           /*
             Read-only while the workspace has not allowed it, for every row the
             server brings: the state is still drawn and the reason is on hover.
@@ -2539,6 +2597,36 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
             )
           }
         />
+
+        {/*
+          Which models it may create agents of its own with, for a conversation.
+          None - every agent until somebody ticks one - is an agent that cannot
+          create agents and is not offered agent_create. What a created agent
+          may hold is the Tools list's business: only what this agent holds,
+          the Delegate rows included.
+        */}
+        <GrantList<Model>
+          label={t('Dynamic subagents models')}
+          what="creatable models"
+          styles={styles}
+          catalogue={{ ...modelCatalogue, items: modelCatalogue.items.filter((one) => one.kind === 'CHAT') }}
+          empty={t('No models in this workspace yet.')}
+          hint={t('The models this agent may create temporary agents with, for the conversation it is in. It gives each one instructions and tools it holds itself — including the ones marked Delegate, which it may hand on but not use — and asks it like any other agent. A created agent inherits nothing else, cannot create agents itself, and is removed when the conversation goes quiet. None ticked: it cannot create agents.')}
+          keyOf={(one) => one.id}
+          nameOf={(one) => one.name}
+          metaOf={(one) => one.modelId}
+          granted={creatableModelIds.map((id) => modelCatalogue.items.find((one) => one.id === id)?.name ?? `#${id}`)}
+          onChange={(names) =>
+            setCreatableModelIds(
+              names.map((name) => modelCatalogue.items.find((one) => one.name === name)?.id ?? name.replace(/^#/, '')),
+            )
+          }
+        />
+        <p className={own.emptyNote} data-creatable-models-note="">
+          {creatableModelIds.length === 0
+            ? t('It cannot create agents. Tick a model to let it make temporary agents for a conversation.')
+            : t('It may create temporary agents with the models ticked, giving them only tools it holds. They last as long as the conversation that made them.')}
+        </p>
 
         {/*
           How many of them may be working at once, drawn as Tool Rounds is and

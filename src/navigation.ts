@@ -499,6 +499,7 @@ export const PAGES = [
     sections: [
       { label: t('MCP Servers'), at: '#mcp-servers', also: 'model context protocol tools' },
       { label: t('Connections'), at: '#connections', also: 'slack jira confluence http credentials' },
+      { label: t('Recommended integrations'), at: '#recommended', also: 'orknux.ai suggestions catalog marketplace github stars popular add install' },
     ],
   },
   {

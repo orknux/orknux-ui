@@ -14,6 +14,7 @@ import {
 import type { ConnectionStatus, IntegrationImport, IntegrationKind, McpServer, PluginConnectionType, WorkspaceConnection } from '../../api/integrations';
 import { SaveAsTemplateButton } from '../../components/ComponentTransfer';
 import { IntegrationTemplatesDialog } from '../../components/IntegrationTemplatesDialog';
+import { RecommendedIntegrations } from '../../components/RecommendedIntegrations';
 import type { SessionUser } from '../../api/session';
 import settingsIcon from '../../assets/settings-14.svg';
 import { AppShell } from '../../components/AppShell';
@@ -580,6 +581,8 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
           />
         )}
       </section>
+
+      <RecommendedIntegrations workspaceId={workspaceId} />
 
       <McpServerDialog
         open={addingServer}

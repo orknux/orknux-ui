@@ -3,6 +3,7 @@ import type { FormEvent, KeyboardEvent } from 'react';
 import { useLocation } from 'react-router-dom';
 
 import { askQuickChat } from '../api/quickChat';
+import { fetchClaudeCodeChat } from '../api/chat';
 import type { QuickChatSuggestion } from '../api/quickChat';
 import { CodeSuggestion } from './CodeSuggestion';
 import { ToolSuggestion } from './ToolSuggestion';
@@ -107,12 +108,35 @@ function labelFor(pathname: string): string | null {
  * It appears only where the workspace has chosen a model for it. A button that
  * opens onto an apology is worse than no button.
  */
+/** Where this browser remembers that Quick Chat is answered by the person's own Claude Code. */
+const BY_CLAUDE_KEY = 'orknux.quickChat.claudeCode';
+
 export function QuickChat({ workspacePath, userName }: QuickChatProps) {
   const firstName = userName?.trim().split(/\s+/)[0] ?? '';
   const { pathname } = useLocation();
   const workspaceId = workspacePath?.split('/').filter(Boolean)[1];
 
   const [offered, setOffered] = useState(false);
+  /** Whether the workspace has a quick chat model of its own; My Claude Code alone can still offer the panel. */
+  const [modelOffered, setModelOffered] = useState(false);
+  /** Whether My Claude Code is offered to this person, and whether they chose it here. Kept in this browser. */
+  const [claudeOffered, setClaudeOffered] = useState(false);
+  const [byClaude, setByClaude] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(BY_CLAUDE_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const answeredByClaude = claudeOffered && (byClaude || !modelOffered);
+  function chooseClaude(on: boolean) {
+    setByClaude(on);
+    try {
+      localStorage.setItem(BY_CLAUDE_KEY, on ? 'true' : 'false');
+    } catch {
+      // Remembered for this visit only.
+    }
+  }
   /** Whether this workspace lets it start things; only wording depends on it here. */
   const [mayWrite, setMayWrite] = useState(false);
   const [open, setOpen] = useState(false);
@@ -145,10 +169,13 @@ export function QuickChat({ workspacePath, userName }: QuickChatProps) {
       return;
     }
     let live = true;
-    fetchWorkspace(workspaceId)
-      .then((held) => {
+    Promise.all([fetchWorkspace(workspaceId), fetchClaudeCodeChat().catch(() => null)])
+      .then(([held, claudeCode]) => {
         if (!live) return;
-        setOffered(held?.quickChatAvailable === true);
+        const claude = claudeCode?.available === true;
+        setModelOffered(held?.quickChatAvailable === true);
+        setClaudeOffered(claude);
+        setOffered(held?.quickChatAvailable === true || claude);
         setMayWrite(held?.quickChatMayWrite ?? false);
       })
       .catch(() => {
@@ -207,7 +234,7 @@ export function QuickChat({ workspacePath, userName }: QuickChatProps) {
       const answer = await askQuickChat(workspaceId, conversation, {
         label: labelFor(pathname),
         path: pathname,
-      }, controller.signal);
+      }, controller.signal, answeredByClaude ? 'CLAUDE_CODE' : undefined);
       const grown: QuickChatTurn[] = [...conversation, { role: 'assistant', content: answer.answer }];
       setSaid(grown);
       if (answer.suggestion !== undefined) {
@@ -412,6 +439,20 @@ export function QuickChat({ workspacePath, userName }: QuickChatProps) {
           />
           <header className={styles.header}>
             <span className={styles.title}>{t('Ask AI')}</span>
+            {claudeOffered && modelOffered && (
+              <label className={styles.answeredBy}>
+                <span>{t('Answered by')}</span>
+                <select
+                  value={answeredByClaude ? 'claude' : 'model'}
+                  onChange={(event) => chooseClaude(event.target.value === 'claude')}
+                  data-testid="quick-chat-answered-by"
+                >
+                  <option value="model">{t("The workspace's model")}</option>
+                  <option value="claude">{t('My Claude Code')}</option>
+                </select>
+              </label>
+            )}
+            {claudeOffered && !modelOffered && <span className={styles.answeredBy}>{t('My Claude Code')}</span>}
             <button type="button" className={styles.close} onClick={() => setOpen(false)} aria-label={t('Close')}>
               ×
             </button>

@@ -1,0 +1,440 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+  overflow: clip;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+  padding: var(--space-16) var(--space-24);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.cardTitles {
+  display: flex;
+  flex: 1 0 0;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.cardTitle {
+  margin: 0;
+  font-weight: 600;
+  font-size: var(--text-lg);
+  color: var(--color-text-primary);
+}
+
+.cardSubtitle {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-16) var(--space-24) 0;
+}
+
+/* The Sort box at the tag chips' size and the search box's height, not a page field's: it is one of the filters. */
+.sortBox {
+  padding: var(--space-6) var(--space-10);
+  border-radius: var(--radius-6);
+  font-family: inherit;
+  font-size: var(--text-sm);
+}
+
+.sortPrefix {
+  color: var(--color-text-muted);
+}
+
+/* The order and its direction, beside the search. */
+.sort {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.direction {
+  min-width: 36px;
+  padding: var(--space-6) var(--space-10);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  background: none;
+  font-family: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.direction:hover {
+  border-color: var(--color-text-muted);
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+}
+
+.tag,
+.tagOn {
+  padding: var(--space-4) var(--space-10);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: none;
+  font-family: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.tagOn {
+  border-color: var(--color-accent-brand);
+  background: var(--color-accent-brand-soft);
+  color: var(--color-text-primary);
+}
+
+/* A card's own tags, smaller than the filter row's: pressing one filters by it. */
+.cardTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.cardTag,
+.cardTagOn {
+  padding: var(--space-2) var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: none;
+  font-family: inherit;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.cardTag:hover {
+  border-color: var(--color-text-muted);
+}
+
+.cardTagOn {
+  border-color: var(--color-accent-brand);
+  background: var(--color-accent-brand-soft);
+  color: var(--color-text-primary);
+}
+
+.notice {
+  margin: 0;
+  padding: var(--space-14) var(--space-24);
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  /*
+   * Each card its own height, so opening one card's steps grows that card
+   * alone. Folded, every card is as tall as the tallest folded one - the
+   * height is measured and handed down as --folded-height - so the grid reads
+   * as even rows until somebody opens something.
+   */
+  align-items: start;
+  gap: var(--space-16);
+  margin: 0;
+  padding: var(--space-16) var(--space-24) var(--space-24);
+  list-style: none;
+}
+
+.grid > li {
+  display: flex;
+  min-width: 0;
+}
+
+.item {
+  min-height: var(--folded-height, auto);
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-10);
+  min-width: 0;
+  padding: var(--space-16);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+}
+
+.itemHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+}
+
+.glyph {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-8);
+  background: var(--color-accent-brand-soft);
+  font-weight: 700;
+  font-size: var(--text-lg);
+  color: var(--color-text-primary);
+}
+
+/* Website and Repository among the facts: links, but written as the place they go, not underlined like the actions. */
+.factLink a {
+  color: var(--color-text-body);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.factLink a:hover {
+  color: var(--color-text-primary);
+  text-decoration: underline;
+}
+
+/* Archived on GitHub: said on the card, since a person setting it up should know before they start. */
+.archived {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-warning, #d4a72c);
+}
+
+/* The tool's own icon, the glyph's size, on no tile: its makers chose its colours. */
+.glyphImage {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
+
+.itemTitles {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.itemName {
+  margin: 0;
+  font-weight: 600;
+  font-size: var(--text-base);
+  color: var(--color-text-primary);
+}
+
+.itemVendor {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.badge,
+.badgeMuted {
+  padding: 0 var(--space-6);
+  border-radius: var(--radius-4);
+  font-size: var(--text-xs);
+}
+
+.badge {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.badgeMuted {
+  background: var(--color-surface-hover);
+  color: var(--color-text-secondary);
+}
+
+.installed {
+  flex-shrink: 0;
+  padding: var(--space-2) var(--space-8);
+  border-radius: var(--radius-full);
+  background: var(--color-success-soft);
+  font-size: var(--text-xs);
+  color: var(--color-success);
+}
+
+.summary {
+  margin: 0;
+  font-size: var(--text-md);
+  line-height: 1.5;
+  color: var(--color-text-body);
+}
+
+/* A long description is cut at five lines; pressing it shows the rest, and pressing again folds it. */
+.summaryFolded {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  line-clamp: 5;
+}
+
+.summaryToggle {
+  cursor: pointer;
+}
+
+.summaryToggle:hover {
+  color: var(--color-text-primary);
+}
+
+.reason {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-cyan);
+}
+
+.facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.facts > div {
+  display: flex;
+  gap: var(--space-8);
+}
+
+.facts dt {
+  /* Wide enough for Repository, the longest name in the column. */
+  flex: 0 0 72px;
+  color: var(--color-text-muted);
+}
+
+.facts dd {
+  margin: 0;
+  color: var(--color-text-body);
+}
+
+.factHint {
+  color: var(--color-text-muted);
+}
+
+.warning {
+  margin: 0;
+  padding: var(--space-6) var(--space-10);
+  border-radius: var(--radius-6);
+  background: var(--color-amber-soft);
+  font-size: var(--text-sm);
+  color: var(--color-amber);
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-14);
+  font-size: var(--text-sm);
+}
+
+.links a,
+.linkButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.steps {
+  padding: var(--space-10) var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  font-size: var(--text-sm);
+  overflow-x: auto;
+}
+
+/* The steps' own text at the card's size: the markdown's lists and paragraphs otherwise draw a size up. */
+.steps li,
+.steps p {
+  font-size: inherit;
+}
+
+.requirements {
+  margin: 0 0 var(--space-8);
+  color: var(--color-text-body);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+  margin-top: auto;
+  padding-top: var(--space-6);
+}
+
+.askButton {
+  padding: var(--space-8) var(--space-14);
+  border-radius: var(--radius-6);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
+  font-weight: 600;
+  font-size: var(--text-md);
+  color: var(--color-on-accent-brand);
+  text-decoration: none;
+}
+
+.ghostButton {
+  padding: var(--space-8) var(--space-14);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  background: none;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.handoff {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-8);
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+/* Dismisses the note; it says what happens next once, and is not needed after. */
+.handoffClose {
+  flex: none;
+  padding: 0 var(--space-4);
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--text-lg);
+  line-height: 1;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.handoffClose:hover {
+  color: var(--color-text-primary);
+}
+
+.moreRow {
+  display: flex;
+  justify-content: center;
+  padding: 0 var(--space-24) var(--space-24);
+}

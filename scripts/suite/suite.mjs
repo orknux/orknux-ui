@@ -4337,6 +4337,31 @@ export const TESTS = [
     /* Makes two agents and removes them. */
   },
   {
+    name: 'agent-delegate-check',
+    what: "a tool row's fourth state, Delegate, and the models an agent may create agents with",
+    needs: ['workspace'],
+    /* Makes a tool, a provider on .invalid, a model and an agent, and removes them. */
+  },
+  {
+    name: 'chat-goal-check',
+    what: '/goal in a chat: Tab completes it and its keywords, the line starts a goal, and the line under the conversation follows it to met',
+    needs: ['workspace'],
+    ci: false,
+    /*
+     * `ci: false` because the goal's turns and its reviews are calls the
+     * *server* makes to a model, and CI has none; a model on `.invalid` fails
+     * the first turn and the goal never reaches a review. The stub
+     * `scripts/suite/goal-stub.py` answers the agent and its reviewer apart -
+     * not met with feedback on the first review, met on the second - so the
+     * line has a whole loop to follow. Run it by hand:
+     *
+     *   python scripts/suite/goal-stub.py 8193
+     *   node scripts/suite/run.mjs --only chat-goal-check
+     *
+     * Where the stub is, as the server reaches it, goes in ORKNUX_GOAL_STUB.
+     */
+  },
+  {
     name: 'agent-ask-agent-check',
     what: 'an agent is given other agents to put a question to',
     needs: ['workspace'],
@@ -5886,6 +5911,30 @@ export const TESTS = [
      * is: a list that pushed the form down would move the button somebody is
      * reaching for.
      */
+  },
+  {
+    name: 'copy-in-dialog-check',
+    what: 'a copy button inside a modal dialog puts its text on the clipboard over plain http, not merely says Copied',
+    needs: [],
+    /* Meaningful only against a server reached over plain http on a LAN address. Makes a pairing code that expires unused. */
+  },
+  {
+    name: 'preferences-clients-check',
+    what: 'User Preferences has the section menu, Connected clients is drawn like Access Tokens, and a client paired while the code is shown appears without a reload',
+    needs: [],
+    /* Pairs a client through the same door a client uses, and disconnects it again. */
+  },
+  {
+    name: 'device-indicators-check',
+    what: 'the corner offers the Chrome extension in Chrome and Orknux for Windows on Windows, as a link until connected and a word after, level with Orknux MCP',
+    needs: ['workspace'],
+    /* Whether each client is connected is stubbed in the browser: a check cannot connect a real Chrome extension and a Windows desktop. */
+  },
+  {
+    name: 'recommended-integrations-check',
+    what: "orknux.ai's recommendations are drawn as cards side by side, and Ask Claude hands Claude exactly the prompt the server filled",
+    needs: ['workspace'],
+    /* The recommendations are stubbed in the browser: a check written against whatever orknux.ai recommends today goes red when it recommends something else. */
   },
   {
     name: 'integrations-table-check',
