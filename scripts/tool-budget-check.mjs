@@ -236,30 +236,33 @@ const marked = await page
 record(marked, 'and pinning one tool adds one to the count, so the form has it, not only the button');
 
 /*
- * A built-in switched by name cycles all three states like any other tool.
+ * A built-in switched by name cycles every state like any other tool.
  * finish_answer was a flag with no Offer between Hide and Always (#413); since
- * #444 it is a name in the grant list, so Always -> Hide -> Offer -> Always.
+ * #444 it is a name in the grant list, and since agents create agents (1.4.0)
+ * the ring has a fourth state after Always - Delegate, held only to hand to an
+ * agent it makes - so Always -> Delegate -> Hide -> Offer -> Always.
  */
 const flag = page.locator('[data-grant-name="finish_answer"] [data-tool-state]');
 const start = await flag.getAttribute('data-tool-state');
-await flag.click();
-const one = await flag.getAttribute('data-tool-state');
-await flag.click();
-const two = await flag.getAttribute('data-tool-state');
-await flag.click();
-const three = await flag.getAttribute('data-tool-state');
+const ring = [];
+for (let press = 0; press < 4; press += 1) {
+  await flag.click();
+  ring.push(await flag.getAttribute('data-tool-state'));
+}
 record(
-  start === 'always' && one === 'hide' && two === 'offer' && three === 'always',
-  `a built-in cycles Always -> Hide -> Offer -> Always like any tool (${start} -> ${one} -> ${two} -> ${three})`,
+  start === 'always' && ring.join(',') === 'delegate,hide,offer,always',
+  `a built-in cycles Always -> Delegate -> Hide -> Offer -> Always like any tool (${[start, ...ring].join(' -> ')})`,
 );
 
 /*
  * Hiding one is the server withholding it: the name leaves `tools`, and with
  * it the Always mark. BuiltInToolsTest pins that a name off the list is
  * neither declared to the model nor answered; what is measured here is that
- * the form's Hide reaches the list the server reads.
+ * the form's Hide reaches the list the server reads. Two presses from Always,
+ * through Delegate.
  */
 const note = page.locator('[data-grant-name="note_to_self"] [data-tool-state]');
+await note.click();
 await note.click();
 record((await note.getAttribute('data-tool-state')) === 'hide', 'note_to_self can be hidden');
 

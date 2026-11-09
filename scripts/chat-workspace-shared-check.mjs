@@ -33,9 +33,16 @@ try {
 
   /* The same chat, as the server answers one continued from a session. */
   await page.route('**/graphql', async (route) => {
-    const response = await route.fetch();
-    const body = await response.text();
-    await route.fulfill({ response, body: body.replaceAll('"sharedSession":false', '"sharedSession":true') });
+    // A request still in flight when the route is taken away below is continued by Playwright, and answering it
+    // then throws out of this handler and brings the process down. The chat asks after its clients and its goal
+    // while it is open, so there is nearly always one.
+    try {
+      const response = await route.fetch();
+      const body = await response.text();
+      await route.fulfill({ response, body: body.replaceAll('"sharedSession":false', '"sharedSession":true') });
+    } catch {
+      /* already handled */
+    }
   });
   await page.reload({ waitUntil: 'domcontentloaded' });
   const tag = page.getByTestId('chat-workspace-shared');
@@ -48,7 +55,7 @@ try {
       'beside its title',
     );
   }
-  await page.unroute('**/graphql');
+  await page.unrouteAll({ behavior: 'ignoreErrors' });
 
   /* Continue in chat, on a session page: asked first. */
   const sessions = (await graphql(`query ($w: ID!) { llmSessions(workspaceId: $w, page: 0, size: 20) { content { id key } } }`, { w: WORKSPACE })).llmSessions.content;

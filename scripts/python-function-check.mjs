@@ -53,7 +53,14 @@ try {
   record(await picker.isDisabled(), 'once code is written the language is closed');
 
   await page.getByRole('button', { name: 'Validate', exact: true }).click();
-  await page.waitForTimeout(1500);
+  // The server's first Python parse starts GraalPy, which takes seconds on a runner: wait for the answer, not a moment.
+  await page
+    .waitForFunction(
+      () => /^(Valid|Not valid)/.test(document.querySelector('[data-check="validate-status"] span[title]')?.getAttribute('title') ?? ''),
+      undefined,
+      { timeout: 30_000 },
+    )
+    .catch(() => undefined);
   // Read off the status's own sentence: the strip it sits in is narrow, and the page's text cuts it short.
   const shown = await page.locator('[data-check="validate-status"] span[title]').first().getAttribute('title');
   record(shown === "Valid — the sandbox's Python parser accepts the code", `Validate asks the Python parser, and it accepts (${shown})`);

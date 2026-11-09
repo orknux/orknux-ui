@@ -63,7 +63,10 @@ try {
   record(firstLine === 'def main(text, times):', `the def line followed the panel (${JSON.stringify(firstLine)})`);
 
   await page.getByRole('button', { name: 'Validate', exact: true }).click();
-  await page.waitForTimeout(1500);
+  // The server's first Python parse starts GraalPy, which takes seconds on a runner: wait for the answer, not a moment.
+  await page
+    .waitForFunction(() => /Python parser accepts the code|Not valid/.test(document.body.innerText), undefined, { timeout: 30_000 })
+    .catch(() => undefined);
   const said = await page.locator('body').innerText();
   record(said.includes("the sandbox's Python parser accepts the code"), 'Validate asks the Python parser, and it accepts');
 

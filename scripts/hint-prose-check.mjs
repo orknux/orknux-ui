@@ -876,6 +876,63 @@ const IN_THE_OPEN = [
     why: 'the other option in that pair',
   },
 
+  // ---- The Claude Code guide ---------------------------------------------
+  //
+  // A dialog whose whole content is the steps of connecting a person's Claude
+  // Code, each step a sentence above the command it explains, as the connect
+  // dialog's token step is. There is no field here to put a (?) on: the
+  // sentence is the step, filled in for this server and system.
+  {
+    file: 'src/components/ClaudeCodeGuide.tsx',
+    says: 'The plugin runs on Bun, as Anthropic’s own channel plugins do.',
+    because: 'label',
+    why: "the first step's own sentence, above the install command: what is being installed and the terminal to use it from",
+  },
+  {
+    file: 'src/components/ClaudeCodeGuide.tsx',
+    says: 'Channels are a research preview,',
+    because: 'label',
+    why: "the third step's own sentence, above the command that starts Claude Code with the flag it names",
+  },
+  {
+    file: 'src/components/ClaudeCodeGuide.tsx',
+    says: 'Make a pairing link and paste what is shown into Claude Code.',
+    because: 'label',
+    why: "the fourth step's own sentence, above the button that makes the link",
+  },
+  {
+    file: 'src/components/ClaudeCodeGuide.tsx',
+    says: 'Within half a minute the light beside Claude Code in this corner turns green.',
+    because: 'label',
+    why: 'the same step, under the button: what the reader sees when it worked',
+  },
+  {
+    file: 'src/components/ClaudeCodeGuide.tsx',
+    says: 'Run the plugin by hand in a terminal.',
+    because: 'label',
+    why: 'the first sentence of the step for when it did not connect, above the command it tells the reader to run',
+  },
+  {
+    file: 'src/components/ClaudeCodeGuide.tsx',
+    says: 'Most often /mcp shows plugin:orknux:orknux failed because Claude Code cannot find Bun:',
+    because: 'label',
+    why: 'the same step, above the command that puts Bun on the path',
+  },
+  {
+    file: 'src/components/ClaudeCodeGuide.tsx',
+    says: 'Stop it with Ctrl+C before you chat:',
+    because: 'label',
+    why: 'the same step, after the commands: the one thing to do before leaving it',
+  },
+
+  // ---- Recommendations ---------------------------------------------------
+  {
+    file: 'src/components/RecommendedIntegrations.tsx',
+    says: 'orknux.ai has no recommendations for this installation yet.',
+    because: 'status',
+    why: 'what the request to orknux.ai answered, drawn where the cards would be: the state of the list, not advice on a field',
+  },
+
   // ---- Somebody else is holding the file ---------------------------------
   {
     file: 'src/pages/workspace/ToolEditorPage.tsx',

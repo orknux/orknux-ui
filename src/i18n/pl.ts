@@ -4569,8 +4569,8 @@ export const PL: Record<string, string> = {
   "Dynamic subagents models": "Modele dynamicznych subagentów",
   "No models in this workspace yet.": "W tej przestrzeni roboczej nie ma jeszcze modeli.",
   "The models this agent may create temporary agents with, for the conversation it is in. It gives each one instructions and tools it holds itself — including the ones marked Delegate, which it may hand on but not use — and asks it like any other agent. A created agent inherits nothing else, cannot create agents itself, and is removed when the conversation goes quiet. None ticked: it cannot create agents.": "Modele, z którymi ten agent może tworzyć tymczasowych agentów na potrzeby rozmowy, w której jest. Każdemu daje instrukcje i narzędzia, które sam ma — także te oznaczone Deleguj, które może przekazać, ale nie użyć — i pyta go jak każdego innego agenta. Utworzony agent nie dziedziczy niczego więcej, sam nie może tworzyć agentów i jest usuwany, gdy rozmowa ucichnie. Nic nie zaznaczono: nie może tworzyć agentów.",
-  "It cannot create agents. Tick a model to let it make temporary agents for a conversation.": "Nie może tworzyć agentów. Zaznacz model, aby mógł tworzyć tymczasowych agentów na potrzeby rozmowy.",
-  "It may create temporary agents with the models ticked, giving them only tools it holds. They last as long as the conversation that made them.": "Może tworzyć tymczasowych agentów z zaznaczonymi modelami, dając im tylko narzędzia, które sam ma. Istnieją tak długo jak rozmowa, która ich utworzyła.",
+  "It cannot create agents: no model is ticked.": "Nie może tworzyć agentów: żaden model nie jest zaznaczony.",
+  "It may create temporary agents with the models ticked.": "Może tworzyć tymczasowych agentów z zaznaczonymi modelami.",
   // Goals in the chat: /goal, and the line under the conversation.
   "Work towards a goal until a condition is met, with a reviewer judging each turn": "Pracuj nad celem, aż warunek zostanie spełniony, a recenzent oceni każdą turę",
   "what to achieve until when it is met [max turns] [reviewer model] - or stop": "co osiągnąć until kiedy jest spełniony [max tury] [reviewer model] - albo stop",

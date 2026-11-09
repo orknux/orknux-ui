@@ -2623,9 +2623,10 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           }
         />
         <p className={own.emptyNote} data-creatable-models-note="">
+          {/* A status, short: the explanation is behind the (?) on the heading, and agent-grants-check measures the length. */}
           {creatableModelIds.length === 0
-            ? t('It cannot create agents. Tick a model to let it make temporary agents for a conversation.')
-            : t('It may create temporary agents with the models ticked, giving them only tools it holds. They last as long as the conversation that made them.')}
+            ? t('It cannot create agents: no model is ticked.')
+            : t('It may create temporary agents with the models ticked.')}
         </p>
 
         {/*

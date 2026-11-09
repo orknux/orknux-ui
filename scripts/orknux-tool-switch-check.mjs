@@ -4,9 +4,9 @@
  * Asked for: the grant was all or nothing, so an agent that should read runs
  * but not start one could not be given that. And then: "why can't I change
  * Always to something like Offer?" - the rows cycled Hide and Always only. While
- * the grant is on each row cycles Hide, Offer and Always like every other tool
- * and Save stores it; with the grant off the rows are locked at Hide and say
- * where the grant is.
+ * the grant is on each row cycles Hide, Offer, Always and - since agents create
+ * agents, 1.4.0 - Delegate like every other tool and Save stores it; with the
+ * grant off the rows are locked at Hide and say where the grant is.
  *
  * The agent is this check's own and deleted afterwards.
  */
@@ -42,10 +42,13 @@ record((await reads()) === 'offer', `granted, it reads Offer (${await reads()})`
 record(!(await state().isDisabled()), 'and it can be pressed');
 await state().click();
 record((await reads()) === 'always', `one press marks it Always (${await reads()})`);
+// Delegate sits between Always and Hide: the agent cannot use the tool itself, but may give it to an agent it creates.
 await state().click();
-record((await reads()) === 'hide', `a second press hides it (${await reads()})`);
+record((await reads()) === 'delegate', `a second press marks it Delegate (${await reads()})`);
 await state().click();
-record((await reads()) === 'offer', `a third offers it (${await reads()})`);
+record((await reads()) === 'hide', `a third hides it (${await reads()})`);
+await state().click();
+record((await reads()) === 'offer', `a fourth offers it (${await reads()})`);
 
 /* Offer: granted, not carried. */
 await save();
@@ -56,12 +59,14 @@ record(back.tools.includes('orknux_workflows'), 'while the other orknux_ tools s
 await reload();
 record((await reads()) === 'offer', `and it reads Offer after a reload (${await reads()})`);
 
-/* Offer -> Always -> Hide. */
+/* Offer -> Always -> Delegate -> Hide. */
 await state().click();
 record((await reads()) === 'always', `a press from Offer marks it Always (${await reads()})`);
 await save();
 back = await held();
 record(back.requiredTools.includes(TOOL) && !back.requiredTools.includes('orknux_workflows'), 'saved, the server marks that one Always and no other');
+await state().click();
+record((await reads()) === 'delegate', `one more delegates it (${await reads()})`);
 await state().click();
 record((await reads()) === 'hide', `and one more hides it (${await reads()})`);
 await save();

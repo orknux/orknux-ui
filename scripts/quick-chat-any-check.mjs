@@ -6,6 +6,11 @@
  * switched on - so the settings page says Any and the button is drawn. Choosing
  * None removes it, and a model of the workspace's own is shown as itself.
  *
+ * Since 1.4.0 the same button is also the way to the person's own Claude Code,
+ * where the server offers that (the local editions, `claudeCodeChat.available`):
+ * there None takes the workspace's model away and Ask AI stays, answered by My
+ * Claude Code alone. The check asks the server which installation this is.
+ *
  * Sets the workspace's quick chat model and puts it back as it was.
  */
 import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
@@ -42,7 +47,11 @@ try {
   record(/^Any/.test(any), `and the settings page says Any (${any})`);
 
   await graphql(SET, { w: WORKSPACE, id: null, any: false });
-  record(!(await asked()), 'set to None, there is no Ask AI');
+  const claude = (await graphql('query { claudeCodeChat { available } }')).claudeCodeChat?.available === true;
+  record(
+    (await asked()) === claude,
+    claude ? 'set to None, Ask AI stays for My Claude Code alone, which this server offers' : 'set to None, there is no Ask AI',
+  );
   const none = await picked();
   record(/^None/.test(none), `and the settings page says None (${none})`);
 

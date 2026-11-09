@@ -93,8 +93,8 @@ const was = await stateOf();
 await pressRow.locator('[data-grant-press]').first().click();
 const now = await stateOf();
 record(was !== null && now !== null && was !== now, `pressing the name cycles the row (${was} -> ${now})`);
-await pressRow.locator('[data-tool-state]').first().click();
-await pressRow.locator('[data-tool-state]').first().click();
+// Round the ring: Offer, Always, Delegate - the fourth state since agents create agents (1.4.0) - and back to Hide.
+for (let press = 0; press < 3; press += 1) await pressRow.locator('[data-tool-state]').first().click();
 record((await stateOf()) === was, 'and the button still cycles it, all the way round');
 
 /* Only the icon at the row's end opens the page; the name is text. Asked for after the name was made a link. */
