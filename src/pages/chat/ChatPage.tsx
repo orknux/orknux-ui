@@ -3956,6 +3956,7 @@ ${named}`;
                   setPickerFocus(null);
                 }}
                 aria-expanded={pickerOpen}
+                data-testid="chat-picker"
               >
                 {/* Claude Code's own mark: this chat is answered by the person's Claude Code, not by one of the workspace's agents. */}
                 {current.answeredBy === 'CLAUDE_CODE' && (
