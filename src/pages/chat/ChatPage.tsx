@@ -4338,7 +4338,25 @@ ${named}`;
                   <CallLine actor={message.actor} content={message.content} when={calledAt(message.at)} link={message.link} folded />
                 </div>
                 </>
-              ) : message.role === THOUGHT_ROLE && (message.thinking ?? '').trim() === '' ? null : message.role === THOUGHT_ROLE ? (
+              ) : message.role === THOUGHT_ROLE && (message.thinking ?? '').trim() === '' ? null : message.role === 'assistant' &&
+                message.content.trim() === '' &&
+                (message.thinking ?? '').trim() === '' &&
+                message.takes.length === 0 &&
+                !(index === messages.length - 1 && (sending || anyWorking(working))) ? (
+                /*
+                  A turn that asked the person and ended saying nothing, as it
+                  was told to: the question's card is the turn, and an empty
+                  bubble under it would read as an answer that went missing.
+
+                  Only once it is over. The answer being written starts as this
+                  same empty message, and it is where "Waiting for …", the
+                  agent's name and the live calls are drawn - hidden while
+                  sending, the chat looked dead until the first word came. And
+                  not one with takes: its earlier answers are still there to
+                  page through.
+                */
+                null
+              ) : message.role === THOUGHT_ROLE ? (
                 /*
                   One round's thinking, read back in its place among the calls
                   - the same section the live turn drew there, so a reload

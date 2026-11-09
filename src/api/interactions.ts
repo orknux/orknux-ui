@@ -37,6 +37,8 @@ export interface InteractionRequest {
   allowsText: boolean;
   /** What the person wrote, where they wrote anything. */
   text: string | null;
+  /** Whether it may be closed without an answer: an agent's own question may, a yes-or-no request may not. */
+  dismissible: boolean;
 }
 
 /** One thing a request is about: a tool asked for, with what sort of tool it is and what it does. */
@@ -47,7 +49,7 @@ export interface InteractionItem {
 }
 
 const FIELDS =
-  'id kind askedBy question options { id label style description } items { name kind description } chosen chosenBy chosenAt outcome createdAt multiple allowsText text';
+  'id kind askedBy question options { id label style description } items { name kind description } chosen chosenBy chosenAt outcome createdAt multiple allowsText text dismissible';
 
 export async function fetchSessionRequests(sessionId: string): Promise<InteractionRequest[]> {
   const data = await graphql<{ sessionRequests: InteractionRequest[] }>(
@@ -74,4 +76,16 @@ export async function answerRequestWith(id: string, options: string[], text: str
     { id, options, text },
   );
   return data.answerRequest;
+}
+
+/**
+ * Closes a question without answering it; whoever asked is told it was dismissed.
+ * Only for a request that says it is `dismissible`.
+ */
+export async function dismissRequest(id: string): Promise<InteractionRequest> {
+  const data = await graphql<{ dismissRequest: InteractionRequest }>(
+    `mutation DismissRequest($id: ID!) { dismissRequest(id: $id) { ${FIELDS} } }`,
+    { id },
+  );
+  return data.dismissRequest;
 }

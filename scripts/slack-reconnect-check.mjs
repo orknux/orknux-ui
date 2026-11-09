@@ -157,6 +157,44 @@ if (before !== null) {
   record(after?.buttonText === 'Reconnect', 'and the button is ready to press again');
 }
 
+// ------------------------------------- a token given on the page, without a reload
+//
+// A connection made with only a bot token is not listening, and its line has
+// no button. Saving an app-level token on the page is what makes it listen, so
+// the line has to be read again by that save: it used to be read once on load,
+// and Reconnect appeared only after a reload.
+
+const sender = await create({ name: `${SCRATCH} sender ${stamp}`, type: 'SLACK', secret: 'xoxb-not-issued-0002' });
+const unlistened = await socketOf(sender.id);
+if (unlistened?.status !== 'NOT_LISTENING') {
+  // A server that does not listen to Slack says DISABLED with or without the
+  // token, so there is no change for the page to follow.
+  console.log(`  (skipped the save half: the server says ${unlistened?.status} before any app token)`);
+} else {
+  await at(sender.id);
+  await page.waitForSelector('#connection-socket', { timeout: 15_000 }).catch(() => {});
+  const bare = await measure();
+  record(
+    bare !== null && bare.text.startsWith(OPENS.NOT_LISTENING) && bare.button === null,
+    `with no app-level token the line says so and offers no Reconnect: ${JSON.stringify(bare?.text)}`,
+  );
+
+  await page.locator('#connection-app-token').fill('xapp-not-issued-0002');
+  await page.getByTestId('save-bar').getByRole('button', { name: 'Save Changes', exact: true }).click();
+  await page.waitForSelector('#connection-reconnect', { timeout: 15_000 }).catch(() => {});
+  const saved = await measure();
+  shot('slack-reconnect-after-save');
+  const now = await socketOf(sender.id);
+  record(
+    saved?.button !== null && saved?.buttonText === 'Reconnect',
+    'saving an app-level token puts Reconnect on the line, without a reload',
+  );
+  record(
+    saved !== null && now !== null && saved.text.startsWith(OPENS[now.status]),
+    `and the line is read again (${now?.status}): ${JSON.stringify(saved?.text)}`,
+  );
+}
+
 // --------------------------------------------------------- and one that is not
 
 await at(http.id);

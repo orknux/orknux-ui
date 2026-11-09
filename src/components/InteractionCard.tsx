@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { answerRequest, answerRequestWith, type InteractionRequest } from '../api/interactions';
+import { answerRequest, answerRequestWith, dismissRequest, type InteractionRequest } from '../api/interactions';
 import { t } from '../i18n';
 import { Markdown } from './Markdown';
 import styles from './InteractionCard.module.css';
@@ -21,6 +21,8 @@ function labelled(label: string): string {
       return t('Approved');
     case 'Keep planning':
       return t('Keep planning');
+    case 'Dismissed':
+      return t('Dismissed');
     default:
       return label;
   }
@@ -51,6 +53,24 @@ export function InteractionCard({ request, onAnswered }: InteractionCardProps) {
    * words. An agent's ask_person question is all three; Allow / Reject is none.
    */
   const menu = request.multiple || request.allowsText || request.options.some((option) => Boolean(option.description));
+
+  /*
+   * Closing it without an answer, where the request allows it - an agent's own
+   * question, whose options it made up and none of which may fit. The agent is
+   * told it was dismissed, so it stops waiting for it.
+   */
+  const dismiss =
+    open && request.dismissible ? (
+      <button
+        type="button"
+        className={styles.option}
+        disabled={busy}
+        onClick={() => void send(() => dismissRequest(request.id))}
+        data-interaction-dismiss=""
+      >
+        {t('Dismiss')}
+      </button>
+    ) : null;
 
   function choose(option: string) {
     void send(() => answerRequest(request.id, option));
@@ -157,8 +177,10 @@ export function InteractionCard({ request, onAnswered }: InteractionCardProps) {
               >
                 {t('Send')}
               </button>
+              {dismiss}
             </div>
           )}
+          {!(request.allowsText || request.multiple) && dismiss !== null && <div className={styles.answerRow}>{dismiss}</div>}
         </form>
       ) : open ? (
         <div className={styles.options}>
@@ -174,6 +196,7 @@ export function InteractionCard({ request, onAnswered }: InteractionCardProps) {
               {labelled(option.label)}
             </button>
           ))}
+          {dismiss}
         </div>
       ) : (
         <p className={styles.outcome} data-interaction-outcome="">

@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import type { SessionUser } from '../../api/session';
 import { AppShell } from '../../components/AppShell';
 import { McpClients } from '../../components/McpClients';
+import { McpConnect } from '../../components/McpConnect';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { shellUser } from '../../session/user';
 import styles from './WorkspaceMcpPage.module.css';
@@ -33,6 +34,10 @@ export function WorkspaceMcpPage({ session, onSignOut }: WorkspaceMcpPageProps) 
         <h1 className={styles.title}>{t('MCP')}</h1>
         <p className={styles.subtitle}>
           {t('The AI clients connected to this workspace over MCP: who, from which address and host, and every call they made.')}
+        </p>
+        {/* The way in, beside the list of who came in: the same instructions as the corner button. */}
+        <p className={styles.subtitle}>
+          <McpConnect workspacePath={`/workspace/${workspaceId}`} admin={session.admin} asLink />
         </p>
       </header>
       {workspaceId !== '' && <McpClients workspaceId={workspaceId} />}

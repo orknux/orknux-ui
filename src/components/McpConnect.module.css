@@ -141,3 +141,19 @@
 .code :global(.hljs-attribute) {
   color: var(--code-type);
 }
+
+/* The same dialog opened from a sentence on the MCP pages: a link in the text, not a second corner button. */
+.inlineLink {
+  padding: 0;
+  background: none;
+  border: none;
+  font: inherit;
+  color: var(--color-accent-brand);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.inlineLink:hover {
+  color: var(--color-text-primary);
+}

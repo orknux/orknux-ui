@@ -305,7 +305,8 @@ function ConnectionSettingsView({ session, onSignOut, onDiscard }: ConnectionSet
     return () => {
       current = false;
     };
-  }, [slack, workspaceId, connectionId]);
+    // Re-read after a save, which may have changed the token it describes.
+  }, [slack, workspaceId, connectionId, stores]);
 
   /**
    * The Socket Mode socket this server holds for a Slack connection. #592.
@@ -332,7 +333,10 @@ function ConnectionSettingsView({ session, onSignOut, onDiscard }: ConnectionSet
     return () => {
       current = false;
     };
-  }, [slack, connectionId]);
+    // `stores` too: a save is what gives a connection its app-level token, and
+    // a line read only on load kept saying "not listening" - with no Reconnect
+    // to press - until the page was reloaded.
+  }, [slack, connectionId, stores]);
 
   async function handleReconnect() {
     if (reconnecting) return;

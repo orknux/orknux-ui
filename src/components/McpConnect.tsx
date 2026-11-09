@@ -24,6 +24,11 @@ export interface McpConnectProps {
   connected?: boolean;
   /** Drawn smaller, for the footer strip of the chat page. */
   compact?: boolean;
+  /**
+   * Opened from a line of text rather than the corner button: the MCP pages,
+   * which list the clients that connected, say there how to connect one.
+   */
+  asLink?: boolean;
 }
 
 /** What the token is written as in the instructions, until somebody puts their own in. */
@@ -113,7 +118,7 @@ const CLIENTS: Client[] = [
  * manual. The token is left for them to put in - the interface never holds one
  * it could print.
  */
-export function McpConnect({ workspacePath, admin = false, connected, compact = false }: McpConnectProps) {
+export function McpConnect({ workspacePath, admin = false, connected, compact = false, asLink = false }: McpConnectProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
   const [chosen, setChosen] = useState(CLIENTS[0].key);
@@ -136,6 +141,18 @@ export function McpConnect({ workspacePath, admin = false, connected, compact = 
 
   return (
     <>
+      {asLink ? (
+        <button
+          type="button"
+          className={styles.inlineLink}
+          onClick={() => setOpen(true)}
+          aria-haspopup="dialog"
+          data-testid="mcp-connect-link"
+        >
+          {t('How to connect an AI client')}
+        </button>
+      ) : (
+      <>
       <button
         type="button"
         className={compact ? `${styles.launcher} ${indicators.compact}` : styles.launcher}
@@ -154,6 +171,8 @@ export function McpConnect({ workspacePath, admin = false, connected, compact = 
         {connected !== undefined && <Light on={connected} />}
       </button>
       {hint}
+      </>
+      )}
 
       <dialog
         ref={ref}

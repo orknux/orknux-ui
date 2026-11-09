@@ -656,6 +656,17 @@ called `<server>_mcp`, listed and loaded like any other skill, and `skill_load`
 passes the arguments a prompt takes. Nothing has to be granted for either
 beyond the server itself.
 
+**Whether a server is up is something every agent can ask**, granted it or
+not. `mcp_status` lists the workspace's MCP servers as the MCP servers page
+does - reachable or not at the last check, when, what the check said, how many
+tools - and says beside each whether this agent holds it, so an agent whose MCP
+tool fails can tell a server that is down from one it was never given. Asked
+to, it checks one server again there and then - the one it names - as the
+page's Check button does. It never
+says a credential, a header or more of the address than its host. It is a row
+on the Tools list like the other built-ins, on and at Offer for every agent,
+and switched off there.
+
 How an MCP server - or a connection - signs in is its **Auth** setting:
 
 | Auth | Type into the secret | What is sent |

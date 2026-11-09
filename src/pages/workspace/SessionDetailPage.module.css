@@ -34,11 +34,18 @@
 }
 
 /* The key identifies the session and is compared character by character. */
+/*
+ * Wraps rather than squeezes. The title is the session's key - one long word
+ * of a font with no narrow glyphs - and the actions beside it would not shrink,
+ * so on half a 1920 screen the key was given what was left over: two letters
+ * a line, down the whole height of the header. The actions go under it instead.
+ */
 .titleRow {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-16);
+  gap: var(--space-8) var(--space-16);
 }
 
 /*
@@ -110,8 +117,9 @@
 }
 
 .actions {
-  flex: none;
+  flex: 0 1 auto;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-8);
 }
@@ -143,6 +151,9 @@
 }
 
 .title {
+  /* Never narrower than a readable run of the key: below that, the row wraps. */
+  flex: 1 1 24ch;
+  min-width: min(100%, 24ch);
   margin: 0;
   font-family: var(--font-mono);
   font-weight: 700;
@@ -345,9 +356,12 @@
   color: var(--color-text-muted);
 }
 
+/* Wraps inside the column: unwrapped, seven chips ran under the rail beside it. */
 .kindFilter {
   display: flex;
-  flex: none;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  min-width: 0;
   align-items: center;
   gap: var(--space-6);
 }

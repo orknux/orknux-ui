@@ -3,6 +3,10 @@
  * saying what it means, several to tick where it allows them, and a box for
  * the person's own words - and what is sent is what was chosen.
  *
+ * And Dismiss, on a question the server says may be closed without an answer:
+ * on the answer row beside Send, sending the dismissal and nothing else, and
+ * the card then saying who closed it. Not on one that may not.
+ *
  * The questions are canned on their way to the chat page, and the answer is
  * caught on its way out, so no model has to ask.
  */
@@ -11,7 +15,7 @@ import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 900 } });
 const NAME = `zz ask person ${Date.now()}`;
 
-const question = (id, multiple) => ({
+const question = (id, multiple, dismissible = false) => ({
   id,
   kind: 'agent.question',
   askedBy: 'Helper',
@@ -30,9 +34,11 @@ const question = (id, multiple) => ({
   multiple,
   allowsText: true,
   text: null,
+  dismissible,
 });
-const REQUESTS = [question('999101', false), question('999102', true)];
+const REQUESTS = [question('999101', false), question('999102', true), question('999103', false, true)];
 const sent = [];
+const dismissed = [];
 
 let chatId = null;
 try {
@@ -43,6 +49,13 @@ try {
     const body = route.request().postDataJSON() ?? {};
     const query = body.query ?? '';
     if (query.includes('sessionRequests')) return route.fulfill({ json: { data: { sessionRequests: REQUESTS } } });
+    if (query.includes('dismissRequest')) {
+      dismissed.push(body.variables);
+      // Kept as the server would keep it, since the page reads the conversation's questions again once one is answered.
+      const at = REQUESTS.findIndex((one) => one.id === body.variables.id);
+      REQUESTS[at] = { ...REQUESTS[at], chosen: 'dismissed', chosenBy: 'alice', outcome: 'Dismissed' };
+      return route.fulfill({ json: { data: { dismissRequest: REQUESTS[at] } } });
+    }
     if (query.includes('answerRequest')) {
       sent.push(body.variables);
       const asked = REQUESTS.find((one) => one.id === body.variables.id);
@@ -106,6 +119,29 @@ try {
     JSON.stringify(sent[1]?.options) === '["1","3"]' && sent[1]?.text === 'and plugins',
     `Send sends the ticked and the words (${JSON.stringify(sent[1])})`,
   );
+
+  // Dismiss: only where the request allows it, beside Send, and it sends nothing but the dismissal.
+  const closable = page.locator('[data-interaction="999103"]');
+  record((await one.locator('[data-interaction-dismiss]').count()) === 0 && (await many.locator('[data-interaction-dismiss]').count()) === 0,
+    'no Dismiss on a question that may not be dismissed');
+  const dismiss = closable.locator('[data-interaction-dismiss]');
+  const placed = await closable.evaluate((card) => {
+    const button = card.querySelector('[data-interaction-dismiss]');
+    const send = card.querySelector('[data-interaction-send]');
+    if (button === null || send === null) return null;
+    const a = button.getBoundingClientRect();
+    const b = send.getBoundingClientRect();
+    return { width: a.width, height: a.height, sameRow: Math.abs(a.top - b.top) < 4, after: a.left >= b.right, text: button.textContent };
+  });
+  record(placed !== null && placed.width > 0 && placed.height > 0, `a dismissible question has a Dismiss button (${JSON.stringify(placed)})`);
+  record(placed?.sameRow === true && placed?.after === true, 'on the answer row, after Send');
+  await closable.screenshot({ path: '/tmp/ask-person-dismiss.png' });
+  const before = sent.length;
+  await dismiss.click();
+  await closable.locator('[data-interaction-outcome]').waitFor({ timeout: 5_000 }).catch(() => undefined);
+  record(dismissed.length === 1 && dismissed[0]?.id === '999103' && sent.length === before, `Dismiss sends the dismissal and no answer (${JSON.stringify(dismissed)})`);
+  const outcome = (await closable.locator('[data-interaction-outcome]').innerText().catch(() => '')).replace(/\s+/g, ' ');
+  record(/Dismissed/.test(outcome) && /alice/.test(outcome) && (await dismiss.count()) === 0, `the card then says who dismissed it (${outcome})`);
 } finally {
   if (chatId !== null) await graphql(`mutation($id: ID!) { deleteChat(id: $id) }`, { id: chatId }).catch(() => undefined);
 }

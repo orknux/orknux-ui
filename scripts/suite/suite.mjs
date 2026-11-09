@@ -2737,6 +2737,11 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'mcp-pages-connect-link-check',
+    what: "the workspace's and Admin's MCP pages say under their title how to connect an AI client, and the link opens the Orknux MCP instructions with the workspace's address",
+    needs: ['workspace'],
+  },
+  {
     name: 'mcp-connect-check',
     what: "Orknux MCP sits left of Ask AI and level with it, opens this workspace's MCP address with where a token is made and each client's own setup, and the attribution strip ends short of both buttons",
     needs: ['workspace'],
@@ -5268,6 +5273,16 @@ export const TESTS = [
   },
 
   {
+    name: 'session-narrow-type-check',
+    what: "a session page on half a 1920 screen draws its key on one line at its own size, and the kind chips inside the transcript column",
+    needs: ['session'],
+    /*
+     * The session is stubbed, so it needs no model and nothing run. The key
+     * used to be squeezed to two letters a line beside the actions.
+     */
+  },
+
+  {
     name: 'session-export-csv-check',
     what: 'a session page offers its whole transcript as a CSV download, narrowed by the search it is filtering with',
     needs: ['session'],
@@ -5808,6 +5823,12 @@ export const TESTS = [
   {
     name: 'chat-waiting-row-check',
     what: 'a chat waiting for its answer draws one message, the wait under the answer’s name, not a second row',
+    needs: [],
+    // The chat and the send are answered in the browser.
+  },
+  {
+    name: 'chat-silent-turn-check',
+    what: 'a turn that ends without a word leaves no empty message, and the one still being written is not hidden for it',
     needs: [],
     // The chat and the send are answered in the browser.
   },
