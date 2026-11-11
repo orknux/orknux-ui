@@ -84,29 +84,41 @@
   display: flex;
   flex: none;
   align-items: center;
-  justify-content: space-between;
+  gap: var(--space-4);
   padding: var(--space-12) var(--space-16);
   border-bottom: 1px solid var(--color-border);
 }
 
+/* The title on the left, the buttons on the right. */
 .title {
+  margin-right: auto;
   font-weight: 600;
   font-size: var(--text-md);
+  white-space: nowrap;
   color: var(--color-text-primary);
 }
 
+/* Who answers: a row of its own under the header, so nothing in either wraps. */
 .answeredBy {
   display: flex;
-  flex: 1;
+  flex: none;
   align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-6);
-  margin-right: var(--space-8);
+  gap: var(--space-8);
+  margin: 0;
+  padding: var(--space-8) var(--space-16);
+  border-bottom: 1px solid var(--color-border);
   font-size: var(--text-sm);
+  white-space: nowrap;
   color: var(--color-text-muted);
 }
 
+.answeredBy strong {
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
 .answeredBy select {
+  min-width: 0;
   padding: var(--space-2) var(--space-6);
   background: var(--color-field);
   border: 1px solid var(--color-field-border);
@@ -115,8 +127,36 @@
   color: var(--color-text-primary);
 }
 
+/* New conversation: an icon the size of Close beside it, named by its tooltip. */
+.fresh {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-4);
+  cursor: pointer;
+}
+
+.fresh img {
+  opacity: 0.7;
+}
+
+.fresh:hover {
+  background: var(--color-surface-raised);
+}
+
+.fresh:hover img {
+  opacity: 1;
+}
+
 .close {
   display: flex;
+  flex: none;
   align-items: center;
   justify-content: center;
   width: 24px;
@@ -315,6 +355,24 @@
   margin: 0;
   font-size: var(--text-sm);
   color: var(--color-danger);
+}
+
+/* Under a question that went unanswered: asks it again. */
+.again {
+  align-self: flex-start;
+  padding: var(--space-2) var(--space-8);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.again:hover {
+  background: var(--color-surface-raised);
+  color: var(--color-text-primary);
 }
 
 .composer {

@@ -5,7 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { fetchModels } from '../../api/models';
 import type { Model } from '../../api/models';
 import type { SessionUser } from '../../api/session';
-import { askWireframe, elementsOf, fetchWireframe, isBox, isCheckable, renameWireframe, saveWireframe } from '../../api/wireframes';
+import { elementsOf, fetchWireframe, isBox, isCheckable, renameWireframe, saveWireframe } from '../../api/wireframes';
 import type { Wireframe, WireframeElement, WireframeElementType, WireframeTurn } from '../../api/wireframes';
 import arrowIcon from '../../assets/arrow-up-right.svg';
 import dashboardIcon from '../../assets/layout-dashboard.svg';
@@ -60,6 +60,7 @@ import { forgetUndo, keepUndo, restoreUndo } from './wireframeUndo';
 import { WireframeStylePanel } from './WireframeStylePanel';
 import type { StylePatch } from './WireframeStylePanel';
 import { withProps } from './wireframeStyle';
+import { askKept, keptAskOf, resumeKept } from '../../api/editorAsks';
 
 export interface WireframeEditorPageProps {
   session: SessionUser;
@@ -751,6 +752,38 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
 
   // -- The conversation ----------------------------------------------------
 
+  /*
+   * A question asked before this page was loaded again - a reload in the
+   * middle of an answer - is waited for as though it had just been sent: the
+   * working row, then the answer under the question and the drawing taken up
+   * where the answer changed it.
+   */
+  const resumed = useRef(false);
+  useEffect(() => {
+    if (wireframe === null || resumed.current) return;
+    resumed.current = true;
+    const askId = keptAskOf('wireframe', wireframe.id);
+    if (askId === null) return;
+    const id = wireframe.id;
+    const revision = wireframe.revision;
+    setAnswering(true);
+    resumeKept('wireframe', id, askId)
+      .then(async (settled) => {
+        setTalk((was) => [...was, { role: 'assistant', content: settled.answer ?? '' }]);
+        const now = settled.changed === true ? await fetchWireframe(id).catch(() => null) : null;
+        if (now !== null && now.revision !== revision) {
+          const drawn = elementsOf(now);
+          setWireframe(now);
+          setElements(drawn);
+          setSaved(JSON.stringify(drawn));
+        }
+      })
+      .catch((cause: unknown) => setTalkError(cause instanceof Error ? cause.message : t('The model could not answer.')))
+      .finally(() => setAnswering(false));
+    // Once, for the wireframe this page opened on; the setters are the page's own.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wireframe]);
+
   async function ask(event?: FormEvent<HTMLFormElement>, idea?: string) {
     event?.preventDefault();
     const said = (idea ?? asking).trim();
@@ -770,9 +803,12 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
           ? await askThroughClaudeCode(workspaceId, `the wireframe ${wireframe.name}`, sent, wireframe.revision, () => fetchWireframe(wireframe.id)).then(
               (asked) => ({ answer: asked.answer, changed: asked.changed, wireframe: asked.item }),
             )
-          : await askWireframe(wireframe.id, modelId, sent);
+          : await askKept('wireframe', wireframe.id, modelId, sent).then(async (settled) => {
+              const found = settled.changed === true ? await fetchWireframe(wireframe.id).catch(() => null) : null;
+              return { answer: settled.answer ?? '', changed: found !== null, wireframe: found };
+            });
       setTalk([...sent, { role: 'assistant', content: answered.answer }]);
-      if (answered.changed) {
+      if (answered.changed && answered.wireframe !== null) {
         remember(elements);
         const drawn = elementsOf(answered.wireframe);
         setWireframe(answered.wireframe);

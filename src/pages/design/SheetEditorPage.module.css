@@ -8,6 +8,14 @@
   background: var(--color-bg);
 }
 
+/* The document editor's format bar, held to the formula bar's edges; above it, so a palette opens over the grid. */
+/* Two classes deep, so it wins over the document's rule whichever stylesheet a build puts last. */
+.work > .formatBar {
+  position: relative;
+  z-index: 4;
+  padding: var(--space-4) var(--space-12);
+}
+
 .formulaBar {
   position: relative;
   z-index: 3;

@@ -2,15 +2,49 @@ import { graphql } from './client';
 import { editorTurnsInput } from './attachments';
 import type { EditorTurn } from './attachments';
 
+/** How a number in a cell is written out; General, the default, is no entry at all. */
+export type NumberFormat = 'number' | 'percent' | 'currency' | 'date';
+
+/**
+ * How one cell is drawn. Only what is set is present: a cell nobody formatted
+ * has no entry, and a format holding nothing is not kept. Colours are the
+ * sheet's own (`#rrggbb`), the same in either theme and in an export.
+ */
+export interface CellFormat {
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  strike?: boolean;
+  color?: string;
+  fill?: string;
+  align?: 'left' | 'center' | 'right';
+  wrap?: boolean;
+  number?: NumberFormat;
+  /** Places after the point; the format's usual (two, or none for a percentage) where absent. */
+  decimals?: number;
+  /** The currency's symbol; `$` where absent. */
+  currency?: string;
+  /** The sides a line is drawn along, in the order top, right, bottom, left; none where absent. */
+  border?: BorderSide[];
+  /** The lines' colour; the sheet's ordinary ink where absent. */
+  borderColor?: string;
+  /** A number or currency written with no comma between thousands - 2024, not 2,024 - as a file's `0.00` code is. */
+  ungrouped?: boolean;
+}
+
+export type BorderSide = 'top' | 'right' | 'bottom' | 'left';
+
 /**
  * One tab of a workbook: what was typed into each cell, by its address (`A1`),
- * and the widths of the columns somebody resized, in pixels. An empty cell is
- * left out, and a column at its usual width has no entry.
+ * the widths of the columns somebody resized, in pixels, and how cells are
+ * drawn, by address. An empty cell is left out, a column at its usual width
+ * has no entry, and a cell may be formatted and empty.
  */
 export interface SheetTab {
   name: string;
   cells: Record<string, string>;
   widths?: Record<string, number>;
+  formats?: Record<string, CellFormat>;
 }
 
 export interface Workbook {
@@ -72,21 +106,29 @@ export function workbookOf(sheet: Pick<Sheet, 'workbook'>): Workbook {
   try {
     const read = JSON.parse(sheet.workbook) as Partial<Workbook>;
     if (Array.isArray(read.tabs) && read.tabs.length > 0) {
-      return { tabs: read.tabs.map((tab) => ({ name: String(tab.name ?? FIRST_TAB), cells: { ...(tab.cells ?? {}) }, widths: { ...(tab.widths ?? {}) } })) };
+      return {
+        tabs: read.tabs.map((tab) => ({
+          name: String(tab.name ?? FIRST_TAB),
+          cells: { ...(tab.cells ?? {}) },
+          widths: { ...(tab.widths ?? {}) },
+          formats: { ...(tab.formats ?? {}) },
+        })),
+      };
     }
   } catch {
     // Read as empty below.
   }
-  return { tabs: [{ name: FIRST_TAB, cells: {}, widths: {} }] };
+  return { tabs: [{ name: FIRST_TAB, cells: {}, widths: {}, formats: {} }] };
 }
 
-/** The workbook as it is sent: tabs without widths say so by leaving the field out. */
+/** The workbook as it is sent: tabs without widths or formatting say so by leaving the field out. */
 export function workbookText(workbook: Workbook): string {
   return JSON.stringify({
     tabs: workbook.tabs.map((tab) => ({
       name: tab.name,
       cells: tab.cells,
       ...(tab.widths !== undefined && Object.keys(tab.widths).length > 0 ? { widths: tab.widths } : {}),
+      ...(tab.formats !== undefined && Object.keys(tab.formats).length > 0 ? { formats: tab.formats } : {}),
     })),
   });
 }

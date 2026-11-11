@@ -42,7 +42,7 @@ import { BackLink } from '../../components/BackLink';
 import { FieldHint } from '../../components/FieldHint';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { Loader } from '../../components/Loader';
-import { SecretField, useSecretField } from '../../components/SecretField';
+import { SecretField, useSecretField, secretOptions } from '../../components/SecretField';
 import type { SecretFieldHandle, SecretSource } from '../../components/SecretField';
 import { shellUser } from '../../session/user';
 import { useWorkspaceVariables } from './workspaceVariables';
@@ -394,10 +394,8 @@ function ConnectionSettingsView({ session, onSignOut, onDiscard }: ConnectionSet
    */
   const secrets = useMemo(
     () =>
-      variables
-        .filter((variable) => variable.kind === 'SECRET')
-        .map((variable) => ({ value: variable.id, label: variable.name, hint: variable.catalogName })),
-    [variables],
+      secretOptions(variables, workspaceId),
+    [variables, workspaceId],
   );
 
   /**

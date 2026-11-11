@@ -28,7 +28,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { FieldHint } from '../../components/FieldHint';
 import { UsedBy } from '../../components/UsedBy';
 import { Loader } from '../../components/Loader';
-import { SecretField, useSecretField } from '../../components/SecretField';
+import { SecretField, useSecretField, secretOptions } from '../../components/SecretField';
 import type { SecretSource } from '../../components/SecretField';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { shellUser } from '../../session/user';
@@ -338,14 +338,8 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
    */
   const secrets = useMemo(
     () =>
-      variables
-        .filter((variable) => variable.kind === 'SECRET')
-        .map((variable) => ({
-          value: variable.id,
-          label: variable.name,
-          hint: variable.catalogName,
-        })),
-    [variables],
+      secretOptions(variables, workspaceId),
+    [variables, workspaceId],
   );
 
   /*

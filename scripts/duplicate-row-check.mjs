@@ -1,6 +1,6 @@
 /**
  * Every list that holds one kind of thing can duplicate a row: agents, model
- * providers, models, actions, triggers, conditions, objects, skills, tools and memories.
+ * providers, models, MCP servers, actions, triggers, conditions, objects, skills, tools and memories.
  *
  * One scratch thing of each, made here and named to sort first, so its row is
  * on the first page whatever the list's order. In capitals: SQLite orders a name
@@ -126,6 +126,29 @@ if (record(await providerButton.waitFor({ timeout: 20_000 }).then(() => true).ca
   if (copy !== undefined) await graphql(`mutation($id: ID!) { removeModelProvider(id: $id) }`, { id: copy.id }).catch(() => undefined);
 }
 await graphql(`mutation($id: ID!) { removeModelProvider(id: $id) }`, { id: provider.id }).catch(() => undefined);
+
+/* An MCP server's row copies it with its credential: the same server elsewhere is an address away. */
+const mcpServers = async () => (await q(`query($w: ID!) { mcpServers(workspaceId: $w) { id name address secretSet } }`)).mcpServers;
+for (const old of (await mcpServers()).filter((one) => one.name.startsWith('AAA dup server'))) {
+  await graphql(`mutation($id: ID!) { removeMcpServer(id: $id) }`, { id: old.id }).catch(() => undefined);
+}
+await q(`mutation($w: ID!) { createMcpServer(input: { workspaceId: $w, name: "AAA dup server", address: "https://mcp.example.invalid/mcp", authType: BEARER_TOKEN, secret: "tok-dup" }) { id } }`);
+await page.goto(`${BASE}/workspace/${W}/integrations`, { waitUntil: 'domcontentloaded' });
+await drawn(page, 'the integrations page');
+const serverButton = page.locator('[data-duplicate="AAA dup server"]').first();
+if (record(await serverButton.waitFor({ timeout: 20_000 }).then(() => true).catch(() => false), 'MCP servers: its row has a Duplicate button')) {
+  await serverButton.click();
+  record(
+    await page.locator('[data-duplicate="AAA dup server (copy)"]').first().waitFor({ timeout: 10_000 }).then(() => true).catch(() => false),
+    'MCP servers: the copy is drawn as "(copy)"',
+  );
+  record(page.url().endsWith('/integrations'), `MCP servers: pressing it copies rather than also opening the row (${page.url()})`);
+  const copy = (await mcpServers()).find((one) => one.name === 'AAA dup server (copy)');
+  record(copy?.address === 'https://mcp.example.invalid/mcp' && copy?.secretSet === true, `MCP servers: the copy keeps the address and the token (${JSON.stringify(copy)})`);
+}
+for (const made of (await mcpServers()).filter((one) => one.name.startsWith('AAA dup server'))) {
+  await graphql(`mutation($id: ID!) { removeMcpServer(id: $id) }`, { id: made.id }).catch(() => undefined);
+}
 
 /*
  * A new catalog is granted to the workspace's agents by default, and one that is

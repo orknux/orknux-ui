@@ -141,12 +141,17 @@ import {
   imageEditorShortcut,
   setImageEditorShortcut,
   useImageEditorShortcuts,
+  DEFAULT_SHEET_EDITOR_SHORTCUTS,
+  SHEET_EDITOR_SHORTCUTS,
+  sheetEditorShortcut,
+  setSheetEditorShortcut,
+  useSheetEditorShortcuts,
   DEFAULT_FIND_SHORTCUT,
   findShortcut,
   setFindShortcut,
   useFindShortcut,
 } from '../../session/shortcut';
-import type { ImageEditorShortcut } from '../../session/shortcut';
+import type { ImageEditorShortcut, SheetEditorShortcut } from '../../session/shortcut';
 import { inDesktopApp, recordingKeys } from '../../session/desktop';
 import styles from './PreferencesPage.module.css';
 import { t, tf } from '../../i18n';
@@ -183,7 +188,23 @@ type ShortcutKey =
   | 'nextWindow'
   | 'previousWindow'
   | 'find'
-  | ImageEditorShortcut;
+  | ImageEditorShortcut
+  | SheetEditorShortcut;
+
+/** Whether a shortcut is one of the sheet editor's formatting keys. */
+const inSheetEditor = (key: string | null): key is SheetEditorShortcut => key !== null && (SHEET_EDITOR_SHORTCUTS as string[]).includes(key);
+
+/** What Preferences calls each of the sheet editor's formatting keys, and what its (?) says. */
+function sheetEditorLabel(name: SheetEditorShortcut): { label: string; hint: string } {
+  switch (name) {
+    case 'sheetBold':
+      return { label: t('Sheet Bold Shortcut'), hint: t('Makes the selected cells of a sheet bold, or plain again.') };
+    case 'sheetItalic':
+      return { label: t('Sheet Italic Shortcut'), hint: t('Puts the selected cells of a sheet in italics, or takes them out.') };
+    case 'sheetUnderline':
+      return { label: t('Sheet Underline Shortcut'), hint: t('Underlines the selected cells of a sheet, or takes the line away.') };
+  }
+}
 
 /** Whether a shortcut is one of the image editor's own: heard only on its canvas, so a bare key will do. */
 const inImageEditor = (key: string | null): key is ImageEditorShortcut => key !== null && (IMAGE_EDITOR_SHORTCUTS as string[]).includes(key);
@@ -256,6 +277,11 @@ const SHORTCUTS: { key: ShortcutKey; stored: () => string; store: (next: string)
     stored: () => imageEditorShortcut(name),
     store: (next: string) => setImageEditorShortcut(name, next),
   })),
+  ...SHEET_EDITOR_SHORTCUTS.map((name) => ({
+    key: name,
+    stored: () => sheetEditorShortcut(name),
+    store: (next: string) => setSheetEditorShortcut(name, next),
+  })),
 ];
 
 export interface PreferencesPageProps {
@@ -316,6 +342,7 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
   const storedPreviousWindow = usePreviousWindowShortcut();
   const previousWindowKey = shortcutDrafts.previousWindow ?? storedPreviousWindow;
   const storedImageEditor = useImageEditorShortcuts();
+  const storedSheetEditor = useSheetEditorShortcuts();
   const storedFind = useFindShortcut();
   const findKey = shortcutDrafts.find ?? storedFind;
   const storedMagicLasso = useMagicLassoShortcut();
@@ -380,6 +407,7 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
     | 'previousWindow'
     | 'find'
     | ImageEditorShortcut
+    | SheetEditorShortcut
     | null
   >(null);
   const [refused, setRefused] = useState<string | null>(null);
@@ -447,6 +475,7 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
       else if (recording === 'nextWindow') draftShortcut('nextWindow', said);
       else if (recording === 'previousWindow') draftShortcut('previousWindow', said);
       else if (inImageEditor(recording)) draftShortcut(recording, said);
+      else if (inSheetEditor(recording)) draftShortcut(recording, said);
       else draftShortcut('format', said);
       setRecording(null);
       setRefused(null);
@@ -1741,6 +1770,37 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
                         setRecording((held) => (held === which ? null : which));
                       }}
                       data-testid={`imageEditor-${which}-shortcut`}
+                    >
+                      {recording === which ? t('Press any keys…') : key}
+                    </button>
+                    {key !== fallback && recording !== which && (
+                      <button type="button" className={styles.option} onClick={() => draftShortcut(which, fallback)}>{t('Reset')}</button>
+                    )}
+                  </div>
+                  {recording === which && <p className={styles.settingNote}>{t('Press the combination you want. Escape leaves it as it is.')}</p>}
+                </div>
+              );
+            })}
+
+            {SHEET_EDITOR_SHORTCUTS.map((which) => {
+              const { label, hint } = sheetEditorLabel(which);
+              const key = shortcutDrafts[which] ?? storedSheetEditor[which];
+              const fallback = DEFAULT_SHEET_EDITOR_SHORTCUTS[which];
+              return (
+                <div className={styles.setting} key={which}>
+                  <span className={styles.labelWithHint}>
+                    <span className={styles.settingLabel} id={`${which}-shortcut`}>{label}</span>
+                    <FieldHint label={label}>{hint}</FieldHint>
+                  </span>
+                  <div className={styles.options}>
+                    <button
+                      type="button"
+                      className={recording === which ? styles.optionCurrent : styles.option}
+                      onClick={() => {
+                        setRefused(null);
+                        setRecording((held) => (held === which ? null : which));
+                      }}
+                      data-testid={`sheetEditor-${which}-shortcut`}
                     >
                       {recording === which ? t('Press any keys…') : key}
                     </button>

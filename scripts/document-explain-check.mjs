@@ -10,6 +10,7 @@
  * Makes its own document and removes it.
  */
 import { BASE, WORKSPACE, open, record, finish, shot } from './suite/harness.mjs';
+import { standInForDocumentAsks } from './suite/editor-asks.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1500, height: 900 } });
 const stamp = Date.now().toString(36);
@@ -24,13 +25,10 @@ const before = (await graphql('query ($id: ID!) { document(id: $id) { revision c
 
 const asked = [];
 let release = null;
-await page.route('**/graphql', async (route) => {
-  const body = route.request().postDataJSON() ?? {};
-  if (!String(body.query ?? '').includes('askDocument')) return route.fallback();
-  asked.push(body.variables);
+await standInForDocumentAsks(page, async (body) => {
+  asked.push(body);
   await new Promise((resolve) => (release = resolve));
-  const now = (await graphql(`query ($id: ID!) { document(id: $id) { ${FIELDS} } }`, { id })).document;
-  return route.fulfill({ json: { data: { askDocument: { answer: 'Idempotent means doing it twice changes nothing.', changed: false, document: now } } } });
+  return { answer: 'Idempotent means doing it twice changes nothing.' };
 });
 
 await page.goto(`${BASE}/workspace/${WORKSPACE}/design/documents/${id}`, { waitUntil: 'domcontentloaded' });

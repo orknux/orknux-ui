@@ -16,6 +16,7 @@
  * document, wireframe and diagram and removes them.
  */
 import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { standInForEditorAsks } from './suite/editor-asks.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1600, height: 1000 } });
 const stamp = Date.now().toString(36);
@@ -30,7 +31,6 @@ const addresses = {
   wireframe: `${BASE}/workspace/${WORKSPACE}/design/wireframes/${made.wireframe}`,
   diagram: `${BASE}/workspace/${WORKSPACE}/explore/diagrams/${made.diagram}`,
 };
-const mutations = { document: 'askDocument', wireframe: 'askWireframe', diagram: 'askDiagram' };
 
 /** Whether the editor's chat box has the focus, and where its caret is. */
 const focused = (editor) => page.getByTestId(`${editor}-chat-input`).evaluate((field) => ({
@@ -43,14 +43,15 @@ let uploaded = 0;
 const asked = {};
 
 try {
+  for (const editor of ['document', 'wireframe', 'diagram']) {
+    await standInForEditorAsks(page, editor, (body) => {
+      asked[editor] = body;
+      return { answer: 'Read them.' };
+    });
+  }
   await page.route('**/graphql', async (route) => {
     const body = route.request().postDataJSON() ?? {};
     const query = body.query ?? '';
-    const editor = Object.keys(mutations).find((one) => query.includes(`${mutations[one]}(`));
-    if (editor !== undefined) {
-      asked[editor] = body.variables;
-      return route.fulfill({ json: { data: { [mutations[editor]]: { answer: 'Read them.', changed: false, [editor]: null } } } });
-    }
     if (!query.includes('attachmentsEnabled') && !query.includes('query Models(')) return route.continue();
     const answered = await route.fetch();
     const json = await answered.json();

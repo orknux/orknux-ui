@@ -20,7 +20,8 @@ formatting - colours, fonts, borders, number formats - does not.
 
 ## The sheet editor
 
-The editor is a grid, with a formula bar above it and the tabs below.
+The editor is a grid, with a format bar and a formula bar above it and the tabs
+below.
 
 - **Click** a cell to select it, **Shift+click** or drag to select a block, and
   click a column letter or a row number to take the whole column or row.
@@ -35,13 +36,25 @@ The editor is a grid, with a formula bar above it and the tabs below.
   names and commas between arguments. Most of Excel's functions are there; one
   that is not shows `#NAME?`. A formula that cannot be worked out shows its
   error - `#DIV/0!`, `#REF!`, `#NAME?` - in red.
+- The **format bar** formats the selected cells: **bold**, *italic*,
+  underlined and struck through (**Ctrl+B**, **Ctrl+I** and **Ctrl+U** too, which
+  can be changed in Preferences), a text colour and a fill, left, centre or right
+  alignment, wrapped text, and how a number is shown - General, Numeric,
+  Percentage, Currency in $, €, £ or zł, or Date, with a place more or fewer
+  after the point. A number format changes only how the number is shown: type
+  `0.25` and format it as a percentage to see `25%`, and a formula reading it
+  still reads 0.25. The eraser takes all of a cell's formatting away. An empty
+  cell can be formatted, so a coloured header row stays coloured across its
+  gaps, and **Delete** empties cells without taking their formatting.
 - **Copy**, **cut** and **paste** work between sheets and with other
   spreadsheets. What you copy within Orknux is pasted as it was typed, formulas
-  and all; what you paste from elsewhere comes in as its text. A formula is
-  pasted as written, without its addresses moved.
+  and formatting and all; what you paste from elsewhere comes in as its text,
+  and the cells it lands on keep their formatting. A formula is pasted as
+  written, without its addresses moved.
 - **Drag** the corner of the selection to carry on: one number counts up from
   itself, two or more go on by their step, text ending in a number counts on,
   and a formula moves with the drag. Hold **Ctrl** to copy the numbers instead.
+  The formatting is carried along with them.
 - **Drag** the edge of a column's letter to make it wider or narrower;
   double-click the edge for the usual width again.
 - The **tabs** along the bottom switch between the sheet's tabs. **+** adds one,
@@ -65,8 +78,9 @@ or a workbook dropped there is read as its text.
 
 **Export** saves what is on the screen and downloads it, named after the sheet:
 
-- **XLSX** - every tab, with its formulas, for Excel, LibreOffice or Google
-  Sheets.
+- **XLSX** - every tab, with its formulas and formatting, for Excel,
+  LibreOffice or Google Sheets. An .xlsx or .xls brought in keeps its
+  formatting as far as the format bar can show it; an .ods comes in without.
 - **CSV** - the open tab, as its values.
 
 ## Agents and sheets
@@ -78,8 +92,8 @@ with these tools:
 - `orknux_sheet` reads one: each tab's cells as they were typed and what they
   come to, a whole tab or one range of it.
 - `orknux_create_sheet` makes a sheet, empty or with cells.
-- `orknux_write_sheet_cells` writes cells in one tab - values and formulas, in
-  one call - and answers what they came to.
+- `orknux_write_sheet_cells` writes cells in one tab - values, formulas and
+  formatting, in one call - and answers what they came to.
 - `orknux_change_sheet_tabs` adds, renames and removes tabs, and sets column
   widths.
 

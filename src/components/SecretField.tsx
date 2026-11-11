@@ -8,6 +8,28 @@ import { FieldHint } from './FieldHint';
 import { RevealToggle } from './RevealToggle';
 import styles from './SecretField.module.css';
 import { t } from '../i18n';
+import type { Variable } from '../api/variables';
+import externalIcon from '../assets/arrow-up-right.svg';
+
+/**
+ * The workspace's secrets as a secret field offers them, each with the address
+ * of its row on the Variables page, so the one a field reads can be opened.
+ */
+export function secretOptions(variables: Variable[], workspaceId: string): DefinitionOption[] {
+  return variables
+    .filter((variable) => variable.kind === 'SECRET')
+    .map((variable) => ({
+      value: variable.id,
+      label: variable.name,
+      hint: variable.catalogName,
+      href: variableHref(workspaceId, variable.catalogId, variable.name),
+    }));
+}
+
+/** One variable's row on the Variables page: its catalog open, and it searched for. */
+export function variableHref(workspaceId: string, catalogId: string, name: string): string {
+  return `/workspace/${workspaceId}/variables?catalog=${encodeURIComponent(catalogId)}&variable=${encodeURIComponent(name)}`;
+}
 
 /** Stands in for a stored secret until somebody asks to see it. */
 export const MASK = '••••••••••••••••';
@@ -265,6 +287,8 @@ export function SecretField({
 }: SecretFieldProps) {
   const pickerId = `${id}-variable`;
   const reading = field.source === 'VARIABLE';
+  /** The secret it reads, where the list knows where that one lives. */
+  const pointedAt = reading ? options.find((option) => option.value === field.variableId)?.href : undefined;
 
   /*
    * Showing what is being typed, as distinct from revealing what is stored.
@@ -352,6 +376,18 @@ export function SecretField({
             searchPlaceholder={t("Search secrets…")}
             ariaLabel={`Search workspace secrets for the ${label}`}
           />
+          {/* The secret itself, to see or rotate, without hunting for it on the Variables page. */}
+          {pointedAt !== undefined && (
+            <Link
+              className={styles.open}
+              to={pointedAt}
+              title={t('Open the secret')}
+              aria-label={`${t('Open the secret')}: ${label}`}
+              data-reference-open=""
+            >
+              <img src={externalIcon} alt="" width={14} height={14} />
+            </Link>
+          )}
           {/* Taking the reference off, rather than only pointing it elsewhere. */}
           {field.variableId !== '' && (
             <button

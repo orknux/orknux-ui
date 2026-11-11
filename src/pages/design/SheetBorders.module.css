@@ -1,0 +1,12 @@
+/* The seven borders in one row under the button, as a spreadsheet shows them. */
+.menu {
+  flex-direction: row;
+  gap: var(--space-4);
+  padding: var(--space-6);
+}
+
+/* What the cell in focus has: an accent ring round the icon, plain to see on the bar and in the row. */
+.marked {
+  background: var(--color-surface-hover);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+}

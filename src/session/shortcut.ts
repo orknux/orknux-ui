@@ -744,6 +744,45 @@ export function useImageEditorShortcuts(): Record<ImageEditorShortcut, Shortcut>
   return held;
 }
 
+/**
+ * The sheet editor's formatting keys when nothing has been chosen: Ctrl+B,
+ * Ctrl+I and Ctrl+U, which every spreadsheet and word processor answers to.
+ * Heard on the grid and while a cell is being typed in, where they format the
+ * whole cell; held with a modifier for that reason, as the image editor's bare
+ * letters cannot be. Ctrl+U is a page's source in some browsers, and the
+ * editor keeps it from opening. Cmd stands in for Ctrl.
+ */
+export const DEFAULT_SHEET_EDITOR_SHORTCUTS = {
+  sheetBold: 'Ctrl+B',
+  sheetItalic: 'Ctrl+I',
+  sheetUnderline: 'Ctrl+U',
+} as const;
+
+/** One of the sheet editor's own shortcuts, by name. */
+export type SheetEditorShortcut = keyof typeof DEFAULT_SHEET_EDITOR_SHORTCUTS;
+
+/** Their names, in the order Preferences lists them, which is the order the format bar has them. */
+export const SHEET_EDITOR_SHORTCUTS = Object.keys(DEFAULT_SHEET_EDITOR_SHORTCUTS) as SheetEditorShortcut[];
+
+const sheetEditor = Object.fromEntries(
+  SHEET_EDITOR_SHORTCUTS.map((name) => [name, remembered(`orknux.sheetEditor.${name}Shortcut`, DEFAULT_SHEET_EDITOR_SHORTCUTS[name])]),
+) as Record<SheetEditorShortcut, ReturnType<typeof remembered>>;
+
+export function sheetEditorShortcut(name: SheetEditorShortcut): Shortcut {
+  return sheetEditor[name].get();
+}
+
+export function setSheetEditorShortcut(name: SheetEditorShortcut, next: Shortcut): void {
+  sheetEditor[name].set(next);
+}
+
+/** All of them at once; the list is fixed, so the hooks are called in the same order on every render. */
+export function useSheetEditorShortcuts(): Record<SheetEditorShortcut, Shortcut> {
+  const held = {} as Record<SheetEditorShortcut, Shortcut>;
+  for (const name of SHEET_EDITOR_SHORTCUTS) held[name] = sheetEditor[name].use();
+  return held;
+}
+
 /** Called whenever a tab or window shortcut changes; what `desktop.ts` passes on to the app. */
 export function onTabShortcuts(listener: () => void): () => void {
   const stop = [nextTab, previousTab, nextWindow, previousWindow].map((one) => one.subscribe(listener));

@@ -153,6 +153,24 @@ export interface EditorTurn {
   content: string;
   /** What was attached to this turn; the server is sent their ids and reads them for the model. */
   attachments?: Attachment[];
+  /** Set on the summary a compaction put in place of the older turns: how many it stands in for. */
+  summarised?: number;
+}
+
+/**
+ * The conversation an editor keeps once the server compacted it: the summary,
+ * the turns it kept of what was sent, and the answer. Without a compaction,
+ * what was sent and the answer.
+ */
+export function afterAnswer(
+  sent: EditorTurn[],
+  answer: string,
+  compacted?: { summary: string; replaced: number; kept: number } | null,
+): EditorTurn[] {
+  const answered: EditorTurn = { role: 'assistant', content: answer };
+  if (compacted === undefined || compacted === null) return [...sent, answered];
+  const summary: EditorTurn = { role: 'assistant', content: compacted.summary, summarised: compacted.replaced };
+  return [summary, ...sent.slice(Math.max(0, sent.length - compacted.kept)), answered];
 }
 
 /** The turns as an editor's ask mutation takes them: each turn's files by id. */

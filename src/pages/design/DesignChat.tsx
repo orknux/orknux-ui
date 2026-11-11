@@ -71,6 +71,8 @@ export interface DesignChatProps {
   files: ChatFiles;
   /** Under the box: the editor's own error and counts. */
   footer?: ReactNode;
+  /** Clear conversation: offered over the turns where an editor passes it. */
+  onClear?: () => void;
 }
 
 /**
@@ -133,6 +135,19 @@ export function DesignChat(props: DesignChatProps) {
         </div>
       )}
       <div className={styles.talk} data-testid={`${prefix}-chat`}>
+        {props.onClear !== undefined && talk.length > 0 && (
+          <div className={styles.talkHead}>
+            <button
+              type="button"
+              className={styles.talkClear}
+              onClick={props.onClear}
+              disabled={answering}
+              data-testid={`${prefix}-chat-clear`}
+            >
+              {t('Clear conversation')}
+            </button>
+          </div>
+        )}
         {talk.length === 0 && !answering && (
           <div className={styles.welcome} data-testid={`${prefix}-welcome`}>
             <h2 className={styles.hello}>
@@ -168,6 +183,13 @@ export function DesignChat(props: DesignChatProps) {
             data-testid={`${prefix}-chat-message`}
             data-role={turn.role}
           >
+            {turn.summarised !== undefined && (
+              <p className={styles.summarised} data-testid={`${prefix}-chat-summarised`}>
+                {tf('{count} earlier messages were summarised to keep the conversation within the model\'s window.', {
+                  count: turn.summarised,
+                })}
+              </p>
+            )}
             {turn.role === 'user' ? turn.content : <Markdown>{turn.content}</Markdown>}
             <div className={styles.turnActions}>
               <CopyButton text={turn.content} label={t('Copy this message')} testId={`${prefix}-chat-message-copy`} />

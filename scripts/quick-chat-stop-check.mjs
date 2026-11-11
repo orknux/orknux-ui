@@ -1,8 +1,8 @@
 /**
  * Stopping the quick chat while the model is thinking.
  *
- * The panel makes one request and waits for one answer, and there was no way
- * to end that wait: a question sent to a slow model left the panel saying "…"
+ * The panel puts a question to the server and waits for its answer, and there
+ * was once no way to end that wait: a question sent to a slow model left the panel saying "…"
  * with nothing to press. Issue #331. The Ask button becomes Stop while a
  * request is in flight, and pressing it drops the request.
  *
@@ -48,9 +48,17 @@ const restore = async () => {
  */
 let release;
 const held = new Promise((resolve) => { release = resolve; });
-await page.route('**/quick-chat', async (route) => {
+const json = (body) => ({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+let stopped = 0;
+await page.route('**/quick-chat/thread', (route) => route.fulfill(json({ messages: [] })));
+await page.route('**/quick-chat/asks', (route) => route.fulfill(json({ id: '1', status: 'WAITING' })));
+await page.route('**/quick-chat/asks/1?**', async (route) => {
   await held;
   await route.abort();
+});
+await page.route('**/quick-chat/asks/1/stop', (route) => {
+  stopped++;
+  return route.fulfill(json({ stopped: true }));
 });
 
 await page.goto(`${BASE}/workspace/${WORKSPACE}/agents`, { waitUntil: 'domcontentloaded' });
@@ -80,5 +88,7 @@ record(
   (await page.getByRole('button', { name: 'Stop', exact: true }).count()) === 0,
   'with no Stop left, because nothing is in flight',
 );
+// The answer is worked out on the server whoever is waiting, so Stop has to say so there too.
+record(stopped === 1, `and the server is told to drop the question (${stopped} stop sent)`);
 
 await restore();

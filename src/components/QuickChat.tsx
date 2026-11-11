@@ -2,7 +2,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
 import { useLocation } from 'react-router-dom';
 
-import { askQuickChat } from '../api/quickChat';
+import { awaitQuickChat, beginQuickChat, clearQuickChatThread, fetchQuickChatThread, stopQuickChat } from '../api/quickChat';
+import type { QuickChatAsked } from '../api/quickChat';
 import { fetchClaudeCodeChat } from '../api/chat';
 import type { QuickChatSuggestion } from '../api/quickChat';
 import { CodeSuggestion } from './CodeSuggestion';
@@ -20,6 +21,7 @@ import { ResizeHandle, useDragSize, useWindowHeight } from './DragSize';
 import { PAGES } from '../navigation';
 import styles from './QuickChat.module.css';
 import { t, tf } from '../i18n';
+import plusIcon from '../assets/plus.svg';
 
 
 export interface QuickChatProps {
@@ -100,8 +102,8 @@ function labelFor(pathname: string): string | null {
 /**
  * A small chat that opens over whatever is on screen.
  *
- * Not the Chat page shrunk: there is no history, no model picker, no files and
- * no voice. It is for the question somebody has *while looking at something* —
+ * Not the Chat page shrunk: there is one conversation, kept on the server and
+ * drawn again wherever the panel opens, no model picker, no files and no voice. It is for the question somebody has *while looking at something* —
  * why did this fail, what is this page for — so the one thing it carries that
  * the Chat page does not is where they are.
  *
@@ -143,8 +145,10 @@ export function QuickChat({ workspacePath, userName }: QuickChatProps) {
   const [said, setSaid] = useState<QuickChatTurn[]>([]);
   const [draft, setDraft] = useState('');
   const [asking, setAsking] = useState(false);
-  /** The in-flight request, so Stop can abort it. Null when nothing is asking. */
+  /** The wait for an answer, so Stop and leaving can end it. Null when nothing is asking. */
   const inFlight = useRef<AbortController | null>(null);
+  /** The question being answered, by its id on the server, so Stop can drop it there. */
+  const pending = useRef<string | null>(null);
   /*
    * The changes offered, by the turn each was offered in.
    *
@@ -218,69 +222,152 @@ export function QuickChat({ workspacePath, userName }: QuickChatProps) {
    * else, so its next answer is about what actually happened rather than about
    * what it offered.
    */
-  async function send(question: string) {
+  async function send(question: string, before: QuickChatTurn[] = said) {
     if (asking || workspaceId === undefined) return;
 
-    const conversation: QuickChatTurn[] = [...said, { role: 'user', content: question }];
+    const conversation: QuickChatTurn[] = [...before, { role: 'user', content: question }];
     setSaid(conversation);
     setAsking(true);
     setError(null);
-    const controller = new AbortController();
-    inFlight.current = controller;
     try {
       // The page is read at the moment of asking rather than when the panel
       // opened: somebody can navigate with it open, and "this" then means the
       // page they are looking at now.
-      const answer = await askQuickChat(workspaceId, conversation, {
+      const asked = await beginQuickChat(workspaceId, conversation, {
         label: labelFor(pathname),
         path: pathname,
-      }, controller.signal, answeredByClaude ? 'CLAUDE_CODE' : undefined);
-      const grown: QuickChatTurn[] = [...conversation, { role: 'assistant', content: answer.answer }];
-      setSaid(grown);
-      if (answer.suggestion !== undefined) {
-        const suggestion = answer.suggestion;
-        /*
-         * Offered to the editor first. A page showing the function claims the
-         * event, and then the diff is drawn there - in the editor's own terms,
-         * where the code is - and this panel only points at it. Unclaimed, the
-         * change is shown here, because a suggestion can be made from any page
-         * and it still has to land somewhere.
-         */
-        const announced = new CustomEvent('orknux:function-suggestion', {
-          detail: suggestion,
-          cancelable: true,
-        });
-        const unclaimed = window.dispatchEvent(announced);
-        setOffers((held) => ({ ...held, [grown.length - 1]: { suggestion, inEditor: !unclaimed } }));
-      }
-      // A change to a tool, announced the same way and to the same rule: the
-      // tool editor claims one for the tool it has open, and anything it does
-      // not claim is drawn here.
-      if (answer.toolSuggestion !== undefined) {
-        const suggestion = answer.toolSuggestion;
-        const announced = new CustomEvent('orknux:tool-suggestion', { detail: suggestion, cancelable: true });
-        const unclaimed = window.dispatchEvent(announced);
-        setToolOffers((held) => ({ ...held, [grown.length - 1]: { suggestion, inEditor: !unclaimed } }));
-      }
+      }, answeredByClaude ? 'CLAUDE_CODE' : undefined);
+      await follow(workspaceId, asked.id, conversation);
     } catch (cause) {
-      // Stop drops the request. The user turn stays - it is what they asked -
-      // and the answer that never came is simply absent, rather than an error
-      // about a thing they chose to end.
-      if (cause instanceof DOMException && cause.name === 'AbortError') {
-        // nothing to say; they stopped it
-      } else {
-        setError(cause instanceof Error ? cause.message : t('That could not be answered.'));
-      }
-    } finally {
-      inFlight.current = null;
+      setError(cause instanceof Error ? cause.message : t('That could not be answered.'));
       setAsking(false);
     }
   }
 
-  /** Drop the in-flight request. The catch above reads the abort as a stop. */
+  /**
+   * Waits for a question's answer, which the server works out whoever is
+   * waiting: the panel can be closed, the page reloaded or the server
+   * restarted in between, and the answer is still there to be drawn. Called by
+   * a send, and on opening for a question that was still being answered.
+   */
+  async function follow(workspace: string, id: string, conversation: QuickChatTurn[]) {
+    const controller = new AbortController();
+    inFlight.current?.abort();
+    inFlight.current = controller;
+    pending.current = id;
+    setAsking(true);
+    try {
+      received(await awaitQuickChat(workspace, id, controller.signal), conversation);
+    } catch (cause) {
+      // Stop, or the panel let go of: the user turn stays - it is what they
+      // asked - and the answer that never came is simply absent.
+      if (!(cause instanceof DOMException && cause.name === 'AbortError')) {
+        setError(cause instanceof Error ? cause.message : t('That could not be answered.'));
+      }
+    } finally {
+      if (inFlight.current === controller) {
+        inFlight.current = null;
+        pending.current = null;
+        setAsking(false);
+      }
+    }
+  }
+
+  /** A settled question, drawn: its answer and any change it offers, or why there is none. */
+  function received(answer: QuickChatAsked, conversation: QuickChatTurn[]) {
+    if (answer.status === 'STOPPED') return;
+    if (answer.status === 'FAILED') {
+      setError(answer.error ?? t('That could not be answered.'));
+      return;
+    }
+    const grown: QuickChatTurn[] = [...conversation, { role: 'assistant', content: answer.answer ?? '' }];
+    setSaid(grown);
+    if (answer.suggestion !== undefined) {
+      const suggestion = answer.suggestion;
+      /*
+       * Offered to the editor first. A page showing the function claims the
+       * event, and then the diff is drawn there - in the editor's own terms,
+       * where the code is - and this panel only points at it. Unclaimed, the
+       * change is shown here, because a suggestion can be made from any page
+       * and it still has to land somewhere.
+       */
+      const announced = new CustomEvent('orknux:function-suggestion', {
+        detail: suggestion,
+        cancelable: true,
+      });
+      const unclaimed = window.dispatchEvent(announced);
+      setOffers((held) => ({ ...held, [grown.length - 1]: { suggestion, inEditor: !unclaimed } }));
+    }
+    // A change to a tool, announced the same way and to the same rule: the
+    // tool editor claims one for the tool it has open, and anything it does
+    // not claim is drawn here.
+    if (answer.toolSuggestion !== undefined) {
+      const suggestion = answer.toolSuggestion;
+      const announced = new CustomEvent('orknux:tool-suggestion', { detail: suggestion, cancelable: true });
+      const unclaimed = window.dispatchEvent(announced);
+      setToolOffers((held) => ({ ...held, [grown.length - 1]: { suggestion, inEditor: !unclaimed } }));
+    }
+  }
+
+  /** The question that went unanswered, when the conversation ends on one: what Send again asks. */
+  const unanswered = !asking && said.length > 0 && said[said.length - 1].role === 'user' ? said[said.length - 1] : null;
+
+  /** Send again: the same question in its own place, not a second copy of it under the first. */
+  function sendAgain() {
+    if (unanswered === null) return;
+    void send(unanswered.content, said.slice(0, -1));
+  }
+
+  /** Stop: the server drops the question, and this stops waiting for it. */
   function stop() {
+    const id = pending.current;
+    if (id !== null && workspaceId !== undefined) void stopQuickChat(workspaceId, id);
     inFlight.current?.abort();
   }
+
+  /** New conversation: what was said is put away on the server too, so it does not come back on the next page. */
+  async function startAfresh() {
+    if (workspaceId === undefined || asking) return;
+    try {
+      await clearQuickChatThread(workspaceId);
+      setSaid([]);
+      setOffers({});
+      setToolOffers({});
+      setError(null);
+      inputRef.current?.focus();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : t('That could not be done.'));
+    }
+  }
+
+  /*
+   * The conversation as the server keeps it, drawn whenever the panel is
+   * offered in a workspace - after a reload, on another tab, on another
+   * computer - and the question still being answered, waited for again.
+   * Offers of a change are not drawn again: whether one was accepted is in
+   * the conversation, and a card that came back would offer it twice.
+   */
+  useEffect(() => {
+    if (workspaceId === undefined || !offered) return undefined;
+    let live = true;
+    fetchQuickChatThread(workspaceId)
+      .then((held) => {
+        if (!live) return;
+        setSaid(held.messages);
+        setOffers({});
+        setToolOffers({});
+        setError(held.error);
+        if (held.pending !== null) void follow(workspaceId, held.pending, held.messages);
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+      // Only the waiting stops: the question goes on being answered on the server.
+      inFlight.current?.abort();
+    };
+    // `follow` reads refs and setters only, so the one this render made is as good as any later one.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspaceId, offered]);
 
   /*
    * A page asking for this panel to open.
@@ -437,26 +524,47 @@ export function QuickChat({ workspacePath, userName }: QuickChatProps) {
               panelHeight.reset();
             }}
           />
-          <header className={styles.header}>
+          {/*
+            One row: the title, New conversation and Close. Who answers sits on
+            a row of its own under it - in one row at this width every part of
+            it wrapped, and the close button was pushed off the edge.
+          */}
+          <header className={styles.header} data-testid="quick-chat-header">
             <span className={styles.title}>{t('Ask AI')}</span>
-            {claudeOffered && modelOffered && (
-              <label className={styles.answeredBy}>
-                <span>{t('Answered by')}</span>
-                <select
-                  value={answeredByClaude ? 'claude' : 'model'}
-                  onChange={(event) => chooseClaude(event.target.value === 'claude')}
-                  data-testid="quick-chat-answered-by"
-                >
-                  <option value="model">{t("The workspace's model")}</option>
-                  <option value="claude">{t('My Claude Code')}</option>
-                </select>
-              </label>
+            {said.length > 0 && !asking && (
+              <button
+                type="button"
+                className={styles.fresh}
+                onClick={() => void startAfresh()}
+                title={t('New conversation')}
+                aria-label={t('New conversation')}
+                data-testid="quick-chat-new"
+              >
+                <img src={plusIcon} alt="" width={14} height={14} />
+              </button>
             )}
-            {claudeOffered && !modelOffered && <span className={styles.answeredBy}>{t('My Claude Code')}</span>}
             <button type="button" className={styles.close} onClick={() => setOpen(false)} aria-label={t('Close')}>
               ×
             </button>
           </header>
+          {claudeOffered && modelOffered && (
+            <label className={styles.answeredBy} data-testid="quick-chat-answered-by-row">
+              <span>{t('Answered by')}</span>
+              <select
+                value={answeredByClaude ? 'claude' : 'model'}
+                onChange={(event) => chooseClaude(event.target.value === 'claude')}
+                data-testid="quick-chat-answered-by"
+              >
+                <option value="model">{t("The workspace's model")}</option>
+                <option value="claude">{t('My Claude Code')}</option>
+              </select>
+            </label>
+          )}
+          {claudeOffered && !modelOffered && (
+            <p className={styles.answeredBy} data-testid="quick-chat-answered-by-row">
+              {t('Answered by')} <strong>{t('My Claude Code')}</strong>
+            </p>
+          )}
 
           <div className={styles.log} ref={logRef}>
             {said.length === 0 && !asking && (
@@ -533,6 +641,11 @@ export function QuickChat({ workspacePath, userName }: QuickChatProps) {
               <p className={styles.error} role="alert">
                 {error}
               </p>
+            )}
+            {unanswered !== null && (
+              <button type="button" className={styles.again} onClick={sendAgain} data-testid="quick-chat-send-again">
+                {t('Send again')}
+              </button>
             )}
           </div>
 

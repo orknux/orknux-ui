@@ -27,10 +27,14 @@ await graphql(
 );
 
 const sent = [];
-await page.route('**/quick-chat', async (route) => {
+const json = (body) => ({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+// The panel opens on the conversation the server keeps; an empty one here, whatever alice said before.
+await page.route('**/quick-chat/thread', (route) => route.fulfill(json({ messages: [] })));
+await page.route('**/quick-chat/asks', async (route) => {
   sent.push(route.request().postDataJSON());
-  await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ answer: 'Stubbed answer.' }) });
+  await route.fulfill(json({ id: '1', status: 'WAITING' }));
 });
+await page.route('**/quick-chat/asks/1?**', (route) => route.fulfill(json({ id: '1', status: 'ANSWERED', answer: 'Stubbed answer.' })));
 
 try {
   await page.goto(`${BASE}/workspace/${WORKSPACE}/agents`, { waitUntil: 'domcontentloaded' });

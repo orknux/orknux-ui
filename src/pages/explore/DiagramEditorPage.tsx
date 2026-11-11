@@ -21,7 +21,6 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 
 import {
-  askDiagram,
   describeDiagram,
   DIAGRAM_END_STYLES,
   DIAGRAM_LINE_STYLES,
@@ -137,6 +136,7 @@ import { DiagramHistory } from './DiagramHistory';
 import styles from './DiagramEditorPage.module.css';
 import { laidOut } from './diagramLayout';
 import type { LayoutDirection } from './diagramLayout';
+import { askKept, keptAskOf, resumeKept } from '../../api/editorAsks';
 
 export interface DiagramEditorPageProps {
   session: SessionUser;
@@ -1533,6 +1533,33 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
 
   // -- The conversation ----------------------------------------------------
 
+  /*
+   * A question asked before this page was loaded again - a reload in the
+   * middle of an answer - is waited for as though it had just been sent: the
+   * working row, then the answer under the question and the diagram taken up
+   * where the answer changed it.
+   */
+  const resumed = useRef(false);
+  useEffect(() => {
+    if (diagram === null || resumed.current) return;
+    resumed.current = true;
+    const askId = keptAskOf('diagram', diagram.id);
+    if (askId === null) return;
+    const id = diagram.id;
+    const revision = diagram.revision;
+    setAnswering(true);
+    resumeKept('diagram', id, askId)
+      .then(async (settled) => {
+        setTalk((was) => [...was, { role: 'assistant', content: settled.answer ?? '' }]);
+        const now = settled.changed === true ? await fetchDiagram(id).catch(() => null) : null;
+        if (now !== null && now.revision !== revision) take(now);
+      })
+      .catch((cause: unknown) => setTalkError(cause instanceof Error ? cause.message : t('The model could not answer.')))
+      .finally(() => setAnswering(false));
+    // Once, for the diagram this page opened on; `take` and the setters are the page's own.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [diagram]);
+
   async function ask(event?: FormEvent<HTMLFormElement>, idea?: string) {
     event?.preventDefault();
     const said = (idea ?? asking).trim();
@@ -1551,9 +1578,12 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
           ? await askThroughClaudeCode(workspaceId, `the diagram ${diagram.name}`, sent, diagram.revision, () => fetchDiagram(diagram.id)).then(
               (asked) => ({ answer: asked.answer, changed: asked.changed, diagram: asked.item }),
             )
-          : await askDiagram(diagram.id, modelId, sent);
+          : await askKept('diagram', diagram.id, modelId, sent).then(async (settled) => {
+              const found = settled.changed === true ? await fetchDiagram(diagram.id).catch(() => null) : null;
+              return { answer: settled.answer ?? '', changed: found !== null, diagram: found };
+            });
       setTalk([...sent, { role: 'assistant', content: answered.answer }]);
-      if (answered.changed) {
+      if (answered.changed && answered.diagram !== null) {
         remember(drawing);
         take(answered.diagram);
       }

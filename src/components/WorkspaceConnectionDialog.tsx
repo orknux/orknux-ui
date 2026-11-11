@@ -22,7 +22,7 @@ import chevronDown12Icon from '../assets/chevron-down-12.svg';
 import styles from './Dialog.module.css';
 import { FieldHint } from './FieldHint';
 import { HeaderRowsEditor } from './HeaderRowsEditor';
-import { SecretField, useSecretField } from './SecretField';
+import { SecretField, useSecretField, secretOptions } from './SecretField';
 import type { SecretFieldHandle, SecretSource } from './SecretField';
 import { useWorkspaceVariables } from '../pages/workspace/workspaceVariables';
 import { t } from '../i18n';
@@ -214,10 +214,8 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
    */
   const secrets = useMemo(
     () =>
-      variables
-        .filter((variable) => variable.kind === 'SECRET')
-        .map((variable) => ({ value: variable.id, label: variable.name, hint: variable.catalogName })),
-    [variables],
+      secretOptions(variables, workspaceId),
+    [variables, workspaceId],
   );
 
   /** Which of the two a field is, and reading the list again as it is reached for. */

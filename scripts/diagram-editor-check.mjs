@@ -11,6 +11,7 @@
  */
 import { saveEditor } from './suite/harness.mjs';
 import { BASE, WORKSPACE, open, record, finish, shot } from './suite/harness.mjs';
+import { standInForEditorAsks } from './suite/editor-asks.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 900 } });
 const stamp = Date.now();
@@ -116,14 +117,13 @@ const current = (await graphql(`query ($id: ID!) { diagram(id: $id) {
 const after = JSON.parse(current.document);
 after.nodes.push({ id: 'db', kind: 'ellipse', label: 'Ledger', x: 600, y: 0, w: 160, h: 70 });
 let asked = null;
-await page.route('**/graphql', async (route) => {
-  const body = route.request().postDataJSON() ?? {};
-  if (!(body.query ?? '').includes('askDiagram')) return route.continue();
-  asked = body.variables;
-  return route.fulfill({ json: { data: { askDiagram: {
-    answer: 'Added the **Ledger**.', changed: true,
-    diagram: { ...current, document: JSON.stringify(after), nodeCount: after.nodes.length, revision: current.revision + 1 },
-  } } } });
+await standInForEditorAsks(page, 'diagram', async (body) => {
+  asked = body;
+  // What a model's change is: saved on the server, which the editor reads again on hearing it changed.
+  await graphql('mutation ($id: ID!, $d: String!, $r: Int) { saveDiagram(id: $id, document: $d, revision: $r) { revision } }', {
+    id, d: JSON.stringify(after), r: current.revision,
+  });
+  return { answer: 'Added the **Ledger**.', changed: true };
 });
 const ideas = await page.getByTestId('diagram-idea').count();
 record(ideas === 4, `an empty chat offers four ideas (${ideas})`);

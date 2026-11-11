@@ -38,6 +38,26 @@ const marks = () => page.locator('.ProseMirror-search-match, .ProseMirror-active
 const counted = async () => ((await page.getByTestId('document-find-count').textContent().catch(() => '')) ?? '').trim();
 const active = () => page.locator('.ProseMirror-active-search-match').first().boundingBox().catch(() => null);
 
+// The box is in the toolbar, always, on the right just left of the page count: there is no button to find first.
+const placed = await page.evaluate(() => {
+  const box = document.querySelector('[data-testid="document-find-input"]')?.closest('label')?.getBoundingClientRect();
+  const count = document.querySelector('[data-testid="document-page-count"]')?.getBoundingClientRect();
+  const bar = document.querySelector('[data-testid="document-find-slot"]')?.parentElement?.getBoundingClientRect();
+  if (!box || !count || !bar) return null;
+  return {
+    gap: Math.round(count.left - box.right),
+    width: Math.round(box.width),
+    rows: Math.round(Math.abs(box.top + box.height / 2 - (count.top + count.height / 2))),
+    fromRight: Math.round(bar.right - count.right),
+    button: document.querySelectorAll('[data-testid="document-find-open"]').length,
+    panel: document.querySelectorAll('[data-testid="document-find"]').length,
+  };
+});
+record(placed !== null && placed.gap >= 0 && placed.gap <= 24 && placed.rows <= 2 && placed.button === 0 && placed.panel === 0,
+  `the find box sits in the toolbar just left of the page count, with no button in its place and nothing open under it yet (${JSON.stringify(placed)})`);
+
+record(placed !== null && placed.width >= 320, `the box is wide enough to read a phrase in, at ${placed?.width}px on a wide screen`);
+
 // The keystroke opens Find, not the browser's.
 await page.locator('[data-testid="document-prose"] > p').first().click();
 // Find steps on from the caret, as a word processor's does: from the very start, the first match is the first.
@@ -46,6 +66,17 @@ await page.keyboard.press('Control+Home');
 await page.waitForTimeout(200);
 await page.keyboard.press('Control+f');
 await page.getByTestId('document-find').waitFor({ timeout: 3_000 }).catch(() => undefined);
+// The panel drops down under the box it belongs to, rather than opening in the middle of the page.
+const under = await page.evaluate(() => {
+  const box = document.querySelector('[data-testid="document-find-input"]')?.closest('label')?.getBoundingClientRect();
+  const panel = document.querySelector('[data-testid="document-find"]');
+  const drawn = panel?.getBoundingClientRect();
+  if (!box || !drawn) return null;
+  const hit = document.elementFromPoint(drawn.left + drawn.width / 2, drawn.top + drawn.height / 2);
+  return { below: Math.round(drawn.top - box.bottom), rightEdges: Math.round(drawn.right - box.right), onTop: panel.contains(hit) };
+});
+record(under !== null && under.below >= 0 && under.below <= 12 && Math.abs(under.rightEdges) <= 2 && under.onTop,
+  `the find panel opens right under the search box, lined up with its right edge and drawn over the page (${JSON.stringify(under)})`);
 record(await page.getByTestId('document-find-input').evaluate((one) => one === document.activeElement).catch(() => false), 'Ctrl+F opens Find, with the box ready to type in');
 await page.getByTestId('document-find-input').fill('apple');
 await page.waitForTimeout(200);
@@ -100,7 +131,6 @@ const furniture = {
 };
 record(furniture.toolbar === 0 && furniture.panel === 0 && furniture.chat === 0 && furniture.save === 0 && furniture.editable === 'false' && furniture.pages >= 2,
   `the view is its pages and nothing that changes them (${JSON.stringify(furniture)})`);
-await page.getByTestId('document-find-open').click();
 await page.getByTestId('document-find-input').fill('apple');
 await page.waitForTimeout(200);
 record((await marks()) === 1 && (await page.getByTestId('document-replace-input').count()) === 0, `the view finds, and does not replace (${await marks()})`);

@@ -1,5 +1,7 @@
+import type { CSSProperties } from 'react';
+
 import { cellAt, cellName, columnIndex, columnName } from '../../api/sheets';
-import type { SheetTab, Workbook } from '../../api/sheets';
+import type { BorderSide, CellFormat, SheetTab, Workbook } from '../../api/sheets';
 
 /** A cell, by its column and row, both from 0. */
 export type Cell = { column: number; row: number };
@@ -49,6 +51,174 @@ export function withCells(workbook: Workbook, tab: number, written: Record<strin
       return { ...one, cells };
     }),
   };
+}
+
+// -- Formatting -------------------------------------------------------------
+
+/** A change to a cell's formatting: a key given a value sets it, a key given null takes it away, a key left out stays. */
+export type FormatPatch = { [K in keyof CellFormat]?: CellFormat[K] | null };
+
+/** The keys of a format, in the order the server writes them, so a format sent and a format read back are the same text. */
+const FORMAT_KEYS: (keyof CellFormat)[] = [
+  'bold',
+  'italic',
+  'underline',
+  'strike',
+  'color',
+  'fill',
+  'align',
+  'wrap',
+  'number',
+  'decimals',
+  'currency',
+  'border',
+  'borderColor',
+  'ungrouped',
+];
+
+/** A format with what it does not set left out, in the server's order; null where it sets nothing. */
+export function cleanFormat(format: FormatPatch | undefined): CellFormat | null {
+  if (format === undefined) return null;
+  const kept: Record<string, unknown> = {};
+  for (const key of FORMAT_KEYS) {
+    const value = format[key];
+    if (value === undefined || value === null || value === false) continue;
+    if (Array.isArray(value)) {
+      // A border is kept in one order of its sides, as the server keeps it, and none is no entry.
+      const sides = BORDER_SIDES.filter((side) => (value as string[]).includes(side));
+      if (sides.length > 0) kept[key] = sides;
+      continue;
+    }
+    kept[key] = value;
+  }
+  return Object.keys(kept).length === 0 ? null : (kept as CellFormat);
+}
+
+/** A cell's sides, in the order a border is kept in. */
+export const BORDER_SIDES: BorderSide[] = ['top', 'right', 'bottom', 'left'];
+
+/** What the border picker offers: each draws over the selection as a spreadsheet's does. */
+export type BorderChoice = 'all' | 'outer' | 'top' | 'bottom' | 'left' | 'right' | 'none';
+
+/**
+ * The selection's cells with [choice] drawn over their borders: all gives every
+ * cell all four sides, outer the block's edge cells their outer sides, a side
+ * that side of the block's edge cells, and none takes every side away. What a
+ * cell had on its other sides is kept, so an outline drawn round a ruled table
+ * leaves its inner lines alone.
+ */
+export function borderBlock(tab: SheetTab, range: Range, choice: BorderChoice, off = false): Record<string, CellFormat | null> {
+  const block = boundsOf(range);
+  const written: Record<string, CellFormat | null> = {};
+  for (let row = block.top; row <= block.bottom; row++) {
+    for (let column = block.left; column <= block.right; column++) {
+      const address = cellName(column, row);
+      const had = tab.formats?.[address];
+      const edges: BorderSide[] = [];
+      if (row === block.top) edges.push('top');
+      if (column === block.right) edges.push('right');
+      if (row === block.bottom) edges.push('bottom');
+      if (column === block.left) edges.push('left');
+      const adding: BorderSide[] =
+        choice === 'all' ? BORDER_SIDES : choice === 'outer' ? edges : choice === 'none' ? [] : edges.filter((side) => side === choice);
+      // Off takes the chosen lines away again - a border button pressed a second time - and leaves the rest.
+      const kept = had?.border ?? [];
+      const sides =
+        choice === 'none' ? [] : off ? kept.filter((side) => !adding.includes(side)) : BORDER_SIDES.filter((side) => adding.includes(side) || kept.includes(side));
+      written[address] = patchFormat(had, { border: sides.length > 0 ? sides : null, ...(choice === 'none' ? { borderColor: null } : {}) });
+    }
+  }
+  return written;
+}
+
+/** [format] with [patch] applied. */
+export function patchFormat(format: CellFormat | undefined, patch: FormatPatch): CellFormat | null {
+  return cleanFormat({ ...(format ?? {}), ...patch });
+}
+
+/** A tab with some cells' formatting set: null takes a cell's formatting away. */
+export function withFormats(workbook: Workbook, tab: number, written: Record<string, CellFormat | null>): Workbook {
+  return {
+    tabs: workbook.tabs.map((one, at) => {
+      if (at !== tab) return one;
+      const formats = { ...(one.formats ?? {}) };
+      for (const [address, format] of Object.entries(written)) {
+        const clean = cleanFormat(format ?? undefined);
+        if (clean === null) delete formats[address];
+        else formats[address] = clean;
+      }
+      return { ...one, formats };
+    }),
+  };
+}
+
+/** Every cell of a block given [patch] over what it has; what writing it would change, by address. */
+export function formatBlock(tab: SheetTab, range: Range, patch: FormatPatch | null): Record<string, CellFormat | null> {
+  const block = boundsOf(range);
+  const written: Record<string, CellFormat | null> = {};
+  for (let row = block.top; row <= block.bottom; row++) {
+    for (let column = block.left; column <= block.right; column++) {
+      const address = cellName(column, row);
+      written[address] = patch === null ? null : patchFormat(tab.formats?.[address], patch);
+    }
+  }
+  return written;
+}
+
+/** Whether two formats draw a cell the same; absent is the same as nothing set. */
+export function sameFormat(a: CellFormat | null | undefined, b: CellFormat | null | undefined): boolean {
+  return JSON.stringify(cleanFormat(a ?? undefined)) === JSON.stringify(cleanFormat(b ?? undefined));
+}
+
+/**
+ * The words drawn dark on a light fill and light on a dark one, where the format
+ * names no colour of its own. Not tokens: they are read against the sheet's own
+ * fill, which is the same in either theme, not against the interface.
+ */
+const INK_ON_LIGHT = '#1f1f23';
+const INK_ON_DARK = '#f5f5f7';
+
+function lightness(hex: string): number {
+  const value = Number.parseInt(hex.slice(1), 16);
+  const r = (value >> 16) & 0xff;
+  const g = (value >> 8) & 0xff;
+  const b = value & 0xff;
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+}
+
+/**
+ * How a cell's format is drawn. A fill is the sheet's own colour in either
+ * theme, so words on it with no colour of their own are drawn in whichever ink
+ * reads on it, rather than in the theme's - pale words on a pale yellow, in the
+ * dark theme, would be words nobody could read.
+ */
+export function cellStyleOf(format: CellFormat | undefined): CSSProperties {
+  if (format === undefined) return {};
+  const style: CSSProperties = {};
+  if (format.bold === true) style.fontWeight = 700;
+  if (format.italic === true) style.fontStyle = 'italic';
+  const lines = [format.underline === true ? 'underline' : '', format.strike === true ? 'line-through' : ''].filter((one) => one !== '');
+  if (lines.length > 0) style.textDecoration = lines.join(' ');
+  if (format.fill !== undefined) style.background = format.fill;
+  if (format.color !== undefined) style.color = format.color;
+  else if (format.fill !== undefined) style.color = lightness(format.fill) > 0.55 ? INK_ON_LIGHT : INK_ON_DARK;
+  if (format.align !== undefined) style.textAlign = format.align;
+  if (format.border !== undefined && format.border.length > 0) {
+    // The sheet's own colour where one was chosen; otherwise whichever ink the words are drawn in.
+    const ink = format.borderColor ?? format.color ?? (format.fill !== undefined ? (style.color as string) : 'var(--color-text-primary)');
+    const line = `1px solid ${ink}`;
+    if (format.border.includes('top')) style.borderTop = line;
+    if (format.border.includes('right')) style.borderRight = line;
+    if (format.border.includes('bottom')) style.borderBottom = line;
+    if (format.border.includes('left')) style.borderLeft = line;
+  }
+  if (format.wrap === true) {
+    style.whiteSpace = 'normal';
+    style.overflowWrap = 'anywhere';
+    style.textOverflow = 'clip';
+    style.lineHeight = 1.25;
+  }
+  return style;
 }
 
 /** Every cell of a block, by address, set to the same text. */
@@ -135,7 +305,15 @@ export function mergeWorkbooks(base: Workbook, mine: Workbook, theirs: Workbook)
       for (const [column, width] of Object.entries(mineTab.widths ?? {})) {
         if (was.widths?.[column] !== width) widths[column] = width;
       }
-      return { name: tab.name, cells, widths };
+      const formats = { ...(theirTab.formats ?? {}) };
+      const formatted = new Set([...Object.keys(was.formats ?? {}), ...Object.keys(mineTab.formats ?? {})]);
+      for (const address of formatted) {
+        const mineFormat = mineTab.formats?.[address];
+        if (sameFormat(was.formats?.[address], mineFormat)) continue;
+        if (mineFormat === undefined) delete formats[address];
+        else formats[address] = mineFormat;
+      }
+      return { name: tab.name, cells, widths, formats };
     }),
   };
 }
@@ -284,6 +462,34 @@ export function fillCells(
   return written;
 }
 
+/**
+ * The formatting a drag of [source]'s corner out to [target] carries: each
+ * cell takes the format of the source cell its lane repeats, as in a
+ * spreadsheet - a bold header dragged across stays bold, a currency column
+ * dragged down stays currency - and a source cell with none clears it.
+ */
+export function fillFormats(
+  read: (column: number, row: number) => CellFormat | undefined,
+  source: FormulaRef,
+  target: FormulaRef,
+): Record<string, CellFormat | null> {
+  const written: Record<string, CellFormat | null> = {};
+  const across = target.left < source.left || target.right > source.right;
+  const lanes = across ? [source.top, source.bottom] : [source.left, source.right];
+  const along = across ? [source.left, source.right] : [source.top, source.bottom];
+  const reach = across ? [target.left, target.right] : [target.top, target.bottom];
+  const count = along[1] - along[0] + 1;
+  for (let lane = lanes[0]; lane <= lanes[1]; lane++) {
+    for (let at = reach[0]; at <= reach[1]; at++) {
+      if (at >= along[0] && at <= along[1]) continue;
+      const from = along[0] + ((((at - along[0]) % count) + count) % count);
+      const format = across ? read(from, lane) : read(lane, from);
+      written[across ? cellName(at, lane) : cellName(lane, at)] = format ?? null;
+    }
+  }
+  return written;
+}
+
 /** The block a drag of [source]'s corner to [cell] covers: out one way only, the longer. Null while still inside it. */
 export function fillTarget(source: FormulaRef, cell: Cell): FormulaRef | null {
   const down = cell.row - source.bottom;
@@ -296,4 +502,49 @@ export function fillTarget(source: FormulaRef, cell: Cell): FormulaRef | null {
   if (most === up) return { ...source, top: cell.row };
   if (most === right) return { ...source, right: cell.column };
   return { ...source, left: cell.column };
+}
+
+// -- A number as its format writes it -------------------------------------------
+
+/** The symbols written before the amount, as the server writes them; every other one goes after it. */
+const CURRENCY_BEFORE = ['$', '£', '€', '¥', 'US$', 'A$', 'C$'];
+
+/** [value] with [places] after the point and a comma between thousands, in the one locale the server writes in. */
+function grouped(value: number, places: number, grouping = true): string {
+  return value.toLocaleString('en-US', { minimumFractionDigits: places, maximumFractionDigits: places, useGrouping: grouping });
+}
+
+/**
+ * A number as its cell's format writes it, worked out here rather than waited
+ * for: the server writes it the same way, but only once it has been asked, so
+ * a cell formatted a moment ago was drawn as the bare number until the answer
+ * came. Null for General, which only the server's answer says how to write.
+ */
+export function numberShown(value: number, format: CellFormat | undefined): string | null {
+  if (format?.number === undefined || !Number.isFinite(value)) return null;
+  const places = format.decimals ?? (format.number === 'percent' ? 0 : 2);
+  switch (format.number) {
+    case 'number':
+      return grouped(value, places, format.ungrouped !== true);
+    case 'percent':
+      return `${grouped(value * 100, places).replace(/,/g, '')}%`;
+    case 'currency': {
+      const symbol = format.currency ?? '$';
+      const amount = grouped(Math.abs(value), places, format.ungrouped !== true);
+      const sign = value < 0 ? '-' : '';
+      return CURRENCY_BEFORE.includes(symbol) ? `${sign}${symbol}${amount}` : `${sign}${amount} ${symbol}`;
+    }
+    case 'date': {
+      // Excel's day count, from the last day of 1899; the fraction is the time of day, which yyyy-mm-dd leaves out.
+      const day = new Date(Date.UTC(1899, 11, 30) + Math.floor(value) * 86_400_000);
+      return Number.isNaN(day.getTime()) ? null : day.toISOString().slice(0, 10);
+    }
+    default:
+      return null;
+  }
+}
+
+/** Whether two formats write a number the same way. */
+export function sameNumberFormat(a: CellFormat | undefined, b: CellFormat | undefined): boolean {
+  return a?.number === b?.number && a?.decimals === b?.decimals && a?.currency === b?.currency && a?.ungrouped === b?.ungrouped;
 }

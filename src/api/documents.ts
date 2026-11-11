@@ -82,6 +82,8 @@ export interface DocumentAnswer {
   /** Whether the model saved anything. */
   changed: boolean;
   document: DesignDocument;
+  /** Set when the workspace's compaction summarised the older turns: keep the summary and the last `kept` turns sent. */
+  compacted?: { summary: string; replaced: number; kept: number } | null;
 }
 
 /** What the list reads: everything but the content. */
@@ -326,7 +328,7 @@ export async function deleteDocument(id: string): Promise<boolean> {
 export async function askDocument(id: string, modelId: string, messages: DocumentTurn[], readOnly = false): Promise<DocumentAnswer> {
   const data = await graphql<{ askDocument: DocumentAnswer }>(
     `mutation ($id: ID!, $modelId: ID!, $messages: [DocumentChatTurnInput!]!, $readOnly: Boolean) {
-       askDocument(id: $id, modelId: $modelId, messages: $messages, readOnly: $readOnly) { answer changed document { ${FIELDS} } }
+       askDocument(id: $id, modelId: $modelId, messages: $messages, readOnly: $readOnly) { answer changed document { ${FIELDS} } compacted { summary replaced kept } }
      }`,
     { id, modelId, messages: editorTurnsInput(messages), readOnly },
   );

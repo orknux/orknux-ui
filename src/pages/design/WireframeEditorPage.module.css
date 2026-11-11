@@ -495,6 +495,42 @@
 /* ---- Files in an editor's chat: dropped on it, picked with the paperclip, chips above the box ---- */
 
 /* The conversation and its composer, together: what a file is dropped on, and what the drop zone covers. */
+/* Clear conversation, over the turns and out of their way. */
+.talkHead {
+  display: flex;
+  flex: none;
+  justify-content: flex-end;
+}
+
+.talkClear {
+  padding: var(--space-2) var(--space-8);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.talkClear:hover:not(:disabled) {
+  background: var(--color-surface-raised);
+  color: var(--color-text-primary);
+}
+
+.talkClear:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+/* Over a summary that stands in for older turns: says that it does. */
+.summarised {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-sm);
+  font-style: italic;
+  color: var(--color-text-muted);
+}
+
 .chatArea {
   position: relative;
   display: flex;

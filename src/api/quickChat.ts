@@ -1,5 +1,5 @@
 import { t } from '../i18n';
-/** One turn of the panel's conversation. Nothing here is stored anywhere. */
+/** One turn of the panel's conversation. Kept on the server, which draws it again when the panel opens. */
 export interface QuickChatTurn {
   role: 'user' | 'assistant';
   content: string;
@@ -95,4 +95,95 @@ export async function askQuickChat(
     | null;
   if (!answer.ok) throw new Error(said?.error ?? t('That could not be answered.'));
   return { answer: said?.answer ?? '', suggestion: said?.suggestion, toolSuggestion: said?.toolSuggestion };
+}
+
+/** What the server has made of a question so far. */
+export type QuickChatAskStatus = 'WAITING' | 'ANSWERED' | 'FAILED' | 'STOPPED';
+
+export interface QuickChatAsked extends Partial<QuickChatAnswer> {
+  id: string;
+  status: QuickChatAskStatus;
+  error?: string;
+}
+
+/** The conversation the panel held last in this workspace, and the question still being answered. */
+export interface QuickChatThread {
+  messages: QuickChatTurn[];
+  pending: string | null;
+  error: string | null;
+}
+
+async function said<T>(answer: Response): Promise<T> {
+  const body = (await answer.json().catch(() => null)) as (T & { error?: string }) | null;
+  if (!answer.ok || body === null) throw new Error(body?.error ?? t('That could not be answered.'));
+  return body;
+}
+
+/**
+ * Puts a question to the panel. Answers with its id at once: the answer is
+ * worked out on the server whoever is still waiting, so it survives the page
+ * closing and the server restarting, and is read with `awaitQuickChat`.
+ */
+export async function beginQuickChat(
+  workspaceId: string,
+  messages: QuickChatTurn[],
+  page: QuickChatPage,
+  answeredBy?: string,
+): Promise<QuickChatAsked> {
+  return said<QuickChatAsked>(
+    await fetch(`/api/workspaces/${workspaceId}/quick-chat/asks`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ messages, page, ...(answeredBy ? { answeredBy } : {}) }),
+      credentials: 'include',
+    }),
+  );
+}
+
+/**
+ * Waits for a question's answer. Asks the server to hold each request up to
+ * twenty-five seconds, and asks again while it is still waiting - through a
+ * restart too, which a lost request is no more than.
+ */
+export async function awaitQuickChat(workspaceId: string, id: string, signal?: AbortSignal): Promise<QuickChatAsked> {
+  for (let failures = 0; ; ) {
+    const began = Date.now();
+    try {
+      const answer = await fetch(`/api/workspaces/${workspaceId}/quick-chat/asks/${id}?wait=25`, {
+        credentials: 'include',
+        signal,
+      });
+      // A server on its way back answers 502 or 503 from whatever stands in front of it; that is waiting, not an answer.
+      if (answer.status >= 500) throw new Error(`${answer.status}`);
+      const held = await said<QuickChatAsked>(answer);
+      if (held.status !== 'WAITING') return held;
+      failures = 0;
+      // A server that did not hold the request is not asked again in a tight loop.
+      if (Date.now() - began < 1_000) await new Promise((done) => window.setTimeout(done, 1_000));
+    } catch (cause) {
+      if (signal?.aborted || (cause instanceof DOMException && cause.name === 'AbortError')) throw cause;
+      failures++;
+      // Twenty tries a few seconds apart is long enough for a server to restart.
+      if (failures > 20) throw cause instanceof Error ? cause : new Error(t('That could not be answered.'));
+      await new Promise((done) => window.setTimeout(done, 3_000));
+    }
+  }
+}
+
+/** Stop: the question is dropped, and an answer that still comes is not kept. */
+export async function stopQuickChat(workspaceId: string, id: string): Promise<void> {
+  await fetch(`/api/workspaces/${workspaceId}/quick-chat/asks/${id}/stop`, { method: 'POST', credentials: 'include' }).catch(() => undefined);
+}
+
+/** The conversation to draw on opening. */
+export async function fetchQuickChatThread(workspaceId: string): Promise<QuickChatThread> {
+  const held = await said<{ messages?: QuickChatTurn[]; pending?: string; error?: string }>(
+    await fetch(`/api/workspaces/${workspaceId}/quick-chat/thread`, { credentials: 'include' }),
+  );
+  return { messages: held.messages ?? [], pending: held.pending ?? null, error: held.error ?? null };
+}
+
+/** New conversation: what was said is put away, and the panel opens empty from now on. */
+export async function clearQuickChatThread(workspaceId: string): Promise<void> {
+  await said(await fetch(`/api/workspaces/${workspaceId}/quick-chat/thread`, { method: 'DELETE', credentials: 'include' }));
 }

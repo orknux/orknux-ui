@@ -1,0 +1,14 @@
+.connected {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  color: var(--color-success);
+}
+
+.connected::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}

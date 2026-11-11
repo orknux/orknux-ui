@@ -22,7 +22,7 @@ import { BackLink } from '../../components/BackLink';
 import { HeaderRowsEditor } from '../../components/HeaderRowsEditor';
 import { Loader } from '../../components/Loader';
 import { UsedBy } from '../../components/UsedBy';
-import { SecretField, useSecretField } from '../../components/SecretField';
+import { SecretField, useSecretField, secretOptions } from '../../components/SecretField';
 import type { SecretSource } from '../../components/SecretField';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { shellUser } from '../../session/user';
@@ -128,10 +128,8 @@ function McpServerSettingsView({ session, onSignOut, onDiscard }: McpServerSetti
    */
   const secrets = useMemo(
     () =>
-      variables
-        .filter((variable) => variable.kind === 'SECRET')
-        .map((variable) => ({ value: variable.id, label: variable.name, hint: variable.catalogName })),
-    [variables],
+      secretOptions(variables, workspaceId),
+    [variables, workspaceId],
   );
 
   /** The one it already reads, kept in the list even before the list arrives. */

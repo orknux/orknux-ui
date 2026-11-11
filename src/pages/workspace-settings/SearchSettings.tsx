@@ -6,7 +6,8 @@ import {
   type WorkspaceSearch,
 } from '../../api/search';
 import { FieldHint } from '../../components/FieldHint';
-import { SecretField, useSecretField } from '../../components/SecretField';
+import { SecretField, useSecretField, secretOptions } from '../../components/SecretField';
+import type { DefinitionOption } from '../../components/DefinitionPicker';
 import type { SecretFieldHandle, SecretSource } from '../../components/SecretField';
 import { t } from '../../i18n';
 import { useWorkspaceVariables } from '../workspace/workspaceVariables';
@@ -33,7 +34,7 @@ export interface SearchSettingsHandle {
   composeAnswer: boolean;
   key: SecretFieldHandle;
   /** The workspace's secrets, for the key's Reference tab. */
-  options: { value: string; label: string; hint: string }[];
+  options: DefinitionOption[];
   /** Whether anything differs from what was loaded or last saved. */
   dirty: boolean;
   setEngine: (next: string) => void;
@@ -102,14 +103,12 @@ export function useSearchSettings(workspaceId: string, onChange?: () => void): S
    * failed save. The one already read stays in the list while the list loads.
    */
   const options = useMemo(() => {
-    const secrets = variables
-      .filter((variable) => variable.kind === 'SECRET')
-      .map((variable) => ({ value: variable.id, label: variable.name, hint: variable.catalogName }));
+    const secrets = secretOptions(variables, workspaceId);
     const reading = held?.apiKeyVariableId ?? null;
     const called = held?.apiKeyVariableName ?? null;
     if (reading === null || called === null || secrets.some((option) => option.value === reading)) return secrets;
     return [{ value: reading, label: called, hint: held?.apiKeyVariableCatalog ?? '' }, ...secrets];
-  }, [variables, held]);
+  }, [variables, held, workspaceId]);
 
   return {
     held,

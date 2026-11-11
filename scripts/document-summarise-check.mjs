@@ -9,6 +9,7 @@
  * needed. Makes its own document and removes it.
  */
 import { BASE, WORKSPACE, open, record, finish, shot } from './suite/harness.mjs';
+import { standInForDocumentAsks } from './suite/editor-asks.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1500, height: 900 } });
 const stamp = Date.now().toString(36);
@@ -27,12 +28,9 @@ const id = (await graphql(
 const read = async () => (await graphql('query ($id: ID!) { document(id: $id) { revision content } }', { id })).document;
 
 const asked = [];
-await page.route('**/graphql', async (route) => {
-  const body = route.request().postDataJSON() ?? {};
-  if (!String(body.query ?? '').includes('askDocument')) return route.fallback();
-  asked.push(body.variables);
-  const now = (await graphql(`query ($id: ID!) { document(id: $id) { ${FIELDS} } }`, { id })).document;
-  return route.fulfill({ json: { data: { askDocument: { answer: `Summary number ${asked.length}.`, changed: false, document: now } } } });
+await standInForDocumentAsks(page, (body) => {
+  asked.push(body);
+  return { answer: `Summary number ${asked.length}.` };
 });
 
 await page.goto(`${BASE}/workspace/${WORKSPACE}/design/documents/${id}`, { waitUntil: 'domcontentloaded' });

@@ -12,7 +12,8 @@ import {
   statusLabel,
 } from '../../api/integrations';
 import type { ConnectionStatus, IntegrationImport, IntegrationKind, McpServer, PluginConnectionType, WorkspaceConnection } from '../../api/integrations';
-import { SaveAsTemplateButton } from '../../components/ComponentTransfer';
+import { DuplicateButton, SaveAsTemplateButton } from '../../components/ComponentTransfer';
+import { duplicateMcpServer } from '../../api/transfer';
 import { IntegrationTemplatesDialog } from '../../components/IntegrationTemplatesDialog';
 import { RecommendedIntegrations } from '../../components/RecommendedIntegrations';
 import type { SessionUser } from '../../api/session';
@@ -385,6 +386,15 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
               {reachableLabel(server.reachable)}
             </span>
             <span className={styles.colActions}>
+              {/* A copy beside it, credential and all: the same server in another environment is an address away. */}
+              <span onClick={(event) => event.stopPropagation()}>
+                <DuplicateButton
+                  name={server.name}
+                  className={styles.rowAction}
+                  run={() => duplicateMcpServer(server.id).then((made) => made.name)}
+                  onDone={() => load()}
+                />
+              </span>
               {/* As a model's row makes one: this server, with its settings and without its credential. */}
               <span onClick={(event) => event.stopPropagation()}>
                 <SaveAsTemplateButton

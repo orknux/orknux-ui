@@ -21,7 +21,9 @@ const had = (await graphql('query($w: ID!) { workspace(id: $w) { quickChatModelI
 await graphql(SET, { w: WORKSPACE, id: chat.id });
 
 try {
-  await page.route('**/quick-chat', (route) => route.abort());
+  await page.route('**/quick-chat/thread', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ messages: [] }) }));
+  await page.route('**/quick-chat/asks', (route) => route.abort());
   await page.goto(`${BASE}/workspace/${WORKSPACE}/agents`, { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(1500);
   await page.getByRole('button', { name: 'Ask AI' }).last().click();

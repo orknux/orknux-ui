@@ -10,6 +10,7 @@
  */
 import { saveEditor } from './suite/harness.mjs';
 import { BASE, WORKSPACE, open, record, finish, shot } from './suite/harness.mjs';
+import { standInForEditorAsks } from './suite/editor-asks.mjs';
 
 const { browser, page } = await open({ viewport: { width: 1440, height: 900 } });
 
@@ -129,15 +130,14 @@ let asked = null;
 // The answer waits until the canvas has been read while the model is still drawing.
 let answer = () => {};
 const answerable = new Promise((resolve) => { answer = resolve; });
-await page.route('**/graphql', async (route) => {
-  const body = route.request().postDataJSON() ?? {};
-  if (!(body.query ?? '').includes('askWireframe')) return route.continue();
-  asked = body.variables;
+await standInForEditorAsks(page, 'wireframe', async (body) => {
+  asked = body;
   await answerable;
-  return route.fulfill({ json: { data: { askWireframe: {
-    answer: 'Added a **Sign in** button.', changed: true,
-    wireframe: { ...stored, document: JSON.stringify(after), elementCount: after.elements.length, revision: stored.revision + 1 },
-  } } } });
+  // What a model's drawing is: saved on the server, which the editor reads again on hearing it changed.
+  await gql('mutation ($id: ID!, $d: String!, $r: Int) { saveWireframe(id: $id, document: $d, revision: $r) { revision } }', {
+    id, d: JSON.stringify(after), r: stored.revision,
+  });
+  return { answer: 'Added a **Sign in** button.', changed: true };
 });
 // An empty chat greets and offers what it can draw, as cards with an icon, a title and a line each.
 const welcome = page.getByTestId('wireframe-welcome');
@@ -269,11 +269,9 @@ await page.reload({ waitUntil: 'domcontentloaded' });
 await page.getByTestId('wireframe-welcome').waitFor({ timeout: 15_000 }).catch(() => undefined);
 let ideaAsked = null;
 const now = (await gql(`query ($id: ID!) { wireframe(id: $id) { id workspaceId name document elementCount revision createdBy createdAt updatedBy updatedAt } }`, { id })).data.wireframe;
-await page.route('**/graphql', async (route) => {
-  const body = route.request().postDataJSON() ?? {};
-  if (!(body.query ?? '').includes('askWireframe')) return route.continue();
-  ideaAsked = body.variables;
-  return route.fulfill({ json: { data: { askWireframe: { answer: 'Tidied.', changed: false, wireframe: now } } } });
+await standInForEditorAsks(page, 'wireframe', (body) => {
+  ideaAsked = body;
+  return { answer: 'Tidied.' };
 });
 // The cards follow the drawing, so they are read once it is on the canvas.
 await page.locator('[data-element-type]').first().waitFor({ timeout: 15_000 }).catch(() => undefined);

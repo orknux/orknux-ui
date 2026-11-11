@@ -328,6 +328,15 @@ export async function duplicateModelProvider(id: string): Promise<{ id: string; 
   return data.duplicateModelProvider;
 }
 
+/** A copy of an MCP server beside it, under "(copy)", with its address, headers and credential. */
+export async function duplicateMcpServer(id: string): Promise<{ id: string; name: string }> {
+  const data = await graphql<{ duplicateMcpServer: { id: string; name: string } }>(
+    `mutation DuplicateMcpServer($id: ID!) { duplicateMcpServer(id: $id) { id name } }`,
+    { id },
+  );
+  return data.duplicateMcpServer;
+}
+
 export async function duplicateMemory(id: string): Promise<{ id: string; title: string }> {
   const data = await graphql<{ duplicateMemory: { id: string; title: string } }>(
     `mutation DuplicateMemory($id: ID!) { duplicateMemory(id: $id) { id title } }`,

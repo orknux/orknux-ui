@@ -11,7 +11,7 @@ import { t } from '../../i18n';
 /**
  * Where a pairing link lands when somebody opens it in a browser instead of
  * pasting it into a client. The link is for the Chrome extension, Orknux for
- * Windows or the Claude Code plugin, so this says so and hands it back to be
+ * Windows, the Claude Code plugin or Orknux Shell, so this says so and hands it back to be
  * copied, rather than sending them to sign in or to a page that is not there.
  *
  * Reached without being anybody, like the password pages: the link may well be
@@ -46,6 +46,7 @@ export function PairLinkPage() {
           <li>{t('Chrome extension: open its side panel, paste the link into Server, and press Connect.')}</li>
           <li>{t('Orknux for Windows: paste the link into Server, and press Connect.')}</li>
           <li>{t('Claude Code: paste the link into the conversation and ask it to connect to Orknux.')}</li>
+          <li>{t('Orknux Shell: run orknux with the link, or paste it where it asks for a server.')}</li>
         </ul>
         <p className={styles.subtitle}>{t('It works once, for a few minutes. If it has run out, make a new one in Orknux: Preferences › Connected clients › Connect a client.')}</p>
         <Attribution />

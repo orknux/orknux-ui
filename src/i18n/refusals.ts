@@ -498,6 +498,7 @@ const PL: Record<string, string> = {
   SheetNameInvalid: 'Arkusz potrzebuje nazwy, najwyżej 200 znaków',
   SheetWorkbookInvalid: 'Nie można zapisać arkusza: {why}',
   SheetTooLarge: 'Arkusz może mieć najwyżej {most} wypełnionych komórek, a ten miałby {count}',
+  SheetFormatsTooMany: 'Arkusz może mieć formatowanie najwyżej {most} komórek, a ten miałby {count}',
   SheetChanged: 'Arkusz {name} został zmieniony od czasu jego otwarcia; otwórz go ponownie przed zapisaniem',
   SheetAnswerFailed: 'Model nie mógł odpowiedzieć: {reason}',
   SheetImportRefused: 'Z tego pliku nie można zrobić arkusza: {reason}',

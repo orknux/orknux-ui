@@ -1,7 +1,9 @@
 import type { Editor } from '@tiptap/core';
 import { SearchQuery, findNext, findPrev, replaceAll, replaceNext, setSearchState } from 'prosemirror-search';
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
+import searchIcon from '../../assets/search.svg';
 import { t, tf } from '../../i18n';
 import { matches, useFindShortcut } from '../../session/shortcut';
 import styles from './DocumentEditorPage.module.css';
@@ -12,9 +14,11 @@ export interface DocumentFindProps {
   replacing: boolean;
   /** Where the keystroke is listened for: Find opens while focus is inside it. */
   scope: React.RefObject<HTMLElement | null>;
-  /** Opened from the toolbar's button. */
+  /** Whether the bar under the box - the count, the steps, the options - is showing. */
   open: boolean;
   onOpen: (open: boolean) => void;
+  /** Where in the toolbar the box is drawn; it is always there, and typing in it opens the bar. */
+  slot: HTMLElement | null;
 }
 
 /** Every match of a query, in order, by walking it through the document. */
@@ -37,8 +41,13 @@ function allMatches(editor: Editor, query: SearchQuery): { from: number; to: num
  * and Shift+Enter to step through them with the page scrolled to each, and
  * Match case and Whole word. Its keystroke is the browser's own find, which it
  * keeps from opening while the document has focus.
+ *
+ * The box itself sits in the toolbar, always showing, so finding is typing
+ * rather than first finding the button that opens a place to type; what goes
+ * with a query - the count, the steps, Match case and Replace - opens under
+ * it once there is one.
  */
-export function DocumentFind({ editor, replacing, scope, open, onOpen }: DocumentFindProps) {
+export function DocumentFind({ editor, replacing, scope, open, onOpen, slot }: DocumentFindProps) {
   const findKey = useFindShortcut();
   const [text, setText] = useState('');
   const [replacement, setReplacement] = useState('');
@@ -60,10 +69,6 @@ export function DocumentFind({ editor, replacing, scope, open, onOpen }: Documen
     window.addEventListener('keydown', pressed);
     return () => window.removeEventListener('keydown', pressed);
   }, [findKey, scope, open, onOpen]);
-
-  useEffect(() => {
-    if (open) window.requestAnimationFrame(() => box.current?.focus());
-  }, [open]);
 
   /** The query as typed, put on the document so its matches are marked. */
   function apply(next: { text?: string; replacement?: string; caseSensitive?: boolean; wholeWord?: boolean }) {
@@ -112,17 +117,20 @@ export function DocumentFind({ editor, replacing, scope, open, onOpen }: Documen
     editor?.commands.focus();
   }
 
-  if (!open) return null;
-
-  return (
-    <div className={styles.find} role="search" data-testid="document-find">
+  const input = (
+    <label className={styles.findBox}>
+      <img src={searchIcon} alt="" width={14} height={14} />
       <input
         ref={box}
-        className={styles.findInput}
+        type="search"
+        className={styles.findBoxInput}
         value={text}
+        disabled={editor === null}
         onChange={(event) => {
           setText(event.target.value);
           apply({ text: event.target.value });
+          if (event.target.value !== '') onOpen(true);
+          else if (open) close();
         }}
         onKeyDown={(event) => {
           if (event.key === 'Enter') {
@@ -137,6 +145,20 @@ export function DocumentFind({ editor, replacing, scope, open, onOpen }: Documen
         aria-label={t('Find in document')}
         data-testid="document-find-input"
       />
+    </label>
+  );
+
+  return (
+    <>
+      {slot !== null && createPortal(input, slot)}
+      {open && (slot !== null ? createPortal(panel(styles.findUnder), slot) : panel(styles.find))}
+    </>
+  );
+
+  /** The options, the steps and replacing: dropped down under the box where it has one, over the page where it has not. */
+  function panel(placed: string) {
+    return (
+    <div className={placed} role="search" data-testid="document-find">
       <span className={styles.findCount} data-testid="document-find-count">
         {text === ''
           ? ''
@@ -221,5 +243,6 @@ export function DocumentFind({ editor, replacing, scope, open, onOpen }: Documen
         ×
       </button>
     </div>
-  );
+    );
+  }
 }

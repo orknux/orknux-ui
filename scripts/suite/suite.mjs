@@ -119,6 +119,42 @@ export const TESTS = [
     /* It sets the workspace's quick-chat model and puts it back; no model is asked. */
   },
   {
+    name: 'clients-report-check',
+    what: 'Admin > Reports > Clients counts and lists who uses the Chrome extension, Orknux for Windows and for Linux, and Orknux Shell',
+    needs: [],
+    /* It stands in for the report's query with a route; nothing is written. */
+  },
+  {
+    name: 'quick-chat-kept-check',
+    what: "the quick chat opens on the conversation the server keeps, waits again for a question still being answered, and New conversation puts it away",
+    needs: ['workspace'],
+    /* It sets the workspace's quick-chat model and puts it back; the server is stood in for by routes, so no model is asked. */
+  },
+  {
+    name: 'document-chat-reload-check',
+    what: "a reload in the middle of an editor chat's answer - document, sheet, wireframe, diagram - waits for the same answer and draws it, rather than losing it",
+    needs: ['workspace'],
+    /* It makes one of each and deletes them; the model is stood in for by routes. */
+  },
+  {
+    name: 'document-chat-clear-check',
+    what: "the document editor's chat keeps the summary a compaction leaves, and Clear conversation empties it for good",
+    needs: ['workspace'],
+    /* It makes a document and deletes it; the model is stood in for by routes. */
+  },
+  {
+    name: 'quick-chat-header-check',
+    what: "the quick chat's header is one row that fits its window, with who answers on a row of its own",
+    needs: ['workspace'],
+    /* It sets the workspace's quick-chat model and puts it back; the server is stood in for by routes. */
+  },
+  {
+    name: 'quick-chat-again-check',
+    what: 'a quick chat question that went unanswered is sent again, in its own place, with Send again',
+    needs: ['workspace'],
+    /* It sets the workspace's quick-chat model and puts it back; the server is stood in for by routes, so no model is asked. */
+  },
+  {
     name: 'quick-chat-stop-check',
     what: 'stopping the quick chat mid-request, with the answer held open so no model decides the timing',
     needs: ['workspace'],
@@ -2585,6 +2621,12 @@ export const TESTS = [
     what: 'Design -> Sheets after Documents opens a new sheet in the editor; 2, 3 and =A1+A2 typed into A1:A3 draw 5 in A3 as the server worked it out, still after a reload, and dragging column B\'s edge draws the column and its cells 80px wider',
     needs: ['workspace'],
     /* Makes its own sheet and removes it. */
+  },
+  {
+    name: 'sheet-format-check',
+    what: "Ctrl+B, Ctrl+I and Ctrl+U draw a sheet's cell bold, italic and underlined; the format bar's fill is drawn behind a cell with dark words on it, Align centre centres it, Percentage draws 0.256 as 26% and one more place as 25.6%; an empty cell with a fill is drawn; a drag and a paste carry the formatting; all of it still drawn after a reload",
+    needs: ['workspace'],
+    /* Makes its own sheet and removes it. Grants the clipboard, which the paste reads. */
   },
   {
     name: 'wireframe-export-check',

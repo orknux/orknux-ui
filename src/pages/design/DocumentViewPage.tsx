@@ -5,7 +5,6 @@ import { documentPath, fetchDocument } from '../../api/documents';
 import type { DesignDocument } from '../../api/documents';
 import type { SessionUser } from '../../api/session';
 import pencilIcon from '../../assets/pencil.svg';
-import searchIcon from '../../assets/search.svg';
 import { AppShell } from '../../components/AppShell';
 import { Loader } from '../../components/Loader';
 import { t } from '../../i18n';
@@ -43,6 +42,8 @@ export function DocumentViewPage({ session, onSignOut }: DocumentViewPageProps) 
   const [missing, setMissing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [finding, setFinding] = useState(false);
+  /** Where in the toolbar the find box is drawn. */
+  const [findSlot, setFindSlot] = useState<HTMLSpanElement | null>(null);
   const scope = useRef<HTMLDivElement | null>(null);
   const [noteOpen, setNoteOpen] = useNoteHover(scope);
 
@@ -117,17 +118,7 @@ export function DocumentViewPage({ session, onSignOut }: DocumentViewPageProps) 
             </span>
           </div>
           <span className={shell.toolbarGap} aria-hidden="true" />
-          <button
-            type="button"
-            className={shell.tool}
-            onClick={() => setFinding(true)}
-            disabled={editor === null}
-            title={t('Find')}
-            aria-label={t('Find')}
-            data-testid="document-find-open"
-          >
-            <img src={searchIcon} alt="" width={16} height={16} />
-          </button>
+          <span ref={setFindSlot} className={styles.findSlot} data-testid="document-find-slot" />
           <DocumentExportMenu documentId={held?.id ?? null} name={held?.name ?? ''} />
         </div>
       </div>
@@ -135,7 +126,7 @@ export function DocumentViewPage({ session, onSignOut }: DocumentViewPageProps) 
         <div className={styles.body}>
         {editor !== null && <DocumentSide editor={editor} scope={scope} tick={0} />}
         <div className={styles.canvas} ref={scope} tabIndex={-1} data-testid="document-view">
-          <DocumentFind editor={editor} replacing={false} scope={scope} open={finding} onOpen={setFinding} />
+          <DocumentFind editor={editor} replacing={false} scope={scope} open={finding} onOpen={setFinding} slot={findSlot} />
           {held === null || editor === null ? (
             <div className={styles.loading}>{error === null ? <Loader /> : <p role="alert">{error}</p>}</div>
           ) : (

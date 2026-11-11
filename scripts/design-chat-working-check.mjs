@@ -11,6 +11,7 @@
  * Makes its own wireframe, document and diagram and removes them.
  */
 import { BASE, WORKSPACE, open, record, finish, shot } from './suite/harness.mjs';
+import { standInForEditorAsks } from './suite/editor-asks.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1500, height: 900 } });
 const stamp = Date.now().toString(36);
@@ -31,15 +32,15 @@ for (const editor of editors) {
   const id = made[`create${editor.kind}`].id;
 
   let asked = 0;
+  // Every editor's chat asks through a kept question.
+  await standInForEditorAsks(page, editor.prefix, () => {
+    asked += 1;
+    // The second is held for good: the row under it is what is measured.
+    if (asked > 1) return new Promise(() => {});
+    return { answer: 'Made a start with two parts and a button.' };
+  });
   await page.route('**/graphql', async (route) => {
     const query = route.request().postDataJSON()?.query ?? '';
-    if (query.includes(`ask${editor.kind}(`)) {
-      asked += 1;
-      // The second is held for good: the row under it is what is measured.
-      if (asked > 1) return new Promise(() => {});
-      const answer = { answer: 'Made a start with two parts and a button.', changed: false, [editor.prefix]: null };
-      return route.fulfill({ json: { data: { [`ask${editor.kind}`]: answer } } });
-    }
     if (query.includes('models(')) {
       const answered = await route.fetch();
       const json = await answered.json();

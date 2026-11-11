@@ -38,6 +38,7 @@ import { t, tf } from '../../i18n';
 import { currentLanguage } from '../../session/language';
 import { shellUser } from '../../session/user';
 import styles from './AdminReportsPage.module.css';
+import { ClientsReport } from './ClientsReport';
 import { ErrorsReport } from './ErrorsReport';
 import { FlagsReport } from './FlagsReport';
 import { RatingsReport } from './RatingsReport';
@@ -56,11 +57,11 @@ const PEOPLE_PAGE_SIZES = [10, 25, 50];
 const SESSIONS_PER_PAGE = 5;
 const SESSION_PAGE_SIZES = [5, 10, 25];
 
-type ReportKind = 'usage' | 'ratings' | 'errors' | 'flags';
+type ReportKind = 'usage' | 'ratings' | 'errors' | 'flags' | 'clients';
 
 /** A report the address names, or null for one it does not. */
 function reportOf(named: string | null): ReportKind | null {
-  return named === 'usage' || named === 'ratings' || named === 'errors' || named === 'flags' ? named : null;
+  return named === 'usage' || named === 'ratings' || named === 'errors' || named === 'flags' || named === 'clients' ? named : null;
 }
 
 /**
@@ -114,10 +115,11 @@ export function AdminReportsPage({ session, onSignOut }: AdminReportsPageProps) 
             <option value="ratings">{t('Ratings')}</option>
             <option value="errors">{t('Errors')}</option>
             <option value="flags">{t('Flags')}</option>
+            <option value="clients">{t('Clients')}</option>
           </Picker>
         </div>
       </header>
-      {kind === 'usage' ? <UsageReportView /> : kind === 'ratings' ? <RatingsReport /> : kind === 'flags' ? <FlagsReport /> : <ErrorsReport />}
+      {kind === 'usage' ? <UsageReportView /> : kind === 'ratings' ? <RatingsReport /> : kind === 'flags' ? <FlagsReport /> : kind === 'clients' ? <ClientsReport /> : <ErrorsReport />}
     </AppShell>
   );
 }

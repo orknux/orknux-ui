@@ -307,6 +307,37 @@ await atSettings();
 record((await tabs('Bot token'))?.on?.join('') === 'Reference', 'reopened, the bot token knows it reads a secret');
 record((await tabs('App-Level Token'))?.on?.join('') === 'Value', 'and the app-level token knows it does not');
 
+// The secret a reference reads is a press away: a link beside the picker, to that secret's row.
+const opener = page.locator('a[data-reference-open][aria-label="Open the secret: Bot token"]');
+const href = await opener.getAttribute('href').catch(() => null);
+record(
+  href === `/workspace/${WORKSPACE}/variables?catalog=${catalog.id}&variable=${forBot.name}`,
+  `the bot token's reference links to the secret it reads, its catalog open and it searched for (${href})`,
+);
+record(
+  (await page.locator('a[data-reference-open]').count()) === 1,
+  'and only the field that reads a secret has one: a value of its own has nothing to open',
+);
+// Its arrow sits in the middle of its button: a text glyph sat high in its line, so it is an icon now.
+const centred = await opener.evaluate((link) => {
+  const icon = link.querySelector('img')?.getBoundingClientRect();
+  const box = link.getBoundingClientRect();
+  if (!icon) return null;
+  return { down: Math.round((icon.top + icon.height / 2 - (box.top + box.height / 2)) * 10) / 10, across: Math.round((icon.left + icon.width / 2 - (box.left + box.width / 2)) * 10) / 10 };
+}).catch(() => null);
+record(centred !== null && Math.abs(centred.down) <= 1 && Math.abs(centred.across) <= 1, `the arrow is centred in its button (${JSON.stringify(centred)})`);
+if (href !== null) {
+  await opener.click();
+  await page.waitForURL(/\/variables\?/, { timeout: 10_000 }).catch(() => undefined);
+  await page.getByText(forBot.name, { exact: true }).first().waitFor({ timeout: 10_000 }).catch(() => undefined);
+  record(
+    (await page.getByText(forBot.name, { exact: true }).count()) > 0 &&
+      (await page.getByText(forApp.name, { exact: true }).count()) === 0,
+    'pressed, it lands on the Variables page showing that secret and not its neighbour',
+  );
+  await atSettings();
+}
+
 await choose('Bot token', 'Value');
 record(
   (await page.locator('#connection-secret').inputValue()) === '',

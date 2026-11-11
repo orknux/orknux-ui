@@ -23,11 +23,11 @@ const made = await graphql(
 const id = made.createDocument.id;
 
 let release = null;
-await page.route('**/graphql', async (route) => {
-  if (!(route.request().postData() ?? '').includes('askDocument')) return route.fallback();
+// The question is held before it reaches the server, so the page is looked at while it is being answered.
+await page.route('**/api/design/documents/*/asks', async (route) => {
+  if (route.request().method() !== 'POST') return route.fallback();
   await new Promise((resolve) => (release = resolve));
-  const now = (await graphql('query ($id: ID!) { document(id: $id) { id } }', { id })).document;
-  return route.fallback().catch(() => undefined) ?? now;
+  return route.fallback().catch(() => undefined);
 });
 
 await page.goto(`${BASE}/workspace/${WORKSPACE}/design/documents/${id}`, { waitUntil: 'domcontentloaded' });

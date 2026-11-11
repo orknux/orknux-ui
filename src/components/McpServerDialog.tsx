@@ -7,7 +7,7 @@ import chevronDown12Icon from '../assets/chevron-down-12.svg';
 import styles from './Dialog.module.css';
 import status from '../pages/workspace/IntegrationSettings.module.css';
 import { HeaderRowsEditor } from './HeaderRowsEditor';
-import { SecretField, useSecretField } from './SecretField';
+import { SecretField, useSecretField, secretOptions } from './SecretField';
 import { useWorkspaceVariables } from '../pages/workspace/workspaceVariables';
 import { t } from '../i18n';
 import { withScheme } from './address';
@@ -70,10 +70,8 @@ export function McpServerDialog({ open, workspaceId, onClose, onCreated }: McpSe
    */
   const secrets = useMemo(
     () =>
-      variables
-        .filter((variable) => variable.kind === 'SECRET')
-        .map((variable) => ({ value: variable.id, label: variable.name, hint: variable.catalogName })),
-    [variables],
+      secretOptions(variables, workspaceId),
+    [variables, workspaceId],
   );
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {

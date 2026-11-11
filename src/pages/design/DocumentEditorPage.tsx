@@ -7,7 +7,6 @@ import { importDesignImage } from '../../api/artifacts';
 import type { Artifact } from '../../api/artifacts';
 import {
   PAGE_SIZES,
-  askDocument,
   checkGrammar,
   contentOf,
   createDocument,
@@ -39,7 +38,6 @@ import pageBreakIcon from '../../assets/page-break.svg';
 import pencilIcon from '../../assets/pencil.svg';
 import quoteIcon from '../../assets/quote.svg';
 import redoIcon from '../../assets/redo.svg';
-import searchIcon from '../../assets/search.svg';
 import moonIcon from '../../assets/moon.svg';
 import strikeIcon from '../../assets/strikethrough.svg';
 import tableIcon from '../../assets/table.svg';
@@ -65,6 +63,8 @@ import { matches, useSaveShortcut } from '../../session/shortcut';
 import { shellUser } from '../../session/user';
 import shell from './DesignImageEditorPage.module.css';
 import { CLAUDE_CODE_MODEL, DesignChat, askThroughClaudeCode, useChatFiles, useChatModels } from './DesignChat';
+import { afterAnswer } from '../../api/attachments';
+import { awaitEditorAsk, beginDocumentAsk } from '../../api/editorAsks';
 import { askClaudeCode } from '../../api/chat';
 import type { ChatIdea } from './DesignChat';
 import { DesignPicturePickerDialog } from './DesignPicturePickerDialog';
@@ -120,6 +120,8 @@ const IDEAS: ChatIdea[] = [
 
 /** The conversation is kept for the length of the browser tab, so a reload does not lose it. */
 const talkKey = (id: string) => `orknux.document.talk.${id}`;
+/** The question being answered for this tab, so a reload waits for its answer rather than losing it. */
+const askKey = (id: string) => `orknux.document.ask.${id}`;
 const modelKey = (workspaceId: string) => `orknux.document.model.${workspaceId}`;
 
 /** How often the document is read again while a model writes in it, so its changes appear as they are saved. */
@@ -194,6 +196,8 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
   const [saved, setSaved] = useState('');
   const [tick, setTick] = useState(0);
   const [finding, setFinding] = useState(false);
+  /** Where in the toolbar the find box is drawn. */
+  const [findSlot, setFindSlot] = useState<HTMLSpanElement | null>(null);
   const [picking, setPicking] = useState(false);
   /** The window a link to another document is chosen in. */
   const [linking, setLinking] = useState(false);
@@ -630,11 +634,11 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
       const answered =
         modelId === CLAUDE_CODE_MODEL
           ? await askThroughClaudeCode(workspaceId, `the document ${held.name}`, sent, revision, () => fetchDocument(held.id)).then(
-              (asked) => ({ answer: asked.answer, changed: asked.changed, document: asked.item }),
+              (asked) => ({ answer: asked.answer, changed: asked.changed, document: asked.item, compacted: null }),
             )
-          : await askDocument(held.id, modelId, sent);
-      setTalk([...sent, { role: 'assistant', content: answered.answer }]);
-      if (answered.changed && answered.document.revision !== revision) take(answered.document);
+          : await askKept(held.id, sent, false);
+      setTalk(afterAnswer(sent, answered.answer, answered.compacted));
+      if (answered.changed && answered.document !== null && answered.document.revision !== revision) take(answered.document);
     } catch (cause) {
       setTalkError(cause instanceof Error ? cause.message : t('The model could not answer.'));
       const now = await fetchDocument(held.id).catch(() => null);
@@ -645,6 +649,89 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
       setAnswering(false);
     }
   }
+
+  /**
+   * Asks through a kept question: the server answers it whoever is waiting,
+   * and its id is held for this tab until the answer is drawn, so a reload in
+   * the middle waits for the same answer rather than losing it.
+   */
+  async function askKept(id: string, sent: DocumentTurn[], readOnly: boolean) {
+    const askId = await beginDocumentAsk(id, modelId, sent, readOnly);
+    try {
+      sessionStorage.setItem(askKey(id), askId);
+    } catch {
+      // Not kept: a reload then loses this answer, as every answer used to.
+    }
+    try {
+      return await settledAsk(id, askId);
+    } finally {
+      try {
+        sessionStorage.removeItem(askKey(id));
+      } catch {
+        // Nothing to let go of.
+      }
+    }
+  }
+
+  /** A kept question's answer, and the document again where the answer changed it. */
+  async function settledAsk(id: string, askId: string) {
+    const settled = await awaitEditorAsk(askId);
+    if (settled.status === 'FAILED') throw new Error(settled.error ?? t('The model could not answer.'));
+    const document = settled.changed === true ? await fetchDocument(id).catch(() => null) : null;
+    return { answer: settled.answer ?? '', changed: document !== null, document, compacted: settled.compacted ?? null };
+  }
+
+  /*
+   * A question asked before this page was loaded again - a reload in the
+   * middle of an answer - is waited for as though it had just been sent: the
+   * working row, the page following the model's saves, and the answer under
+   * the question when it comes.
+   */
+  const resumed = useRef(false);
+  useEffect(() => {
+    if (held === null || resumed.current) return;
+    resumed.current = true;
+    let askId: string | null = null;
+    try {
+      askId = sessionStorage.getItem(askKey(held.id));
+    } catch {
+      askId = null;
+    }
+    if (askId === null) return;
+    const waitingFor = askId;
+    const id = held.id;
+    let revision = held.revision;
+    setAnswering(true);
+    writingNow.current = true;
+    const following = window.setInterval(() => {
+      fetchDocument(id)
+        .then((now) => {
+          if (now !== null && now.revision !== revision) {
+            revision = now.revision;
+            take(now);
+          }
+        })
+        .catch(() => undefined);
+    }, FOLLOW_MS);
+    settledAsk(id, waitingFor)
+      .then((answered) => {
+        setTalk((was) => afterAnswer(was, answered.answer, answered.compacted));
+        if (answered.document !== null && answered.document.revision !== revision) take(answered.document);
+      })
+      .catch((cause: unknown) => setTalkError(cause instanceof Error ? cause.message : t('The model could not answer.')))
+      .finally(() => {
+        window.clearInterval(following);
+        writingNow.current = false;
+        setAnswering(false);
+        try {
+          sessionStorage.removeItem(askKey(id));
+        } catch {
+          // Nothing to let go of.
+        }
+      });
+    // Once, for the document this page opened on; `take` and the setters are the page's own.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [held]);
 
   /**
    * A turn that asks about the document rather than in it: Explain and
@@ -663,9 +750,9 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
     try {
       const answered =
         modelId === CLAUDE_CODE_MODEL
-          ? { answer: await askClaudeCode(workspaceId, { label: `the document ${held.name}`, path: window.location.pathname }, sent) }
-          : await askDocument(held.id, modelId, sent, true);
-      setTalk([...sent, { role: 'assistant', content: answered.answer }]);
+          ? { answer: await askClaudeCode(workspaceId, { label: `the document ${held.name}`, path: window.location.pathname }, sent), compacted: null }
+          : await askKept(held.id, sent, true);
+      setTalk(afterAnswer(sent, answered.answer, answered.compacted));
     } catch (cause) {
       setTalkError(cause instanceof Error ? cause.message : t('The model could not answer.'));
     } finally {
@@ -1100,8 +1187,8 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
             {tool(t('Horizontal line'), minusIcon, false, () => run((chain) => chain.setHorizontalRule()), 'document-rule')}
             {tool(t('Page break'), pageBreakIcon, false, () => run((chain) => chain.setPageBreak()), 'document-page-break-tool')}
             <span className={shell.toolbarGap} aria-hidden="true" />
-            {tool(t('Find'), searchIcon, finding, () => setFinding(true), 'document-find-open', editor === null)}
             {tool(t('Dark page'), moonIcon, darkPage, () => setPageShade(darkPage ? '' : 'dark'), 'document-dark-page', false)}
+            <span ref={setFindSlot} className={styles.findSlot} data-testid="document-find-slot" />
             <span className={styles.pageCount} data-testid="document-page-count">
               {tf('{count} pages', { count: pages })}
             </span>
@@ -1129,7 +1216,7 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
         )}
         {editor !== null && <DocumentSide editor={editor} scope={scope} tick={tick} mentionedBy={mentions ?? undefined} onOpen={(id) => openDocument(id)} />}
         <div className={styles.canvas} ref={scope}>
-          <DocumentFind editor={editor} replacing scope={scope} open={finding} onOpen={setFinding} />
+          <DocumentFind editor={editor} replacing scope={scope} open={finding} onOpen={setFinding} slot={findSlot} />
           {held === null || editor === null ? (
             <div className={styles.loading}>{error === null ? <Loader /> : <p role="alert">{error}</p>}</div>
           ) : (
@@ -1227,6 +1314,10 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
             talk={talk}
             answering={answering || consulting}
             talkError={talkError}
+            onClear={() => {
+              setTalk([]);
+              setTalkError(null);
+            }}
             working={consulting ? t('Thinking…') : t('Writing…')}
             asking={asking}
             onAsking={setAsking}

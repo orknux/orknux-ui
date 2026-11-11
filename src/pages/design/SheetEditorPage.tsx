@@ -6,12 +6,12 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ApiError } from '../../api/client';
 import type { SessionUser } from '../../api/session';
 import {
-  askSheet,
   cellName,
   fetchSheetFunctions,
   columnName,
   fetchSheet,
   renameSheet,
+  cellAt,
   saveSheet,
   sheetExportUrl,
   sheetValues,
@@ -19,14 +19,24 @@ import {
   workbookOf,
   workbookText,
 } from '../../api/sheets';
-import type { CellValue, SheetExportFormat, SheetTurn, SheetWithValues, Workbook, WorkbookValues } from '../../api/sheets';
+import type { CellFormat, CellValue, NumberFormat, SheetExportFormat, SheetTurn, SheetWithValues, Workbook, WorkbookValues } from '../../api/sheets';
+import alignCenterIcon from '../../assets/align-center.svg';
+import alignLeftIcon from '../../assets/align-left.svg';
+import alignRightIcon from '../../assets/align-right.svg';
+import boldIcon from '../../assets/bold.svg';
 import calculatorIcon from '../../assets/calculator.svg';
 import chartIcon from '../../assets/chart-column.svg';
+import eraserIcon from '../../assets/eraser.svg';
+import italicIcon from '../../assets/italic.svg';
+import paintBucketIcon from '../../assets/paint-bucket.svg';
 import pencilIcon from '../../assets/pencil.svg';
 import redoIcon from '../../assets/redo.svg';
+import strikeIcon from '../../assets/strikethrough.svg';
 import tableIcon from '../../assets/table.svg';
+import underlineIcon from '../../assets/underline.svg';
 import undoIcon from '../../assets/undo.svg';
 import polishIcon from '../../assets/wand-sparkles.svg';
+import wrapIcon from '../../assets/wrap-text.svg';
 import { AppShell } from '../../components/AppShell';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import form from '../../components/Dialog.module.css';
@@ -35,18 +45,30 @@ import { Loader } from '../../components/Loader';
 import { UnsavedWorkDialog } from '../../components/UnsavedWorkDialog';
 import { askBeforeLeaving, useLeaveGuard } from '../../components/leaveGuard';
 import { t, tf } from '../../i18n';
-import { matches, useRedoShortcut, useSaveShortcut, useUndoShortcut } from '../../session/shortcut';
+import { matches, matchesCommand, useRedoShortcut, useSaveShortcut, useSheetEditorShortcuts, useUndoShortcut } from '../../session/shortcut';
+import type { SheetEditorShortcut } from '../../session/shortcut';
 import { shellUser } from '../../session/user';
 import { CLAUDE_CODE_MODEL, DesignChat, askThroughClaudeCode, useChatFiles, useChatModels } from './DesignChat';
 import type { ChatIdea } from './DesignChat';
 import shell from './DesignImageEditorPage.module.css';
+import documentStyles from './DocumentEditorPage.module.css';
+import { SHEET_FILL_COLOURS, SHEET_TEXT_COLOURS, SheetColour } from './SheetColour';
 import styles from './SheetEditorPage.module.css';
+import colourStyles from './DocumentTools.module.css';
+import wire from './WireframeEditorPage.module.css';
 import {
   blockOf,
   boundsOf,
+  borderBlock,
+  cellStyleOf,
+  numberShown,
+  sameNumberFormat,
   expectsReference,
   fillCells,
+  fillFormats,
   fillTarget,
+  formatBlock,
+  withFormats,
   formulaRefs,
   functionWordAt,
   COLUMN_LEAST,
@@ -61,7 +83,9 @@ import {
   withCells,
   writeTsv,
 } from './sheetGrid';
-import type { Cell, FormulaRef, Range } from './sheetGrid';
+import type { BorderChoice, Cell, FormatPatch, FormulaRef, Range } from './sheetGrid';
+import { askKept, keptAskOf, resumeKept } from '../../api/editorAsks';
+import { SheetBorders } from './SheetBorders';
 
 export interface SheetEditorPageProps {
   session: SessionUser;
@@ -83,6 +107,28 @@ const OVERSCAN = 3;
 /** How long after the last change the values are asked for again. */
 const VALUES_MS = 300;
 const UNDO_DEPTH = 100;
+/**
+ * The most cells one press of a format tool reaches: the server's own default
+ * for a sheet, so a whole column dragged over is refused here, in words, and
+ * not by a save that fails after it.
+ */
+const FORMAT_MOST = 50_000;
+
+/** The number formats the bar offers, a currency by its symbol: `currency:zł`. */
+const CURRENCIES = ['$', '€', '£', 'zł'];
+
+/** What the number format menu shows for a cell's format. */
+function numberChoice(format: CellFormat | undefined): string {
+  if (format?.number === undefined) return 'general';
+  if (format.number === 'currency') return `currency:${format.currency ?? '$'}`;
+  return format.number;
+}
+
+/** The places a number is written with: the format's own, else its usual. */
+function decimalsOf(format: CellFormat | undefined): number {
+  if (format?.decimals !== undefined) return format.decimals;
+  return format?.number === 'percent' || format?.number === undefined ? 0 : 2;
+}
 
 const IDEAS: ChatIdea[] = [
   {
@@ -187,18 +233,27 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
 
   const scroller = useRef<HTMLDivElement | null>(null);
   const grid = useRef<HTMLDivElement | null>(null);
-  /** What this page last copied: the text it put on the clipboard, and the cells it came from as typed. */
-  const copied = useRef<{ text: string; rows: string[][] } | null>(null);
+  /** What this page last copied: the text it put on the clipboard, and the cells it came from as typed and as formatted. */
+  const copied = useRef<{ text: string; rows: string[][]; formats: (CellFormat | null)[][] } | null>(null);
 
   const undoKey = useUndoShortcut();
   const redoKey = useRedoShortcut();
   const saveKey = useSaveShortcut();
+  const formatKeys = useSheetEditorShortcuts();
 
   const text = useMemo(() => workbookText(workbook), [workbook]);
   const unsaved = sheet !== null && text !== saved;
   const current = workbook.tabs[tab] ?? workbook.tabs[0] ?? { name: '', cells: {}, widths: {} };
   const shownValues = values.values.tabs.find((one) => one.name === current.name)?.values ?? {};
   const fresh = values.of === text;
+  /** The tab the values on hand were worked out for, so a cell unchanged since can go on showing its value. */
+  const valuesTab = useMemo(() => {
+    try {
+      return (JSON.parse(values.of || '{"tabs":[]}') as Workbook).tabs.find((one) => one.name === current.name) ?? null;
+    } catch {
+      return null;
+    }
+  }, [values.of, current.name]);
 
   // -- Loading ------------------------------------------------------------
 
@@ -245,13 +300,24 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
 
   // What the cells come to, asked for a moment after the workbook stops changing; an answer overtaken by a later one is dropped.
   const asked = useRef(0);
+  /*
+   * The workbook on screen as text, as of the last render. An answer is also
+   * dropped once the screen holds another workbook: a save replaces it with
+   * the server's copy - the same cells and formatting, in the server's order -
+   * and sets that copy's values itself without asking again, so an answer for
+   * the text it replaced, landing after, would otherwise put back values that
+   * are not the screen's, and every typed cell would be drawn as typed until
+   * the next change.
+   */
+  const textNow = useRef(text);
+  textNow.current = text;
   useEffect(() => {
     if (sheet === null || values.of === text) return;
     const number = ++asked.current;
     const timer = window.setTimeout(() => {
       sheetValues(workspaceId, workbook)
         .then((found) => {
-          if (number === asked.current) setValues({ of: text, values: found });
+          if (number === asked.current && textNow.current === text) setValues({ of: text, values: found });
         })
         .catch((cause: unknown) => {
           if (number === asked.current) setError(cause instanceof Error ? cause.message : t('Could not work out the sheet.'));
@@ -313,6 +379,75 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
     if (tabNow === undefined) return;
     if (Object.entries(written).every(([address, value]) => (tabNow.cells[address] ?? '') === value)) return;
     change(withCells(workbook, tab, written));
+  }
+
+  /** Cells and their formatting written as one change, so one undo takes back a paste or a drag whole. */
+  function writeWith(written: Record<string, string>, formats: Record<string, CellFormat | null>) {
+    if (workbook.tabs[tab] === undefined) return;
+    const next = withFormats(withCells(workbook, tab, written), tab, formats);
+    if (workbookText(next) !== text) change(next);
+  }
+
+  // -- Formatting -----------------------------------------------------------
+
+  /** The selected cells given [patch] over what they have, or, given null, nothing at all. */
+  function format(patch: FormatPatch | null) {
+    const tabNow = workbook.tabs[tab];
+    if (tabNow === undefined || sheet === null || answering) return;
+    const block = boundsOf(range);
+    const count = (block.right - block.left + 1) * (block.bottom - block.top + 1);
+    if (count > FORMAT_MOST) {
+      setError(tf('Format at most {count} cells at once.', { count: FORMAT_MOST.toLocaleString() }));
+      return;
+    }
+    writeWith({}, formatBlock(tabNow, range, patch));
+  }
+
+  /** The border picker: drawn over the selected cells, with what they had on their other sides kept. */
+  function border(choice: BorderChoice, off = false) {
+    const tabNow = workbook.tabs[tab];
+    if (tabNow === undefined || sheet === null || answering) return;
+    const block = boundsOf(range);
+    if ((block.right - block.left + 1) * (block.bottom - block.top + 1) > FORMAT_MOST) {
+      setError(tf('Format at most {count} cells at once.', { count: FORMAT_MOST.toLocaleString() }));
+      return;
+    }
+    writeWith({}, borderBlock(tabNow, range, choice, off));
+  }
+
+  /** On for every selected cell when the cell in focus does not have it, off when it does - as a spreadsheet's B does. */
+  function toggle(key: 'bold' | 'italic' | 'underline' | 'strike' | 'wrap') {
+    format({ [key]: focusFormat?.[key] === true ? null : true });
+  }
+
+  function chooseNumber(choice: string) {
+    // A format chosen here writes the comma between thousands, as the toolbar always has, whatever a file said.
+    if (choice === 'general') format({ number: null, decimals: null, currency: null, ungrouped: null });
+    else if (choice.startsWith('currency:')) {
+      const symbol = choice.slice('currency:'.length);
+      format({
+        number: 'currency',
+        decimals: focusFormat?.number === 'currency' ? focusFormat.decimals ?? null : null,
+        currency: symbol === '$' ? null : symbol,
+        ungrouped: null,
+      });
+    } else format({ number: choice as NumberFormat, decimals: null, currency: null, ungrouped: null });
+  }
+
+  /** One place more or fewer after the point; a General cell becomes a Number one, as a spreadsheet's buttons do. */
+  function stepDecimals(by: number) {
+    const now = decimalsOf(focusFormat);
+    const next = Math.max(0, Math.min(30, now + by));
+    format({ number: focusFormat?.number ?? 'number', decimals: next });
+  }
+
+  /** The formatting keys, heard on the grid and in a cell being typed in; true where one was pressed. */
+  function formatKey(event: ReactKeyboardEvent): boolean {
+    const which = (Object.keys(formatKeys) as SheetEditorShortcut[]).find((name) => matchesCommand(event.nativeEvent, formatKeys[name]));
+    if (which === undefined) return false;
+    event.preventDefault();
+    toggle(which === 'sheetBold' ? 'bold' : which === 'sheetItalic' ? 'italic' : 'underline');
+    return true;
   }
 
   // -- Saving -------------------------------------------------------------
@@ -445,6 +580,7 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
 
   const focusAddress = cellName(range.focus.column, range.focus.row);
   const focusRaw = current.cells[focusAddress] ?? '';
+  const focusFormat = current.formats?.[focusAddress];
 
   function select(cell: Cell, extend = false) {
     setRange((held) => ({ anchor: extend ? held.anchor : cell, focus: cell }));
@@ -514,39 +650,55 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
     const block = boundsOf(range);
     const shown: string[][] = [];
     const typed: string[][] = [];
+    const formats: (CellFormat | null)[][] = [];
     for (let row = block.top; row <= block.bottom; row++) {
       const shownRow: string[] = [];
       const typedRow: string[] = [];
+      const formatRow: (CellFormat | null)[] = [];
       for (let column = block.left; column <= block.right; column++) {
         const address = cellName(column, row);
         const raw = current.cells[address] ?? '';
         typedRow.push(raw);
         shownRow.push(shownValues[address]?.f ?? (raw.startsWith('=') ? '' : raw));
+        formatRow.push(current.formats?.[address] ?? null);
       }
       shown.push(shownRow);
       typed.push(typedRow);
+      formats.push(formatRow);
     }
     const textOut = writeTsv(shown);
-    copied.current = { text: textOut, rows: typed };
+    copied.current = { text: textOut, rows: typed, formats };
     return textOut;
+  }
+
+  /** A cut takes the cells' formatting with it, as a move does: it goes where they are pasted. */
+  function cutSelection() {
+    const tabNow = workbook.tabs[tab];
+    if (tabNow === undefined) return;
+    writeWith(blockOf(range, ''), formatBlock(tabNow, range, null));
   }
 
   /**
    * Text pasted at the selection's top left. What this page copied itself is
-   * pasted as it was typed, formulas and all; anything else - from another
-   * spreadsheet, or another program - is pasted as the text it is.
+   * pasted as it was typed, formulas, formatting and all; anything else - from
+   * another spreadsheet, or another program - is pasted as the text it is, and
+   * the cells it lands on keep their formatting.
    */
   function paste(textIn: string) {
-    const rows = copied.current !== null && copied.current.text === textIn ? copied.current.rows : readTsv(textIn);
+    const own = copied.current !== null && copied.current.text === textIn ? copied.current : null;
+    const rows = own !== null ? own.rows : readTsv(textIn);
     if (rows.length === 0) return;
     const block = boundsOf(range);
     const written: Record<string, string> = {};
+    const formats: Record<string, CellFormat | null> = {};
     rows.forEach((row, down) =>
       row.forEach((cell, across) => {
-        written[cellName(block.left + across, block.top + down)] = cell;
+        const address = cellName(block.left + across, block.top + down);
+        written[address] = cell;
+        if (own !== null) formats[address] = own.formats[down]?.[across] ?? null;
       }),
     );
-    write(written);
+    writeWith(written, formats);
     const bottom = block.top + rows.length - 1;
     const right = block.left + Math.max(...rows.map((row) => row.length)) - 1;
     setRange({ anchor: { column: block.left, row: block.top }, focus: { column: right, row: bottom } });
@@ -554,6 +706,7 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
 
   function gridKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
     if (editing !== null || sheet === null) return;
+    if (formatKey(event)) return;
     const command = event.ctrlKey || event.metaKey;
     const step = (columns: number, rows: number) => {
       event.preventDefault();
@@ -611,6 +764,8 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
   }, [undoKey, redoKey, saveKey]);
 
   function editorKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
+    // A whole cell is formatted, never a word of it, so the keys format the cell being typed in.
+    if (formatKey(event)) return;
     if (hints.length > 0) {
       if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
         event.preventDefault();
@@ -710,7 +865,10 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
     setFillTo(null);
     if (target === null) return;
     const flipped = event.ctrlKey || event.metaKey;
-    write(fillCells((column, row) => current.cells[cellName(column, row)] ?? '', block, target, flipped));
+    writeWith(
+      fillCells((column, row) => current.cells[cellName(column, row)] ?? '', block, target, flipped),
+      fillFormats((column, row) => current.formats?.[cellName(column, row)], block, target),
+    );
     setRange({ anchor: { column: target.left, row: target.top }, focus: { column: target.right, row: target.bottom } });
     grid.current?.focus();
   }
@@ -728,6 +886,44 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
     setWorkbook((held) => ({
       tabs: held.tabs.map((one, at) => (at === tab ? { ...one, widths: { ...(one.widths ?? {}), [resizing.column]: width } } : one)),
     }));
+  }
+
+  /**
+   * A double-click on a column's edge: the column made as wide as the widest
+   * thing in it, as it is drawn - its format's number, bold or italic, and its
+   * padding - and every selected column with it when it is one of several
+   * selected. A column with nothing in it goes back to the usual width. One
+   * change, so one undo takes it back.
+   */
+  function fitColumns(column: number) {
+    const tabNow = workbook.tabs[tab];
+    if (tabNow === undefined) return;
+    const chosen = boundsOf(range);
+    const whole = column >= chosen.left && column <= chosen.right && chosen.right > chosen.left;
+    const fitting = whole ? Array.from({ length: chosen.right - chosen.left + 1 }, (_, at) => chosen.left + at) : [column];
+    const pen = document.createElement('canvas').getContext('2d');
+    if (pen === null) return;
+    const sample = grid.current?.querySelector<HTMLElement>('[data-testid="sheet-cell"]') ?? grid.current;
+    const drawn = sample === null || sample === undefined ? null : getComputedStyle(sample);
+    const family = drawn?.fontFamily ?? 'sans-serif';
+    const size = drawn?.fontSize ?? '13px';
+    const padding = drawn === null ? 12 : Number.parseFloat(drawn.paddingLeft) + Number.parseFloat(drawn.paddingRight);
+    const widths = { ...(tabNow.widths ?? {}) };
+    for (const at of fitting) {
+      let widest = 0;
+      for (const address of Object.keys(tabNow.cells)) {
+        if (cellAt(address)?.column !== at) continue;
+        const look = tabNow.formats?.[address];
+        pen.font = `${look?.italic === true ? 'italic ' : ''}${look?.bold === true ? '700 ' : ''}${size} ${family}`;
+        const lines = shownOf(address).text.split('\n');
+        for (const line of lines) widest = Math.max(widest, pen.measureText(line).width);
+      }
+      const name = columnName(at);
+      // A pixel each side for the column's line, and a little air, so the last letter is not against the edge.
+      if (widest === 0) delete widths[name];
+      else widths[name] = Math.round(Math.max(COLUMN_LEAST, Math.min(COLUMN_MOST, Math.ceil(widest + padding + 4))));
+    }
+    change({ tabs: workbook.tabs.map((one, at) => (at === tab ? { ...one, widths } : one)) });
   }
 
   function resizeUp() {
@@ -801,6 +997,33 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
 
   // -- The conversation ----------------------------------------------------------
 
+  /*
+   * A question asked before this page was loaded again - a reload in the
+   * middle of an answer - is waited for as though it had just been sent: the
+   * working row, then the answer under the question and the sheet taken up
+   * where the answer changed it.
+   */
+  const resumed = useRef(false);
+  useEffect(() => {
+    if (sheet === null || resumed.current) return;
+    resumed.current = true;
+    const askId = keptAskOf('sheet', sheet.id);
+    if (askId === null) return;
+    const id = sheet.id;
+    const revision = sheet.revision;
+    setAnswering(true);
+    resumeKept('sheet', id, askId)
+      .then(async (settled) => {
+        setTalk((was) => [...was, { role: 'assistant', content: settled.answer ?? '' }]);
+        const found = settled.changed === true ? await fetchSheet(id).catch(() => null) : null;
+        if (found !== null && found.revision !== revision) take(found);
+      })
+      .catch((cause: unknown) => setTalkError(cause instanceof Error ? cause.message : t('The model could not answer.')))
+      .finally(() => setAnswering(false));
+    // Once, for the sheet this page opened on; `take` and the setters are the page's own.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sheet]);
+
   async function ask(event?: FormEvent<HTMLFormElement>, idea?: string) {
     event?.preventDefault();
     const said = (idea ?? asking).trim();
@@ -820,9 +1043,12 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
           ? await askThroughClaudeCode(workspaceId, `the sheet ${sheet.name}`, sent, sheet.revision, () => fetchSheet(sheet.id)).then(
               (asked) => ({ answer: asked.answer, changed: asked.changed, sheet: asked.item }),
             )
-          : await askSheet(sheet.id, modelId, sent);
+          : await askKept('sheet', sheet.id, modelId, sent).then(async (settled) => {
+              const found = settled.changed === true ? await fetchSheet(sheet.id).catch(() => null) : null;
+              return { answer: settled.answer ?? '', changed: found !== null, sheet: found };
+            });
       setTalk([...sent, { role: 'assistant', content: answered.answer }]);
-      if (answered.changed) {
+      if (answered.changed && answered.sheet !== null) {
         setPast((held) => [...held, workbook].slice(-UNDO_DEPTH));
         setFuture([]);
         take(answered.sheet);
@@ -844,8 +1070,20 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
     const raw = current.cells[address];
     if (raw === undefined) return { text: '', value: null };
     const value = shownValues[address] ?? null;
+    if (fresh) return raw.startsWith('=') ? { text: value?.f ?? '', value } : { text: value?.f ?? raw, value };
+    /*
+     * The values are for the workbook as it was a moment ago. A cell whose
+     * contents have not changed since still comes to the same - and a format
+     * chosen since is written here at once, rather than the bare number being
+     * drawn until the server has been asked again.
+     */
+    const look = current.formats?.[address];
+    const same = value !== null && valuesTab !== null && valuesTab.cells[address] === raw;
+    if (same && value.t === 'n' && typeof value.v === 'number' && !sameNumberFormat(valuesTab.formats?.[address], look)) {
+      return { text: numberShown(value.v, look) ?? (raw.startsWith('=') ? value.f : raw), value };
+    }
     if (raw.startsWith('=')) return { text: value?.f ?? '', value };
-    return fresh && value !== null ? { text: value.f, value } : { text: raw, value: null };
+    return same ? { text: value.f, value } : { text: raw, value: null };
   }
 
   const block = boundsOf(range);
@@ -854,15 +1092,17 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
     for (let column = firstColumn; column <= lastColumn; column++) {
       const address = cellName(column, row);
       const raw = current.cells[address];
-      if (raw === undefined) continue;
+      const look = current.formats?.[address];
+      // An empty cell is drawn only where it has something to show: a fill, say.
+      if (raw === undefined && look === undefined) continue;
       const { text: shown, value } = shownOf(address);
-      const numeric = value === null ? looksNumeric(raw) : value.t === 'n';
+      const numeric = raw !== undefined && (value === null ? looksNumeric(raw) : value.t === 'n');
       const failed = value?.t === 'e';
       cells.push(
         <div
           key={address}
           className={`${styles.cell} ${numeric ? styles.cellNumber : ''} ${failed ? styles.cellError : ''} ${value?.t === 'b' ? styles.cellBoolean : ''}`}
-          style={{ left: lefts[column], top: row * ROW_HEIGHT, width: widthOf(column), height: ROW_HEIGHT }}
+          style={{ left: lefts[column], top: row * ROW_HEIGHT, width: widthOf(column), height: ROW_HEIGHT, ...cellStyleOf(look) }}
           data-cell={address}
           data-testid="sheet-cell"
           title={failed ? shown : undefined}
@@ -906,11 +1146,10 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
           onPointerUp={resizeUp}
           onDoubleClick={(event) => {
             event.stopPropagation();
-            const name = columnName(column);
-            change({ tabs: workbook.tabs.map((one, at) => (at === tab ? { ...one, widths: Object.fromEntries(Object.entries(one.widths ?? {}).filter(([key]) => key !== name)) } : one)) });
+            fitColumns(column);
           }}
           aria-label={tf('Resize column {column}', { column: columnName(column) })}
-          title={t('Drag to resize; double-click for the usual width')}
+          title={t('Drag to resize; double-click to fit what is in it')}
           data-testid={`sheet-resize-${columnName(column)}`}
         />
       </div>,
@@ -980,6 +1219,25 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
       </ul>
     );
   }
+
+  const formattable = sheet !== null && !answering;
+
+  /** A tool on the format bar, drawn as the document editor's are; the grid keeps the focus while it is pressed. */
+  const tool = (label: string, icon: string, on: boolean, act: () => void, testid: string) => (
+    <button
+      type="button"
+      className={`${shell.tool} ${on ? wire.toolOn : ''}`}
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={act}
+      disabled={!formattable}
+      aria-pressed={on}
+      title={label}
+      aria-label={label}
+      data-testid={testid}
+    >
+      <img src={icon} alt="" width={16} height={16} />
+    </button>
+  );
 
   const selection = {
     left: lefts[block.left],
@@ -1102,6 +1360,87 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
 
       <div className={shell.editor}>
         <div className={styles.work}>
+          <div className={`${documentStyles.formatBar} ${styles.formatBar}`} role="toolbar" aria-label={t('Formatting')} data-testid="sheet-toolbar">
+            {tool(`${t('Bold')} (${formatKeys.sheetBold})`, boldIcon, focusFormat?.bold === true, () => toggle('bold'), 'sheet-bold')}
+            {tool(`${t('Italic')} (${formatKeys.sheetItalic})`, italicIcon, focusFormat?.italic === true, () => toggle('italic'), 'sheet-italic')}
+            {tool(`${t('Underline')} (${formatKeys.sheetUnderline})`, underlineIcon, focusFormat?.underline === true, () => toggle('underline'), 'sheet-underline')}
+            {tool(t('Strikethrough'), strikeIcon, focusFormat?.strike === true, () => toggle('strike'), 'sheet-strike')}
+            <SheetColour
+              label={t('Text colour')}
+              mark={<span className={colourStyles.colourLetter}>A</span>}
+              colours={SHEET_TEXT_COLOURS}
+              now={focusFormat?.color ?? null}
+              disabled={!formattable}
+              onPick={(colour) => format({ color: colour })}
+              none={t('Default colour')}
+              testid="sheet-colour"
+            />
+            <SheetColour
+              label={t('Fill colour')}
+              mark={<img src={paintBucketIcon} alt="" width={14} height={14} />}
+              colours={SHEET_FILL_COLOURS}
+              now={focusFormat?.fill ?? null}
+              disabled={!formattable}
+              onPick={(colour) => format({ fill: colour })}
+              none={t('No fill')}
+              testid="sheet-fill"
+            />
+            <span className={shell.toolbarGap} aria-hidden="true" />
+            {tool(t('Align left'), alignLeftIcon, focusFormat?.align === 'left', () => format({ align: focusFormat?.align === 'left' ? null : 'left' }), 'sheet-align-left')}
+            {tool(t('Align centre'), alignCenterIcon, focusFormat?.align === 'center', () => format({ align: focusFormat?.align === 'center' ? null : 'center' }), 'sheet-align-center')}
+            {tool(t('Align right'), alignRightIcon, focusFormat?.align === 'right', () => format({ align: focusFormat?.align === 'right' ? null : 'right' }), 'sheet-align-right')}
+            {tool(t('Wrap text'), wrapIcon, focusFormat?.wrap === true, () => toggle('wrap'), 'sheet-wrap')}
+            <SheetBorders sides={focusFormat?.border ?? []} disabled={!formattable} onPick={(choice, off) => border(choice, off)} />
+            <span className={shell.toolbarGap} aria-hidden="true" />
+            <select
+              className={documentStyles.blockStyle}
+              value={numberChoice(focusFormat)}
+              onChange={(event) => {
+                chooseNumber(event.target.value);
+                grid.current?.focus();
+              }}
+              disabled={!formattable}
+              aria-label={t('Number format')}
+              title={t('Number format')}
+              data-testid="sheet-number-format"
+            >
+              <option value="general">{t('General')}</option>
+              <option value="number">{t('Numeric')}</option>
+              <option value="percent">{t('Percentage')}</option>
+              {[...CURRENCIES, ...(focusFormat?.number === 'currency' && !CURRENCIES.includes(focusFormat.currency ?? '$') ? [focusFormat.currency ?? '$'] : [])].map((symbol) => (
+                <option key={symbol} value={`currency:${symbol}`}>
+                  {tf('Currency ({symbol})', { symbol })}
+                </option>
+              ))}
+              <option value="date">{t('Date')}</option>
+            </select>
+            <button
+              type="button"
+              className={`${shell.tool} ${documentStyles.wordTool}`}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => stepDecimals(-1)}
+              disabled={!formattable || focusFormat?.number === 'date' || (focusFormat?.number !== undefined && decimalsOf(focusFormat) === 0)}
+              title={t('Fewer decimal places')}
+              aria-label={t('Fewer decimal places')}
+              data-testid="sheet-decimals-fewer"
+            >
+              .0←
+            </button>
+            <button
+              type="button"
+              className={`${shell.tool} ${documentStyles.wordTool}`}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => stepDecimals(1)}
+              disabled={!formattable || focusFormat?.number === 'date'}
+              title={t('More decimal places')}
+              aria-label={t('More decimal places')}
+              data-testid="sheet-decimals-more"
+            >
+              .00→
+            </button>
+            <span className={shell.toolbarGap} aria-hidden="true" />
+            {tool(t('Clear formatting'), eraserIcon, false, () => format(null), 'sheet-clear-format')}
+          </div>
           <div className={styles.formulaBar}>
             <span className={styles.address} data-testid="sheet-address">
               {range.anchor.column === range.focus.column && range.anchor.row === range.focus.row
@@ -1142,7 +1481,7 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
               if (editing !== null) return;
               event.preventDefault();
               event.clipboardData.setData('text/plain', copySelection());
-              clearSelection();
+              cutSelection();
             }}
             onPaste={(event) => {
               if (editing !== null) return;
@@ -1219,7 +1558,15 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
                     {editing !== null && !editing.inBar && (
                       <input
                         className={styles.inPlace}
-                        style={{ left: focusBox.left, top: focusBox.top, minWidth: focusBox.width, height: focusBox.height }}
+                        style={{
+                          left: focusBox.left,
+                          top: focusBox.top,
+                          minWidth: focusBox.width,
+                          height: focusBox.height,
+                          fontWeight: focusFormat?.bold === true ? 700 : undefined,
+                          fontStyle: focusFormat?.italic === true ? 'italic' : undefined,
+                          textDecoration: cellStyleOf(focusFormat).textDecoration,
+                        }}
                         value={editing.text}
                         onChange={(event) => retype(event.target.value, false, event.target.selectionStart)}
                         onSelect={(event) => setCaret(event.currentTarget.selectionStart)}

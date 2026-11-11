@@ -49,6 +49,8 @@ export interface DefinitionOption {
    * filters above the list. Drawn only where the options name two or more.
    */
   source?: string;
+  /** Where the chosen one can be opened, for a caller that offers a way there. */
+  href?: string;
 }
 
 export interface DefinitionPickerProps {

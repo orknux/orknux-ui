@@ -769,10 +769,20 @@ interface Heard {
   ended: boolean;
   /** Whether the server said nothing is being written. */
   idle: boolean;
+  /**
+   * Which turn the first stream said it was carrying. A server started again
+   * after a restart answers a cut-off turn afresh, under another id, and its
+   * frames are not a replay of the ones drawn - so a re-attach that finds
+   * another turn stops here, and the page's wait for a turn the server started
+   * by itself picks it up as a new one.
+   */
+  turn?: string;
+  /** Whether a re-attach found a turn other than [turn]. */
+  other?: boolean;
 }
 
 /** The frames a reader is told about the stream rather than the answer. */
-const CONTROL_FRAMES = new Set(['following', 'idle', 'waiting']);
+const CONTROL_FRAMES = new Set(['following', 'idle', 'waiting', 'turn']);
 
 /**
  * Reads an answer to its last frame, picking it up again where the stream
@@ -858,7 +868,7 @@ async function readFollowing(
       try {
         await read(response, quiet, heard);
         if (heard.ended) return true;
-        if (heard.idle) return false;
+        if (heard.idle || heard.other) return false;
       } catch (cause) {
         if (givenUpOn(cause, signal)) throw cause;
       }
@@ -927,6 +937,14 @@ async function read(
 ): Promise<void> {
   let writingSoFar = 0;
   await readEventStream(response, (frame) => {
+    if (heard.other) return;
+    if (frame.event === 'turn') {
+      const turn = payloadOf<{ id?: string }>(frame)?.id;
+      if (turn === undefined) return;
+      if (heard.turn === undefined) heard.turn = turn;
+      else if (heard.turn !== turn) heard.other = true;
+      return;
+    }
     if (frame.event === 'idle') heard.idle = true;
     if (!CONTROL_FRAMES.has(frame.event)) {
       // Counted before anything else, so a frame drawn before a cut is
