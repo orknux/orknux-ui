@@ -2762,6 +2762,12 @@ export const TESTS = [
     /* Makes its own two diagrams and removes them. */
   },
   {
+    name: 'diagram-attach-point-check',
+    what: "a diagram arrow's end pinned to a side of its box leaves from that side and is kept there, and an end dragged onto another box re-points the line to it",
+    needs: ['workspace'],
+    /* Makes its own diagram and removes it. */
+  },
+  {
     name: 'diagram-node-link-check',
     what: 'a link to one box of a diagram opens it with that box selected and in the middle of the canvas, from a fresh load and a reload',
     needs: ['workspace'],

@@ -5,7 +5,7 @@ import type { CSSProperties } from 'react';
 import { BaseEdge, EdgeLabelRenderer, Handle, NodeResizer, Position, useInternalNode, useStore } from '@xyflow/react';
 import type { Edge, EdgeProps, InternalNode, Node, NodeProps } from '@xyflow/react';
 
-import type { DiagramLineStyle, DiagramNodeKind, DiagramRouting } from '../../api/diagrams';
+import type { DiagramLineStyle, DiagramNodeKind, DiagramRouting, DiagramSide } from '../../api/diagrams';
 import { t, tf } from '../../i18n';
 import { pictureUrl } from '../../api/diagrams';
 import { dashesOf } from './DiagramLineStyles';
@@ -65,6 +65,10 @@ export type LinkData = {
   line: DiagramLineStyle;
   label?: string;
   routing?: DiagramRouting;
+  /** The side of its source box it is pinned to; left out, the end floats to the side facing the target. */
+  fromSide?: DiagramSide;
+  /** The side of its target box it is pinned to; left out, the end floats to the side facing the source. */
+  toSide?: DiagramSide;
   /** Its own corners, where it was routed around the boxes in its way; drawn only in right angles. */
   points?: [number, number][];
   /** Where along it its label sits, where the router moved it. */
@@ -508,14 +512,42 @@ function border(box: { cx: number; cy: number; hw: number; hh: number }, tx: num
  * record of where they are, so it follows a box being dragged and survives
  * the node objects being rebuilt.
  */
-/** The way a line runs between two drawn boxes, each left by its own outline. */
-function routeBetween(from: InternalNode, to: InternalNode, routing: DiagramRouting, points?: [number, number][], labelAt?: number): Route {
+/** Far off a pinned side, so the outline's own point on that side is where the end leaves; the floating target otherwise. */
+function sideAim(box: { cx: number; cy: number; hw: number; hh: number }, side: DiagramSide | undefined, tx: number, ty: number): [number, number] {
+  const far = 1_000_000;
+  switch (side) {
+    case 'top':
+      return [box.cx, box.cy - far];
+    case 'bottom':
+      return [box.cx, box.cy + far];
+    case 'left':
+      return [box.cx - far, box.cy];
+    case 'right':
+      return [box.cx + far, box.cy];
+    default:
+      return [tx, ty];
+  }
+}
+
+/** The way a line runs between two drawn boxes, each left by its own outline - or by a side it was pinned to. */
+function routeBetween(
+  from: InternalNode,
+  to: InternalNode,
+  routing: DiagramRouting,
+  points?: [number, number][],
+  labelAt?: number,
+  fromSide?: DiagramSide,
+  toSide?: DiagramSide,
+): Route {
   const a = boxOf(from);
   const b = boxOf(to);
   const fromKind = (from.data as ShapeData | undefined)?.kind;
   const toKind = (to.data as ShapeData | undefined)?.kind;
   const edge = (kind: DiagramNodeKind | undefined, box: typeof a, tx: number, ty: number) => rimBorder(kind, box, tx, ty) ?? border(box, tx, ty);
-  const leave = (box: typeof a, tx: number, ty: number) => edge(box === a ? fromKind : toKind, box, tx, ty);
+  const leave = (box: typeof a, tx: number, ty: number) => {
+    const [ax, ay] = sideAim(box, box === a ? fromSide : toSide, tx, ty);
+    return edge(box === a ? fromKind : toKind, box, ax, ay);
+  };
   if (routing === 'right-angles' && points !== undefined && points.length > 0) {
     // Out of a side from a point inside it: the outline of the shape, or its box where the shape is its box.
     const leaveFrom = (box: typeof a, ox: number, oy: number, tx: number, ty: number) =>
@@ -539,7 +571,7 @@ export function FloatingLink({ id, source, target, data, selected, markerEnd, ma
   const lookup = useStore((state) => state.nodeLookup);
   useStore((state) => state.nodes);
   if (from === undefined || to === undefined) return null;
-  const route = routeBetween(from, to, data?.routing ?? 'straight', data?.points, data?.labelAt);
+  const route = routeBetween(from, to, data?.routing ?? 'straight', data?.points, data?.labelAt, data?.fromSide, data?.toSide);
   const under: Point[][] = [];
   if (route.points !== undefined) {
     for (const other of edges) {
@@ -547,7 +579,15 @@ export function FloatingLink({ id, source, target, data, selected, markerEnd, ma
       const one = lookup.get(other.source);
       const two = lookup.get(other.target);
       if (one === undefined || two === undefined) continue;
-      const theirs = routeBetween(one, two, (other.data as LinkData | undefined)?.routing ?? 'straight', (other.data as LinkData | undefined)?.points).points;
+      const theirs = routeBetween(
+        one,
+        two,
+        (other.data as LinkData | undefined)?.routing ?? 'straight',
+        (other.data as LinkData | undefined)?.points,
+        undefined,
+        (other.data as LinkData | undefined)?.fromSide,
+        (other.data as LinkData | undefined)?.toSide,
+      ).points;
       if (theirs !== undefined) under.push(theirs);
     }
   }

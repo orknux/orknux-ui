@@ -16,8 +16,8 @@ const stored = async () =>
 
 const started = await stored();
 record(
-  started.modelAnswerLimitMinutesConfigured === 60,
-  `a fresh installation lets a model take an hour (${started.modelAnswerLimitMinutesConfigured} minutes)`,
+  started.modelAnswerLimitMinutesConfigured === 5,
+  `a fresh installation lets a model take five minutes (${started.modelAnswerLimitMinutesConfigured} minutes)`,
 );
 const wanted = started.modelAnswerLimitMinutes === 90 ? 45 : 90;
 

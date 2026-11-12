@@ -28,6 +28,7 @@ import {
   DIAGRAM_PNG_SCALES,
   DIAGRAM_ROUTINGS,
   deleteDiagram,
+  DIAGRAM_SIDES,
   diagramExportUrl,
   drawingOf,
   fetchDiagram,
@@ -55,6 +56,7 @@ import type {
   DiagramNodeData,
   DiagramNodeKind,
   DiagramRouting,
+  DiagramSide,
   DiagramTurn,
 } from '../../api/diagrams';
 import type { SessionUser } from '../../api/session';
@@ -335,6 +337,10 @@ function kindLabel(kind: DiagramNodeKind): string {
 }
 
 const freshId = (prefix: string) => `${prefix}${Math.random().toString(36).slice(2, 10)}`;
+
+/** A React Flow handle id as the side it names, or undefined for a floating end (the box's middle, no handle). */
+const asSide = (handle: string | null | undefined): DiagramSide | undefined =>
+  DIAGRAM_SIDES.find((side) => side === handle);
 const snap = (value: number) => Math.round(value / GRID) * GRID;
 
 /** What Copy and Cut put down and Paste picks up: for the length of the tab, across diagrams. */
@@ -862,8 +868,11 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
           id: edge.id,
           source: edge.from,
           target: edge.to,
+          // A pinned end names its box's handle, so React Flow sits its reconnect anchor on that side; a floating end names none.
+          ...(edge.fromSide !== undefined ? { sourceHandle: edge.fromSide } : {}),
+          ...(edge.toSide !== undefined ? { targetHandle: edge.toSide } : {}),
           type: 'link' as const,
-          data: { line, label: edge.label, routing: edge.routing ?? 'straight', points: edge.points, labelAt: edge.labelAt, color: edge.color, width: edge.width },
+          data: { line, label: edge.label, routing: edge.routing ?? 'straight', fromSide: edge.fromSide, toSide: edge.toSide, points: edge.points, labelAt: edge.labelAt, color: edge.color, width: edge.width },
           markerEnd: mark(end, true),
           markerStart: mark(start, false),
           selected: selectedEdges.includes(edge.id),
@@ -926,10 +935,42 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
 
   function onConnect(connection: Connection) {
     if (viewing || connection.source === connection.target) return;
-    const made: DiagramEdgeData = { id: freshId('e'), from: connection.source, to: connection.target, kind: 'arrow', line: 'solid', start: 'none', end: 'arrow' };
+    const made: DiagramEdgeData = {
+      id: freshId('e'),
+      from: connection.source,
+      to: connection.target,
+      kind: 'arrow',
+      line: 'solid',
+      start: 'none',
+      end: 'arrow',
+      // Drawn from or onto a particular side of a box pins that end there; onto the box's middle, it floats.
+      ...(asSide(connection.sourceHandle) !== undefined ? { fromSide: asSide(connection.sourceHandle) } : {}),
+      ...(asSide(connection.targetHandle) !== undefined ? { toSide: asSide(connection.targetHandle) } : {}),
+    };
     change({ ...drawing, edges: [...drawing.edges, made] });
     setSelectedNodes([]);
     setSelectedEdges([made.id]);
+  }
+
+  /**
+   * An arrow's end dragged to a new place. Dropped on another box it re-points
+   * there; dropped on a side's handle it pins to that side, and on a box's
+   * middle it floats again. The other end is left exactly as it was.
+   */
+  function onReconnect(previous: LinkEdge, connection: Connection) {
+    // A line to its own box is left as it was, as a new one from a box to itself is.
+    if (viewing || connection.source === connection.target) return;
+    const fromSide = asSide(connection.sourceHandle);
+    const toSide = asSide(connection.targetHandle);
+    change({
+      ...drawing,
+      edges: drawing.edges.map((edge) =>
+        edge.id === previous.id
+          ? { ...edge, from: connection.source, to: connection.target, fromSide, toSide }
+          : edge,
+      ),
+    });
+    setSelectedEdges([previous.id]);
   }
 
   /** A node let go of lands in the smallest group under its middle, or in none. */
@@ -2395,6 +2436,8 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
+              onReconnect={onReconnect}
+              edgesReconnectable={!viewing}
               onNodeDragStart={() => {
                 if (!viewing) begin();
               }}

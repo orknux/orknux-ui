@@ -106,6 +106,10 @@ export function linkAllowed(link: string): boolean {
   return /^(?:(?:https?:\/\/|mailto:)[^\s<>"]+|(?:diagram|document|wireframe):\d+)$/i.test(link.trim());
 }
 
+/** A side of a box an arrow end can be pinned to; left out, the end floats to the side facing the other box. */
+export const DIAGRAM_SIDES = ['top', 'right', 'bottom', 'left'] as const;
+export type DiagramSide = (typeof DIAGRAM_SIDES)[number];
+
 export interface DiagramEdgeData {
   id: string;
   from: string;
@@ -118,6 +122,10 @@ export interface DiagramEdgeData {
   /** At `to`. */
   end?: DiagramEndStyle;
   routing?: DiagramRouting;
+  /** The side of its `from` box it is pinned to; left out, the end floats to the side facing `to`. */
+  fromSide?: DiagramSide;
+  /** The side of its `to` box it is pinned to; left out, the end floats to the side facing `from`. */
+  toSide?: DiagramSide;
   /** The layer it is on, by id; left out, the drawing's first. */
   layer?: string;
   /**
