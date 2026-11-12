@@ -44,6 +44,8 @@ export type ConfirmKind =
   | 'newDocument'
   | 'copyDocument'
   | 'removeMember'
+  | 'purgeRecycleEntry'
+  | 'emptyRecycleBin'
   | 'continueShared';
 
 /**
@@ -78,6 +80,8 @@ const DESTRUCTIVE = new Set<ConfirmKind>([
   'removeDiagram',
   'removeDiagramCatalog',
   'removeMember',
+  'purgeRecycleEntry',
+  'emptyRecycleBin',
 ]);
 
 export interface ConfirmDialogProps {
@@ -418,6 +422,17 @@ export function ConfirmDialog({ subject, kind, detail, onClose, onConfirm }: Con
       title: t('Exclude member'),
       message: <>{t('They can no longer open this workspace, and keep their roles and their other workspaces:')} {name}</>,
       button: submitting ? t('Excluding…') : t('Exclude', 'member'),
+    },
+    /* Recycle bin: taking one entry out for good, before its retention is up. */
+    purgeRecycleEntry: {
+      title: t('Delete forever'),
+      message: <>{t('This is removed from the recycle bin for good, and can no longer be restored:')} {name}</>,
+      button: submitting ? t('Deleting…') : t('Delete forever'),
+    },
+    emptyRecycleBin: {
+      title: t('Empty recycle bin'),
+      message: <>{t('Everything in the recycle bin is deleted for good, and nothing can be restored.')}</>,
+      button: submitting ? t('Emptying…') : t('Empty bin'),
     },
     removeScratchpad: {
       title: t('Delete scratchpad'),

@@ -11,6 +11,7 @@ import chartColumnIcon from './assets/chart-column.svg';
 import chartLineIcon from './assets/chart-line.svg';
 import chartNetworkIcon from './assets/chart-network.svg';
 import clipboardListIcon from './assets/clipboard-list.svg';
+import trash2Icon from './assets/trash-2.svg';
 import cloudDownloadIcon from './assets/cloud-download.svg';
 import codeIcon from './assets/code.svg';
 import containerIcon from './assets/container.svg';
@@ -486,6 +487,16 @@ export const PAGES = [
     path: '/workspace/:workspaceId/audit',
     access: 'signed-in',
     goTo: { label: t('Audit Log'), where: 'Workspace', icon: clipboardListIcon, also: 'activity history' },
+  },
+  {
+    path: '/workspace/:workspaceId/recycle-bin',
+    access: 'signed-in',
+    goTo: {
+      label: t('Recycle Bin'),
+      where: 'Workspace',
+      icon: trash2Icon,
+      also: 'trash deleted restore removed undo',
+    },
   },
   {
     path: '/workspace/:workspaceId/mcp',

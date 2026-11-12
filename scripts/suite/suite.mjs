@@ -2543,6 +2543,12 @@ export const TESTS = [
     /* Answers the list itself; schedules are set by agents, not on the page. */
   },
   {
+    name: 'recycle-bin-page-check',
+    what: 'Workspace -> Recycle Bin lists the deleted objects, restores one and purges one',
+    needs: ['workspace'],
+    /* The rows are stubbed: this asserts what is drawn and which mutation each button fires. */
+  },
+  {
     name: 'model-cached-tokens-check',
     what: 'a model page shows the input its provider served from cache, and the share',
     needs: ['workspace'],

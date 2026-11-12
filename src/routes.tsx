@@ -68,6 +68,7 @@ import { WorkflowEditorPage } from './pages/workspace/WorkflowEditorPage';
 import { WorkflowSettingsPage } from './pages/workspace/WorkflowSettingsPage';
 import { WorkspaceActionsPage } from './pages/workspace/WorkspaceActionsPage';
 import { WorkspaceAuditPage } from './pages/workspace/WorkspaceAuditPage';
+import { WorkspaceRecycleBinPage } from './pages/workspace/WorkspaceRecycleBinPage';
 import { WorkspaceMcpPage } from './pages/workspace/WorkspaceMcpPage';
 import { WorkspaceConditionsPage } from './pages/workspace/WorkspaceConditionsPage';
 import { WorkspaceFunctionsPage } from './pages/workspace/WorkspaceFunctionsPage';
@@ -165,6 +166,7 @@ export const PAGE_ELEMENTS: Record<PagePath, PageElement> = {
   '/workspace/:workspaceId/models': (session, onSignOut) => <WorkspaceModelsPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/integrations': (session, onSignOut) => <WorkspaceIntegrationsPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/audit': (session, onSignOut) => <WorkspaceAuditPage session={session} onSignOut={onSignOut} />,
+  '/workspace/:workspaceId/recycle-bin': (session, onSignOut) => <WorkspaceRecycleBinPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/mcp': (session, onSignOut) => <WorkspaceMcpPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/settings': (session, onSignOut) => <WorkspaceSettingsPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/executions/:executionId': (session, onSignOut) => <ExecutionDetailPage session={session} onSignOut={onSignOut} />,
