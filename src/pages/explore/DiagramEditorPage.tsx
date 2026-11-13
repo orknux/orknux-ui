@@ -14,7 +14,7 @@ import {
   useStore,
   useViewport,
 } from '@xyflow/react';
-import type { Connection, EdgeChange, NodeChange, Viewport } from '@xyflow/react';
+import type { EdgeChange, FinalConnectionState, NodeChange, Viewport } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
@@ -88,6 +88,7 @@ import type { DiagramLayer } from '../../api/diagrams';
 import pencilIcon from '../../assets/pencil.svg';
 import polishIcon from '../../assets/wand-sparkles.svg';
 import redoIcon from '../../assets/redo.svg';
+import rotateIcon from '../../assets/rotate-cw.svg';
 import roundedIcon from '../../assets/rectangle-button.svg';
 import squareIcon from '../../assets/square.svg';
 import stickyIcon from '../../assets/sticky-note.svg';
@@ -110,6 +111,7 @@ import {
   useArrangeShortcut,
   useDiagramFindShortcut,
   useDiagramModeShortcut,
+  useDiagramRotateShortcut,
   useCopyShortcut,
   useCutShortcut,
   useDuplicateShortcut,
@@ -125,12 +127,13 @@ import { CLAUDE_CODE_MODEL, DesignChat, askThroughClaudeCode, useChatFiles, useC
 import type { ChatIdea } from '../design/DesignChat';
 import shell from '../design/DesignImageEditorPage.module.css';
 import chat from '../design/WireframeEditorPage.module.css';
-import { EDGE_TYPES, LabelEditingContext, LinkOpenContext, NODE_TYPES, SWATCH_ROW, SWATCHES, ViewingContext } from './DiagramCanvas';
+import { EDGE_TYPES, LabelEditingContext, LinkEndsContext, LinkOpenContext, NODE_TYPES, SWATCH_ROW, SWATCHES, TurnedResizeContext, ViewingContext } from './DiagramCanvas';
+import { turned } from './DiagramRoutes';
 import type { LinkCard } from './DiagramCanvas';
 import type { Linkable } from './DiagramLinkSearch';
 import { fetchDocuments } from '../../api/documents';
 import { fetchWireframes } from '../../api/wireframes';
-import type { LinkEdge, ShapeNode } from './DiagramCanvas';
+import type { LinkEdge, LinkEnd, LinkEnds, ShapeNode } from './DiagramCanvas';
 import { EndIcon, LineIcon, MarkerDefs, RoutingIcon, endStyleLabel, lineStyleLabel, markerId, nearestKind, routingLabel, styleOf } from './DiagramLineStyles';
 import { ShapeIcon } from './DiagramShapes';
 import { agentAccessOptions } from './DiagramsPage';
@@ -341,6 +344,28 @@ const freshId = (prefix: string) => `${prefix}${Math.random().toString(36).slice
 /** A React Flow handle id as the side it names, or undefined for a floating end (the box's middle, no handle). */
 const asSide = (handle: string | null | undefined): DiagramSide | undefined =>
   DIAGRAM_SIDES.find((side) => side === handle);
+
+/** A point, from a box's middle, as the box's own frame has it: turned back by however far the box is turned. */
+function unturned(box: { x: number; y: number; w: number; h: number; rotation?: number }, fx: number, fy: number): [number, number] {
+  const dx = fx - (box.x + box.w / 2);
+  const dy = fy - (box.y + box.h / 2);
+  return box.rotation ? turned(dx, dy, -box.rotation) : [dx, dy];
+}
+
+/**
+ * Which side of a box a point is nearest, or undefined for its middle - a
+ * floating end. The box is split into four side wedges around an inner quarter
+ * that floats, so an end dropped anywhere past the middle pins to the side it
+ * fell toward, rather than only when the small centre handle was hit exactly.
+ */
+function sideAt(box: { x: number; y: number; w: number; h: number; rotation?: number }, fx: number, fy: number): DiagramSide | undefined {
+  // In the shape's own frame: the side a point fell toward is a side of the shape as it was drawn upright.
+  const [dx, dy] = unturned(box, fx, fy);
+  const nx = box.w > 0 ? dx / (box.w / 2) : 0;
+  const ny = box.h > 0 ? dy / (box.h / 2) : 0;
+  if (Math.abs(nx) < 0.5 && Math.abs(ny) < 0.5) return undefined;
+  return Math.abs(nx) > Math.abs(ny) ? (nx > 0 ? 'right' : 'left') : (ny > 0 ? 'bottom' : 'top');
+}
 const snap = (value: number) => Math.round(value / GRID) * GRID;
 
 /** What Copy and Cut put down and Paste picks up: for the length of the tab, across diagrams. */
@@ -532,6 +557,8 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
   /** Set once the diagram is on the canvas, so the moves that put it there are not taken for the person's. */
   const viewSettled = useRef(false);
   const [selectedEdges, setSelectedEdges] = useState<string[]>([]);
+  /** The line the pointer is on: its ends show their grips before it is selected. */
+  const [hoveredEdge, setHoveredEdge] = useState<string | null>(null);
   const [past, setPast] = useState<DiagramDrawing[]>([]);
   const [future, setFuture] = useState<DiagramDrawing[]>([]);
   const [naming, setNaming] = useState<string | null>(null);
@@ -595,6 +622,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
   const arrangeKey = useArrangeShortcut();
   const findKey = useDiagramFindShortcut();
   const modeKey = useDiagramModeShortcut();
+  const rotateKey = useDiagramRotateShortcut();
   /**
    * Finding a box or a line by its words. A diagram of forty services and
    * sixty topics is one where the browser's own find sees nothing - the boxes
@@ -829,7 +857,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
         type: 'shape',
         position: { x: node.x - (parent?.x ?? 0), y: node.y - (parent?.y ?? 0) },
         parentId: parent?.id,
-        data: { kind: node.kind, label: node.label, color: node.color, noted: (node.notes ?? '') !== '', link: node.link, image: node.image, loading: uploading.has(node.id) },
+        data: { kind: node.kind, label: node.label, color: node.color, noted: (node.notes ?? '') !== '', link: node.link, image: node.image, loading: uploading.has(node.id), rotation: node.rotation },
           // Its own outline, read by the shape's CSS through these, so every kind of shape takes it the same way.
           style: {
             ...(node.border !== undefined ? { '--node-border': node.border } : {}),
@@ -933,19 +961,50 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
     if (picked !== selectedEdges) setSelectedEdges(picked);
   }
 
-  function onConnect(connection: Connection) {
-    if (viewing || connection.source === connection.target) return;
+  // A new connection is made on its end, which carries the drop position; see onConnectEnd.
+  function onConnect() {}
+
+  /** The smallest shape a point falls inside - what a dragged arrow end lands on, if anything. */
+  function nodeUnder(fx: number, fy: number) {
+    return drawing.nodes
+      .filter((node) => {
+        if (node.kind === 'text') return false;
+        // Inside the shape where it is drawn, which for a turned one is not inside its upright box.
+        const [dx, dy] = unturned(node, fx, fy);
+        return Math.abs(dx) <= node.w / 2 && Math.abs(dy) <= node.h / 2;
+      })
+      .sort((a, b) => a.w * a.h - b.w * b.h)[0];
+  }
+
+  function pointerFlow(event: MouseEvent | TouchEvent) {
+    const where = 'changedTouches' in event ? event.changedTouches[0] : event;
+    return flow.screenToFlowPosition({ x: where.clientX, y: where.clientY });
+  }
+
+  /**
+   * A new arrow, let go of after a drag out of a box's side. Where its far end
+   * lands decides it: dropped on a side of a box it pins there, on the box's
+   * middle it floats, on empty canvas nothing is made. Done on end rather than
+   * onConnect so an end landing anywhere on a box pins to the side it fell
+   * toward, not only on the small centre handle.
+   */
+  function onConnectEnd(event: MouseEvent | TouchEvent, state: FinalConnectionState) {
+    if (viewing || state.fromNode == null) return;
+    const at = pointerFlow(event);
+    const onto = nodeUnder(at.x, at.y);
+    if (onto === undefined || onto.id === state.fromNode.id) return;
+    const fromSide = asSide(state.fromHandle?.id);
+    const toSide = sideAt(onto, at.x, at.y);
     const made: DiagramEdgeData = {
       id: freshId('e'),
-      from: connection.source,
-      to: connection.target,
+      from: state.fromNode.id,
+      to: onto.id,
       kind: 'arrow',
       line: 'solid',
       start: 'none',
       end: 'arrow',
-      // Drawn from or onto a particular side of a box pins that end there; onto the box's middle, it floats.
-      ...(asSide(connection.sourceHandle) !== undefined ? { fromSide: asSide(connection.sourceHandle) } : {}),
-      ...(asSide(connection.targetHandle) !== undefined ? { toSide: asSide(connection.targetHandle) } : {}),
+      ...(fromSide !== undefined ? { fromSide } : {}),
+      ...(toSide !== undefined ? { toSide } : {}),
     };
     change({ ...drawing, edges: [...drawing.edges, made] });
     setSelectedNodes([]);
@@ -953,25 +1012,53 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
   }
 
   /**
-   * An arrow's end dragged to a new place. Dropped on another box it re-points
-   * there; dropped on a side's handle it pins to that side, and on a box's
-   * middle it floats again. The other end is left exactly as it was.
+   * Where an end of a line would land, let go of at a point: the box under it
+   * and the side of that box it fell toward - no side for its middle, where an
+   * end floats. Nothing where there is no box there, or the box is the one the
+   * line's other end is on: the end is then left exactly as it was.
    */
-  function onReconnect(previous: LinkEdge, connection: Connection) {
-    // A line to its own box is left as it was, as a new one from a box to itself is.
-    if (viewing || connection.source === connection.target) return;
-    const fromSide = asSide(connection.sourceHandle);
-    const toSide = asSide(connection.targetHandle);
-    change({
-      ...drawing,
-      edges: drawing.edges.map((edge) =>
-        edge.id === previous.id
-          ? { ...edge, from: connection.source, to: connection.target, fromSide, toSide }
-          : edge,
-      ),
-    });
-    setSelectedEdges([previous.id]);
+  function landingOf(edgeId: string, end: LinkEnd, fx: number, fy: number) {
+    const edge = drawing.edges.find((one) => one.id === edgeId);
+    if (viewing || edge === undefined) return null;
+    const onto = nodeUnder(fx, fy);
+    if (onto === undefined || onto.id === (end === 'to' ? edge.from : edge.to)) return null;
+    return { onto, side: sideAt(onto, fx, fy) };
   }
+
+  /**
+   * A line's ends, dragged by the grips the canvas draws on them. Landed on a
+   * side of a box an end pins there and leaves from it; on the box's middle it
+   * floats; on another box it re-points the line. The drop position decides
+   * the side, so an end pins wherever on a box it is dropped, and the other
+   * end is untouched. Both ends, the same way: a line's start is an end too.
+   */
+  const linkEnds: LinkEnds = {
+    hovered: viewing ? null : hoveredEdge,
+    // Shown while it is dragged: the middle of the side it would pin to, or of the box it would float on.
+    aim: (edgeId, end, fx, fy) => {
+      const landing = landingOf(edgeId, end, fx, fy);
+      if (landing === null) return null;
+      const { onto, side } = landing;
+      const [dx, dy] =
+        side === 'top' ? [0, -onto.h / 2] : side === 'bottom' ? [0, onto.h / 2] : side === 'left' ? [-onto.w / 2, 0] : side === 'right' ? [onto.w / 2, 0] : [0, 0];
+      // A side turns with its box.
+      const [tx, ty] = onto.rotation ? turned(dx, dy, onto.rotation) : [dx, dy];
+      return { x: onto.x + onto.w / 2 + tx, y: onto.y + onto.h / 2 + ty };
+    },
+    drop: (edgeId, end, fx, fy) => {
+      const landing = landingOf(edgeId, end, fx, fy);
+      if (landing === null) return;
+      const { onto, side } = landing;
+      change({
+        ...drawing,
+        edges: drawing.edges.map((one) =>
+          one.id === edgeId ? (end === 'to' ? { ...one, to: onto.id, toSide: side } : { ...one, from: onto.id, fromSide: side }) : one,
+        ),
+      });
+      setSelectedNodes([]);
+      setSelectedEdges([edgeId]);
+    },
+  };
 
   /** A node let go of lands in the smallest group under its middle, or in none. */
   function onDragStop(dragged: string[]) {
@@ -1397,6 +1484,32 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
     });
   }
 
+  /**
+   * The selected shapes turned a quarter turn clockwise about their own
+   * middles. A group is not turned: it is a frame around other shapes, and
+   * what is inside it is placed by the canvas's own axes.
+   */
+  function rotate() {
+    const chosen = new Set(selectedNodes);
+    if (!drawing.nodes.some((node) => chosen.has(node.id) && node.kind !== 'group')) return;
+    change({
+      ...drawing,
+      nodes: drawing.nodes.map((node) =>
+        chosen.has(node.id) && node.kind !== 'group' ? { ...node, rotation: (((node.rotation ?? 0) + 90) % 360) || undefined } : node,
+      ),
+    });
+  }
+
+  /** A turned shape dragged by a corner: the upright box it comes to, as its own resizer worked it out. */
+  const turnedResize = {
+    start: () => begin(),
+    to: (id: string, box: { x: number; y: number; w: number; h: number }) => {
+      if (viewing) return;
+      setNode(id, { x: box.x, y: box.y, w: Math.max(GRID * 3, box.w), h: Math.max(GRID * 3, box.h) });
+    },
+    end: () => window.requestAnimationFrame(() => end()),
+  };
+
   function nudge(dx: number, dy: number) {
     if (selectedNodes.length === 0) return;
     let next = drawing;
@@ -1648,13 +1761,14 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
     else if (selectedEdges.length === 1 && selectedNodes.length === 0) setLabelling({ kind: 'edge', id: selectedEdges[0] });
   }
 
-  const keys = useRef({ undo, redo, save, remove, duplicate, copy, cut, paste: () => paste(clipboard, pointerAt.current), nudge, arrange, label: () => {}, escape: () => {} });
+  const keys = useRef({ undo, redo, save, remove, duplicate, rotate, copy, cut, paste: () => paste(clipboard, pointerAt.current), nudge, arrange, label: () => {}, escape: () => {} });
   keys.current = {
     undo,
     redo,
     save,
     remove,
     duplicate,
+    rotate,
     copy,
     cut,
     paste: () => paste(clipboard, pointerAt.current),
@@ -1760,6 +1874,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
       else if (matches(event, undoKey)) run(keys.current.undo);
       else if (matches(event, redoKey) || ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === 'y')) run(keys.current.redo);
       else if (matches(event, arrangeKey)) run(() => keys.current.arrange('LR'));
+      else if (matches(event, rotateKey)) run(keys.current.rotate);
       else if (event.key.startsWith('Arrow') && !event.ctrlKey && !event.metaKey) {
         const step = event.shiftKey ? GRID : 1;
         const dx = event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0;
@@ -1769,7 +1884,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
     };
     document.addEventListener('keydown', pressed);
     return () => document.removeEventListener('keydown', pressed);
-  }, [undoKey, redoKey, saveKey, duplicateKey, copyKey, cutKey, pasteKey, zoomInKey, zoomOutKey, arrangeKey, findKey, modeKey, flow]);
+  }, [undoKey, redoKey, saveKey, duplicateKey, copyKey, cutKey, pasteKey, zoomInKey, zoomOutKey, arrangeKey, findKey, modeKey, rotateKey, flow]);
 
   // -- Drawing ------------------------------------------------------------
 
@@ -2184,6 +2299,17 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
           <button type="button" className={shell.tool} onClick={duplicate} disabled={selectedNodes.length === 0} title={`${t('Duplicate')} (${duplicateKey})`} aria-label={t('Duplicate')} data-testid="diagram-duplicate">
             <img src={copyIcon} alt="" width={16} height={16} />
           </button>
+          <button
+            type="button"
+            className={shell.tool}
+            onClick={rotate}
+            disabled={!selectedNodes.some((id) => byId.get(id) !== undefined && byId.get(id)?.kind !== 'group')}
+            title={`${t('Rotate')} (${rotateKey})`}
+            aria-label={t('Rotate')}
+            data-testid="diagram-rotate"
+          >
+            <img src={rotateIcon} alt="" width={16} height={16} />
+          </button>
           {/* The diagram itself, asked first: what is selected goes with the Delete key. */}
           <button type="button" className={shell.tool} onClick={() => setDeletingDiagram(true)} disabled={diagram === null} title={t('Delete this diagram')} aria-label={t('Delete this diagram')} data-testid="diagram-delete">
             <img src={trashIcon} alt="" width={16} height={16} />
@@ -2321,6 +2447,12 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                       {t('Duplicate')}
                     </button>
                   )}
+                  {selectedNodes.some((id) => byId.get(id) !== undefined && byId.get(id)?.kind !== 'group') && (
+                    // Left open, so a shape can be turned twice or three times from the one menu.
+                    <button type="button" role="menuitem" className={styles.menuItem} onClick={rotate} data-testid="diagram-right-rotate">
+                      {`${t('Rotate')} (${rotateKey})`}
+                    </button>
+                  )}
                   <button type="button" role="menuitem" className={styles.menuItem} onClick={() => { remove(); setRightMenu(null); }} data-testid="diagram-right-delete">
                     {t('Delete')}
                   </button>
@@ -2425,7 +2557,9 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
             )}
             <LinkOpenContext.Provider value={linkCtx}>
             <ViewingContext.Provider value={viewing}>
+            <TurnedResizeContext.Provider value={turnedResize}>
             <LabelEditingContext.Provider value={labelEditing}>
+            <LinkEndsContext.Provider value={linkEnds}>
             {/* Inside the canvas, so the marks take its ink and paper. */}
             <MarkerDefs />
             <ReactFlow<ShapeNode, LinkEdge>
@@ -2436,8 +2570,11 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
-              onReconnect={onReconnect}
-              edgesReconnectable={!viewing}
+              onConnectEnd={onConnectEnd}
+              // An end is moved by the grip the canvas draws on it - see LinkEnds - and not by React Flow's unseen anchors.
+              edgesReconnectable={false}
+              onEdgeMouseEnter={(_, edge) => setHoveredEdge(edge.id)}
+              onEdgeMouseLeave={(_, edge) => setHoveredEdge((now) => (now === edge.id ? null : now))}
               onNodeDragStart={() => {
                 if (!viewing) begin();
               }}
@@ -2829,7 +2966,9 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
               </Panel>
               <LivePointers pointers={live.pointers} place={(x, y) => ({ left: x * viewport.zoom + viewport.x, top: y * viewport.zoom + viewport.y })} />
             </ReactFlow>
+            </LinkEndsContext.Provider>
             </LabelEditingContext.Provider>
+            </TurnedResizeContext.Provider>
             </ViewingContext.Provider>
             </LinkOpenContext.Provider>
             </>
@@ -3039,6 +3178,35 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                 }
                 testId="diagram-node-outline-field"
               />
+              {oneNode.kind !== 'group' && (
+                <label className={styles.field}>
+                  <span>{t('Rotation')}</span>
+                  <span className={styles.rotationRow}>
+                    <input
+                      type="number"
+                      className={form.input}
+                      min={0}
+                      max={359}
+                      step={15}
+                      value={oneNode.rotation ?? 0}
+                      aria-label={t('Rotation in degrees')}
+                      onFocus={begin}
+                      onBlur={end}
+                      onChange={(event) => {
+                        const said = Number(event.target.value);
+                        if (!Number.isFinite(said)) return;
+                        // Brought into one turn, as the server keeps it: 360 is upright, and -90 is 270.
+                        const whole = ((Math.round(said) % 360) + 360) % 360;
+                        setNode(oneNode.id, { rotation: whole === 0 ? undefined : whole });
+                      }}
+                      data-testid="diagram-node-rotation"
+                    />
+                    <button type="button" className={shell.tool} onClick={rotate} title={`${t('Rotate')} (${rotateKey})`} aria-label={t('Rotate')} data-testid="diagram-node-rotate">
+                      <img src={rotateIcon} alt="" width={16} height={16} />
+                    </button>
+                  </span>
+                </label>
+              )}
               <label className={styles.field}>
                 <span className={styles.notesHead}>
                   {t('Notes')}

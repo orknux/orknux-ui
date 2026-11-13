@@ -21,6 +21,7 @@ const ZOOM_OUT_KEY = 'orknux.zoomOutShortcut';
 const ARRANGE_KEY = 'orknux.arrangeShortcut';
 const DIAGRAM_FIND_KEY = 'orknux.diagramFindShortcut';
 const DIAGRAM_MODE_KEY = 'orknux.diagramModeShortcut';
+const DIAGRAM_ROTATE_KEY = 'orknux.diagramRotateShortcut';
 const MAGIC_RECTANGLE_KEY = 'orknux.magicRectangleShortcut';
 const MAGIC_LASSO_KEY = 'orknux.magicLassoShortcut';
 const MAGIC_ALL_KEY = 'orknux.magicAllShortcut';
@@ -208,6 +209,13 @@ export const DEFAULT_DIAGRAM_FIND_SHORTCUT = 'Ctrl+F';
 export const DEFAULT_DIAGRAM_MODE_SHORTCUT = 'Ctrl+Alt+E';
 
 /**
+ * Turning the selected shapes a quarter turn clockwise in the diagram editor.
+ * R alone, as the workflow canvas turns a node: it is heard only on the canvas
+ * and never while somebody is typing, which is what lets a bare letter do it.
+ */
+export const DEFAULT_DIAGRAM_ROTATE_SHORTCUT = 'R';
+
+/**
  * Magic edit's two ways of selecting, in the image editor: M for the rectangle
  * (a marquee) and L for the lasso, as image editors have them. A bare letter,
  * because it is heard only on the editor's canvas and never in a text box.
@@ -352,6 +360,7 @@ const zoomingOut = remembered(ZOOM_OUT_KEY, DEFAULT_ZOOM_OUT_SHORTCUT);
 const arranging = remembered(ARRANGE_KEY, DEFAULT_ARRANGE_SHORTCUT);
 const diagramFinding = remembered(DIAGRAM_FIND_KEY, DEFAULT_DIAGRAM_FIND_SHORTCUT);
 const diagramMode = remembered(DIAGRAM_MODE_KEY, DEFAULT_DIAGRAM_MODE_SHORTCUT);
+const diagramRotate = remembered(DIAGRAM_ROTATE_KEY, DEFAULT_DIAGRAM_ROTATE_SHORTCUT);
 const magicRectangle = remembered(MAGIC_RECTANGLE_KEY, DEFAULT_MAGIC_RECTANGLE_SHORTCUT);
 const magicLasso = remembered(MAGIC_LASSO_KEY, DEFAULT_MAGIC_LASSO_SHORTCUT);
 const magicAll = remembered(MAGIC_ALL_KEY, DEFAULT_MAGIC_ALL_SHORTCUT);
@@ -610,6 +619,18 @@ export function setDiagramModeShortcut(next: Shortcut): void {
 
 export function useDiagramModeShortcut(): Shortcut {
   return diagramMode.use();
+}
+
+export function diagramRotateShortcut(): Shortcut {
+  return diagramRotate.get();
+}
+
+export function setDiagramRotateShortcut(next: Shortcut): void {
+  diagramRotate.set(next);
+}
+
+export function useDiagramRotateShortcut(): Shortcut {
+  return diagramRotate.use();
 }
 
 export function magicRectangleShortcut(): Shortcut {

@@ -35,6 +35,23 @@ function kindLabel(kind: RecycleBinKind): string {
     case 'SKILL': return t('Skill');
     case 'DOCUMENT': return t('Document');
     case 'DIAGRAM': return t('Diagram');
+    case 'SHEET': return t('Sheet');
+    case 'ACTION': return t('Action');
+    case 'WIREFRAME': return t('Wireframe');
+    case 'MEMORY': return t('Memory');
+    case 'IMAGE': return t('Picture');
+    case 'ISSUE': return t('Issue');
+    case 'WORKFLOW': return t('Workflow');
+    // A folder, deleted with what it held: one row, and one Restore for all of it.
+    case 'MEMORY_CATALOG': return t('Memory catalog');
+    case 'SKILL_CATALOG': return t('Skill catalog');
+    case 'CONDITION': return t('Condition');
+    case 'TRIGGER': return t('Trigger');
+    case 'OBJECT': return t('Object');
+    // A value and a secret are one kind here: the bin does not say which, and never shows what it held.
+    case 'VARIABLE': return t('Variable');
+    // A kind a newer server bins and this bundle has not heard of: its own name, rather than nothing.
+    default: return kind;
   }
 }
 
@@ -124,7 +141,7 @@ export function WorkspaceRecycleBinPage({ session, onSignOut }: WorkspaceRecycle
           <div className={styles.titleGroup}>
             <h1 className={styles.title}>{t('Recycle Bin')}</h1>
             <p className={styles.subtitle}>
-              {t('Deleted agents, tools, functions, skills, documents and diagrams, kept until they are purged. Restore one, or delete it for good.')}
+              {t('What this workspace deleted - agents, workflows, issues, documents, pictures, catalogs and the rest - kept until it is purged. Restore one, or delete it for good.')}
             </p>
           </div>
           {total > 0 && (

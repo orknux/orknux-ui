@@ -76,6 +76,9 @@ const PL: Record<string, string> = {
   VariableCatalogNameTaken: 'Katalog o nazwie „{name}” już istnieje w tej przestrzeni roboczej',
   VariableNameTaken: 'Katalog „{catalog}” zawiera już zmienną o nazwie „{name}”',
   WorkflowNameTaken: 'Przepływ pracy o nazwie „{name}” już istnieje',
+  RecycleBinWorkflowGone: 'Przepływu pracy {name} nie da się już przywrócić: jego definicja zniknęła',
+  RecycleBinReferenceGone:
+    'Nie można jeszcze przywrócić „{name}”: nie ma już „{missingName}”, z którego korzysta. Najpierw przywróć tamto albo utwórz nowe o tej nazwie.',
   WorkspaceNameTaken: 'Przestrzeń robocza o nazwie „{name}” już istnieje',
   UserNameTaken: 'Użytkownik o nazwie „{username}” już istnieje',
   ToolParamDuplicate: 'To narzędzie przyjmuje już parametr o nazwie „{name}”',

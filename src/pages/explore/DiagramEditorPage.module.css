@@ -420,6 +420,42 @@
 }
 
 /*
+ * A turned shape: all of what its node draws, turned about the middle of the
+ * upright box React Flow places. The box itself is not turned, because its
+ * position and size are what the drawing keeps and what a drag moves.
+ */
+.turned {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 50%;
+}
+
+/* A corner a turned shape is resized by: the resizer's own square, at a corner that turned with the shape. */
+.turnedHandle {
+  position: absolute;
+  z-index: 2;
+  box-sizing: border-box;
+  width: 8px;
+  height: 8px;
+  background: var(--diagram-paper);
+  border: 1.5px solid var(--diagram-select);
+  transform: translate(-50%, -50%);
+  touch-action: none;
+}
+
+/* The rotation field: a number of degrees, and the button that puts the shape upright again. */
+.rotationRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.rotationRow input {
+  flex: 1;
+  min-width: 0;
+}
+
+/*
  * Selected, a shape is lit along its own outline - an ellipse as an ellipse, a
  * diamond as a diamond, a cylinder as a cylinder - not boxed in a rectangle.
  * A plain box takes a ring that follows its corners; a drawn outline takes the
@@ -452,6 +488,84 @@
 .linkTouched {
   stroke: var(--diagram-select) !important;
   stroke-width: 2 !important;
+}
+
+/*
+ * A line's end, to be taken hold of: on each end of a line that is selected or
+ * that the pointer is on. Filled in the selection's colour and bigger than the
+ * handle a new line is drawn from, which it sits over - the two are told apart
+ * by being a disc and a ring - and it says by its cursor that it is dragged.
+ */
+.endGrip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* Over a selected box too, which React Flow raises by a thousand: its lines are the ones most often reached for. */
+  z-index: 2001;
+  box-sizing: border-box;
+  width: 14px;
+  height: 14px;
+  background: var(--diagram-select);
+  border: 2px solid var(--diagram-paper);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--diagram-select);
+  cursor: grab;
+  pointer-events: all;
+  touch-action: none;
+}
+
+.endGrip:hover {
+  box-shadow: 0 0 0 3px var(--diagram-select);
+}
+
+/*
+ * Where a lit line is attached, when there is no grip to say it: a dot on each
+ * end, over the boxes, ringed in the paper's colour so it shows on the outline
+ * of a selected box, which is the colour the dot is. Smaller than a grip and
+ * nothing to the pointer - it is read, not held.
+ */
+.endMark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2000;
+  box-sizing: border-box;
+  width: 11px;
+  height: 11px;
+  background: var(--diagram-select);
+  border: 2px solid var(--diagram-paper);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--diagram-select);
+  pointer-events: none;
+}
+
+/* Held: under the pointer wherever it goes, and not what the pointer lands on. */
+.endGripHeld {
+  cursor: grabbing;
+  box-shadow: 0 0 0 3px var(--diagram-select);
+}
+
+/* Where the end being dragged would attach: a ring on the side, or on the middle of the box. */
+.endLanding {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2000;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--diagram-select);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* The line as it would run with its end let go of here. */
+.endAim {
+  fill: none;
+  stroke: var(--diagram-select);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  pointer-events: none;
 }
 
 /* Viewing: nothing to draw a line from. */

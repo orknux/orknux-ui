@@ -1,7 +1,19 @@
 import type { DiagramRouting } from '../../api/diagrams';
 
-/** A node's centre and half sizes, in the canvas's coordinates. */
-export type RouteBox = { cx: number; cy: number; hw: number; hh: number };
+/**
+ * A node's centre and half sizes, in the canvas's coordinates - those of the
+ * box it was turned from - and how far it is turned about that centre, in
+ * degrees clockwise, where it is.
+ */
+export type RouteBox = { cx: number; cy: number; hw: number; hh: number; turn?: number };
+
+/** (dx, dy) turned [degrees] clockwise, as the screen has it with y running down. The server's `DiagramOutline.turned`. */
+export function turned(dx: number, dy: number, degrees: number): [number, number] {
+  const angle = (degrees * Math.PI) / 180;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  return [dx * cos - dy * sin, dx * sin + dy * cos];
+}
 
 /** Where a line from a box's centre towards (tx, ty) leaves the box's outline. */
 export type Leave = (box: RouteBox, tx: number, ty: number) => { x: number; y: number };
@@ -171,8 +183,9 @@ function leaveToward(box: RouteBox, p: Point, leave: LeaveFrom): { rim: Point; t
   const top = box.cy - box.hh;
   const bottom = box.cy + box.hh;
   const far = 1_000_000;
+  // A turned shape is left from its middle: its sides no longer run along the corner's own x or y.
   const along = (at: number, low: number, high: number, middle: number) =>
-    at >= low + SIDE_INSET && at <= high - SIDE_INSET ? at : middle;
+    !box.turn && at >= low + SIDE_INSET && at <= high - SIDE_INSET ? at : middle;
   if (p.x >= left && p.x <= right && (p.y < top || p.y > bottom)) {
     const down = p.y > bottom;
     const x = along(p.x, left, right, box.cx);

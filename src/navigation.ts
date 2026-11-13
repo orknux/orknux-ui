@@ -10,6 +10,7 @@ import imageIcon from './assets/image.svg';
 import chartColumnIcon from './assets/chart-column.svg';
 import chartLineIcon from './assets/chart-line.svg';
 import chartNetworkIcon from './assets/chart-network.svg';
+import monitorIcon from './assets/monitor.svg';
 import clipboardListIcon from './assets/clipboard-list.svg';
 import trash2Icon from './assets/trash-2.svg';
 import cloudDownloadIcon from './assets/cloud-download.svg';
@@ -681,6 +682,11 @@ export const PAGES = [
     path: '/admin/reports',
     access: 'admin',
     goTo: { label: t('Reports'), where: 'Admin', icon: chartColumnIcon, also: 'usage tokens cost people slack tracking' },
+  },
+  {
+    path: '/admin/clients',
+    access: 'admin',
+    goTo: { label: t('Clients'), where: 'Admin', icon: monitorIcon, also: 'devices chrome extension windows linux terminal shell claude code connected version' },
   },
   {
     path: '/admin/doctor',

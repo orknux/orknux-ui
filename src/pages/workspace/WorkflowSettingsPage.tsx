@@ -251,7 +251,7 @@ function WorkflowSettingsView({ session, onSignOut, onDiscard }: WorkflowSetting
               <div className={styles.dangerText}>
                 <p className={styles.dangerTitle}>{t('Remove Workflow')}</p>
                 <p className={styles.dangerMessage}>
-                  {t('Unassign this workflow from the workspace. The workflow definition is kept.')}
+                  {t('Move this workflow to the recycle bin. It can be restored from there, with its runs and triggers, until the bin is emptied.')}
                 </p>
               </div>
               <button type="button" className={styles.delete} onClick={() => setRemoving(true)}>{t('Remove Workflow')}</button>

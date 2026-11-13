@@ -65,6 +65,8 @@ export interface DiagramNodeData {
   /** Its outline's colour, `#rrggbb`, and thickness in pixels; left out, as every box is drawn. */
   border?: string;
   borderWidth?: number;
+  /** How far it is turned about its middle, in whole degrees clockwise, 1 to 359; left out, upright. Its x, y, w and h stay those of the upright box. */
+  rotation?: number;
   /** The picture an image shows: an uploaded one's id, or an address on the web. */
   image?: string;
 }

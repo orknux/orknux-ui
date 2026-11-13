@@ -2,7 +2,26 @@ import { graphql } from './client';
 import type { PageOf } from './client';
 
 /** Which kind of object a bin entry holds; the screens it is listed under on the server. */
-export type RecycleBinKind = 'AGENT' | 'TOOL' | 'FUNCTION' | 'SKILL' | 'DOCUMENT' | 'DIAGRAM';
+export type RecycleBinKind =
+  | 'AGENT'
+  | 'TOOL'
+  | 'FUNCTION'
+  | 'SKILL'
+  | 'DOCUMENT'
+  | 'DIAGRAM'
+  | 'SHEET'
+  | 'ACTION'
+  | 'WIREFRAME'
+  | 'MEMORY'
+  | 'IMAGE'
+  | 'ISSUE'
+  | 'WORKFLOW'
+  | 'MEMORY_CATALOG'
+  | 'SKILL_CATALOG'
+  | 'CONDITION'
+  | 'TRIGGER'
+  | 'OBJECT'
+  | 'VARIABLE';
 
 /** One deleted object, as the bin lists it. What it held is read only when it is restored. */
 export interface RecycleBinEntry {

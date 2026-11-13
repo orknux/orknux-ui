@@ -120,9 +120,9 @@ export const TESTS = [
   },
   {
     name: 'clients-report-check',
-    what: 'Admin > Reports > Clients counts and lists who uses the Chrome extension, Orknux for Windows and for Linux, and Orknux Shell',
+    what: 'Admin > Clients - its own page now - counts and lists who uses the Chrome extension, Orknux for Windows and for Linux, and Orknux Shell',
     needs: [],
-    /* It stands in for the report's query with a route; nothing is written. */
+    /* It stands in for the clientUses query with a route; nothing is written. */
   },
   {
     name: 'quick-chat-kept-check',
@@ -2543,6 +2543,12 @@ export const TESTS = [
     /* Answers the list itself; schedules are set by agents, not on the page. */
   },
   {
+    name: 'recycle-bin-doors-check',
+    what: 'each kind the Recycle Bin keeps - diagram, wireframe, sheet, picture, skill, memory, workflow, action, issue - deleted with its own page\'s control lands in the bin and is put back from the Recycle Bin page; an empty memory catalog, a skill and an empty skill catalog are deleted from their pages',
+    needs: ['workspace'],
+    /* Makes one of each, restores each, and removes what it made; what it removes last it also takes out of the bin. */
+  },
+  {
     name: 'recycle-bin-page-check',
     what: 'Workspace -> Recycle Bin lists the deleted objects, restores one and purges one',
     needs: ['workspace'],
@@ -2766,6 +2772,12 @@ export const TESTS = [
     what: "a diagram arrow's end pinned to a side of its box leaves from that side and is kept there, and an end dragged onto another box re-points the line to it",
     needs: ['workspace'],
     /* Makes its own diagram and removes it. */
+  },
+  {
+    name: 'diagram-rotate-check',
+    what: 'a diagram shape turns a quarter on the shortcut and the toolbar button and to any angle from the panel, is drawn and kept turned, and a line leaves its turned outline',
+    needs: ['workspace'],
+    /* Makes its own diagram and removes it. The diagram goes to the recycle bin, as any deleted one does. */
   },
   {
     name: 'diagram-node-link-check',

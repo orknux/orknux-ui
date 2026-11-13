@@ -59,6 +59,7 @@ import {
   setArrangeShortcut,
   setDiagramFindShortcut,
   setDiagramModeShortcut,
+  setDiagramRotateShortcut,
   setMagicRectangleShortcut,
   setMagicLassoShortcut,
   setMagicAllShortcut,
@@ -80,6 +81,7 @@ import {
   useArrangeShortcut,
   useDiagramFindShortcut,
   useDiagramModeShortcut,
+  useDiagramRotateShortcut,
   useMagicRectangleShortcut,
   useMagicLassoShortcut,
   useMagicAllShortcut,
@@ -105,6 +107,8 @@ import {
   DEFAULT_DIAGRAM_FIND_SHORTCUT,
   diagramModeShortcut,
   DEFAULT_DIAGRAM_MODE_SHORTCUT,
+  diagramRotateShortcut,
+  DEFAULT_DIAGRAM_ROTATE_SHORTCUT,
   magicRectangleShortcut,
   magicLassoShortcut,
   magicAllShortcut,
@@ -180,6 +184,7 @@ type ShortcutKey =
   | 'arrange'
   | 'diagramFind'
   | 'diagramMode'
+  | 'diagramRotate'
   | 'magicRectangle'
   | 'magicLasso'
   | 'magicAll'
@@ -264,6 +269,7 @@ const SHORTCUTS: { key: ShortcutKey; stored: () => string; store: (next: string)
   { key: 'arrange', stored: arrangeShortcut, store: setArrangeShortcut },
   { key: 'diagramFind', stored: diagramFindShortcut, store: setDiagramFindShortcut },
   { key: 'diagramMode', stored: diagramModeShortcut, store: setDiagramModeShortcut },
+  { key: 'diagramRotate', stored: diagramRotateShortcut, store: setDiagramRotateShortcut },
   { key: 'magicRectangle', stored: magicRectangleShortcut, store: setMagicRectangleShortcut },
   { key: 'magicLasso', stored: magicLassoShortcut, store: setMagicLassoShortcut },
   { key: 'magicAll', stored: magicAllShortcut, store: setMagicAllShortcut },
@@ -357,6 +363,8 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
   const diagramFind = shortcutDrafts.diagramFind ?? storedDiagramFind;
   const storedDiagramMode = useDiagramModeShortcut();
   const diagramMode = shortcutDrafts.diagramMode ?? storedDiagramMode;
+  const storedDiagramRotate = useDiagramRotateShortcut();
+  const diagramRotate = shortcutDrafts.diagramRotate ?? storedDiagramRotate;
   const storedRedo = useRedoShortcut();
   const redo = shortcutDrafts.redo ?? storedRedo;
   const storedDuplicate = useDuplicateShortcut();
@@ -398,6 +406,7 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
     | 'arrange'
     | 'diagramFind'
     | 'diagramMode'
+    | 'diagramRotate'
     | 'magicRectangle'
     | 'magicLasso'
     | 'magicAll'
@@ -442,7 +451,7 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
        * free - which is why R, A and S can be the defaults there and cannot be
        * anywhere else.
        */
-      if (recording !== 'turn' && recording !== 'add' && recording !== 'select' && recording !== 'joint' && recording !== 'magicRectangle' && recording !== 'magicLasso' && !inImageEditor(recording) && !usable(said)) {
+      if (recording !== 'turn' && recording !== 'add' && recording !== 'select' && recording !== 'joint' && recording !== 'diagramRotate' && recording !== 'magicRectangle' && recording !== 'magicLasso' && !inImageEditor(recording) && !usable(said)) {
         setRefused(said);
         return;
       }
@@ -467,6 +476,7 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
       else if (recording === 'arrange') draftShortcut('arrange', said);
       else if (recording === 'diagramFind') draftShortcut('diagramFind', said);
       else if (recording === 'diagramMode') draftShortcut('diagramMode', said);
+      else if (recording === 'diagramRotate') draftShortcut('diagramRotate', said);
       else if (recording === 'magicRectangle') draftShortcut('magicRectangle', said);
       else if (recording === 'magicLasso') draftShortcut('magicLasso', said);
       else if (recording === 'magicAll') draftShortcut('magicAll', said);
@@ -1629,6 +1639,36 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
                 )}
               </div>
               {recording === 'diagramMode' && (
+                <p className={styles.settingNote}>
+                  {t('Press the combination you want. Escape leaves it as it is.')}
+                </p>
+              )}
+            </div>
+
+            <div className={styles.setting}>
+              <span className={styles.labelWithHint}>
+                <span className={styles.settingLabel} id="diagramRotate-shortcut">{t('Rotate Shape Shortcut')}</span>
+                <FieldHint label={t('Rotate Shape Shortcut')}>
+                  {t('Turns the selected shapes a quarter turn clockwise in the diagram editor. A bare letter is allowed here: this one is only heard on the canvas, never while typing.')}
+                </FieldHint>
+              </span>
+              <div className={styles.options}>
+                <button
+                  type="button"
+                  className={recording === 'diagramRotate' ? styles.optionCurrent : styles.option}
+                  onClick={() => {
+                    setRefused(null);
+                    setRecording((held) => (held === 'diagramRotate' ? null : 'diagramRotate'));
+                  }}
+                  data-testid="diagram-rotate-shortcut"
+                >
+                  {recording === 'diagramRotate' ? t('Press any keys…') : diagramRotate}
+                </button>
+                {diagramRotate !== DEFAULT_DIAGRAM_ROTATE_SHORTCUT && recording !== 'diagramRotate' && (
+                  <button type="button" className={styles.option} onClick={() => draftShortcut('diagramRotate', DEFAULT_DIAGRAM_ROTATE_SHORTCUT)}>{t('Reset')}</button>
+                )}
+              </div>
+              {recording === 'diagramRotate' && (
                 <p className={styles.settingNote}>
                   {t('Press the combination you want. Escape leaves it as it is.')}
                 </p>

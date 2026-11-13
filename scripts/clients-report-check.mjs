@@ -1,14 +1,15 @@
 /**
- * Admin > Reports > Clients: who uses the Chrome extension, Orknux for Windows
- * and for Linux, and Orknux Shell in a terminal.
+ * Admin > Clients: who uses the Chrome extension, Orknux for Windows and for
+ * Linux, and Orknux Shell in a terminal.
  *
- * What is asserted is what is drawn: the report is offered in the picker, a
- * tile per client counts the people using it, every client has its row under
- * its own name, a desktop client is named by its computer, and one connected
- * now says so. The rows are stood in for by a route on the clientUses query,
- * so the check writes nothing - a real client asking for work would make
- * alice's devices look connected to every agent on the server for a while. The
- * server's half is ClientUseReportTest.
+ * A page of its own now, lifted out of Admin > Reports. What is asserted is
+ * what is drawn: the page is titled Clients and is no longer a pick under
+ * Reports, a tile per client counts the people using it, every client has its
+ * row under its own name, a desktop client is named by its computer, and one
+ * connected now says so. The rows are stood in for by a route on the
+ * clientUses query, so the check writes nothing - a real client asking for
+ * work would make alice's devices look connected to every agent on the server
+ * for a while. The server's half is ClientUseReportTest.
  */
 import { BASE, open, record, finish } from './suite/harness.mjs';
 
@@ -32,12 +33,13 @@ await page.route('**/graphql', async (route) => {
   return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { clientUses: rows } }) });
 });
 
-await page.goto(`${BASE}/admin/reports?report=clients`, { waitUntil: 'domcontentloaded' });
+await page.goto(`${BASE}/admin/clients`, { waitUntil: 'domcontentloaded' });
 const table = page.getByTestId('clients-table');
 await table.waitFor({ timeout: 15_000 }).catch(() => undefined);
 
-const picked = ((await page.getByRole('combobox', { name: 'Report' }).textContent().catch(() => '')) ?? '').trim();
-record(picked === 'Clients', `Clients is a report of its own, named in the address (${JSON.stringify(picked)})`);
+const title = ((await page.getByRole('heading', { level: 1 }).first().textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ').trim();
+record(title.startsWith('Clients'), `Clients is a page of its own, titled for it (${JSON.stringify(title)})`);
+record((await page.getByRole('combobox', { name: 'Report' }).count()) === 0, 'and no longer a pick under Reports');
 
 const tiles = ((await page.getByTestId('clients-tiles').textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ');
 record(/Chrome extension\s*2/.test(tiles), `the Chrome tile counts two people (${tiles.slice(0, 160)})`);

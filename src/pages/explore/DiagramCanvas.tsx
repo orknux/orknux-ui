@@ -1,16 +1,17 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import type { PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import linkIcon from '../../assets/link.svg';
 import type { CSSProperties } from 'react';
-import { BaseEdge, EdgeLabelRenderer, Handle, NodeResizer, Position, useInternalNode, useStore } from '@xyflow/react';
+import { BaseEdge, EdgeLabelRenderer, Handle, NodeResizer, Position, ViewportPortal, useInternalNode, useReactFlow, useStore, useUpdateNodeInternals } from '@xyflow/react';
 import type { Edge, EdgeProps, InternalNode, Node, NodeProps } from '@xyflow/react';
 
 import type { DiagramLineStyle, DiagramNodeKind, DiagramRouting, DiagramSide } from '../../api/diagrams';
 import { t, tf } from '../../i18n';
 import { pictureUrl } from '../../api/diagrams';
 import { dashesOf } from './DiagramLineStyles';
-import { jumped, routeOf, routeThrough } from './DiagramRoutes';
-import type { Point, Route } from './DiagramRoutes';
+import { jumped, routeOf, routeThrough, turned } from './DiagramRoutes';
+import type { Point, Route, RouteBox } from './DiagramRoutes';
 import { ICON_LABEL, OutlinePieces, compartments, outlineOf, rimBorder, rimBorderFrom } from './DiagramShapes';
 import type { Outline } from './DiagramShapes';
 import styles from './DiagramEditorPage.module.css';
@@ -37,6 +38,8 @@ export type ShapeData = {
   image?: string;
   /** Its picture still going up: a spinner where it will be. */
   loading?: boolean;
+  /** How far it is turned about its middle, in degrees clockwise; left out, upright. */
+  rotation?: number;
 };
 
 /** What a box's link is, said on its card: the diagram's own name and what it is for, or the address. */
@@ -112,6 +115,132 @@ export const LabelEditingContext = createContext<LabelEditing>({ target: null, c
 
 /** Whether the diagram is being viewed rather than edited: no resizing, no handles to draw a line from. */
 export const ViewingContext = createContext(false);
+
+/**
+ * A turned shape being resized by one of its corners. React Flow's own resizer
+ * moves the sides of an upright box, which is not what a corner of a turned one
+ * is, so a turned shape draws its own and tells the editor the box it comes to:
+ * its upright box's left, top, width and height, in the canvas's coordinates.
+ */
+export interface TurnedResize {
+  start: () => void;
+  to: (id: string, box: { x: number; y: number; w: number; h: number }) => void;
+  end: () => void;
+}
+
+export const TurnedResizeContext = createContext<TurnedResize>({ start: () => {}, to: () => {}, end: () => {} });
+
+/** Which end of a line: the one it leaves from, or the one it arrives at. */
+export type LinkEnd = 'from' | 'to';
+
+/**
+ * A line's ends, taken hold of. Each end of a line that is selected, or that
+ * the pointer is on, draws a grip, and a grip dragged is that end moved: onto a
+ * side of a box it is pinned there, onto a box's middle it floats, onto another
+ * box the line is re-pointed. The canvas draws the grips and follows the
+ * pointer; the editor, which holds the drawing, says where a drop would land
+ * and makes it.
+ *
+ * React Flow's own reconnect anchors did this before and could not be seen:
+ * they have no drawing of their own, they sit under the boxes - so the handle a
+ * new line is drawn from was what the pointer met at a line's end - and the one
+ * for a floating end is placed at the box's first handle rather than where the
+ * line is drawn, which is why a line's start could not be found at all.
+ */
+export interface LinkEnds {
+  /** The line the pointer is on, which shows its grips before it is selected. */
+  hovered: string | null;
+  /** Where this end, let go of at (x, y), would attach - or null where it would be left as it was. */
+  aim: (id: string, end: LinkEnd, x: number, y: number) => Point | null;
+  /** This end let go of at (x, y). */
+  drop: (id: string, end: LinkEnd, x: number, y: number) => void;
+}
+
+export const LinkEndsContext = createContext<LinkEnds>({ hovered: null, aim: () => null, drop: () => {} });
+
+/** How far, in the screen's pixels, a grip is moved before it counts as a drag and not a click. */
+const GRIP_SLACK = 4;
+
+/** The smallest a shape is resized to, on either side: the editor's own least. */
+const LEAST = 24;
+
+const CORNERS = [
+  [-1, -1],
+  [1, -1],
+  [1, 1],
+  [-1, 1],
+] as const;
+
+/** The pointer a corner of a turned shape shows: the arrow nearest the way that corner now points. */
+function cornerCursor(sx: number, sy: number, turn: number): string {
+  const [dx, dy] = turned(sx, sy, turn);
+  const angle = ((Math.atan2(dy, dx) * 180) / Math.PI + 360) % 180;
+  if (angle < 22.5 || angle >= 157.5) return 'ew-resize';
+  if (angle < 67.5) return 'nwse-resize';
+  if (angle < 112.5) return 'ns-resize';
+  return 'nesw-resize';
+}
+
+/**
+ * The four corners of a turned shape, each dragged with the one opposite it
+ * held where it is - on the canvas, not in the box's own numbers, which is the
+ * difference from an upright box: the middle moves as the shape grows, so its
+ * left and top change with every corner, not only the two on that side.
+ */
+function TurnedResizer({ id, x, y, width, height, turn, keepRatio }: { id: string; x: number; y: number; width: number; height: number; turn: number; keepRatio: boolean }) {
+  const resize = useContext(TurnedResizeContext);
+  const flow = useReactFlow();
+  const held = useRef<{ fx: number; fy: number; sx: number; sy: number; ratio: number } | null>(null);
+  const down = (event: ReactPointerEvent<HTMLSpanElement>, sx: number, sy: number) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    // The corner opposite, where it is drawn: the middle, and half the box turned.
+    const [ox, oy] = turned((-sx * width) / 2, (-sy * height) / 2, turn);
+    held.current = { fx: x + width / 2 + ox, fy: y + height / 2 + oy, sx, sy, ratio: height > 0 ? width / height : 1 };
+    resize.start();
+  };
+  const move = (event: ReactPointerEvent<HTMLSpanElement>) => {
+    const now = held.current;
+    if (now === null) return;
+    const at = flow.screenToFlowPosition({ x: event.clientX, y: event.clientY });
+    // The pointer from the held corner, in the shape's own frame.
+    const [vx, vy] = turned(at.x - now.fx, at.y - now.fy, -turn);
+    let w = Math.max(LEAST, Math.round(now.sx * vx));
+    let h = Math.max(LEAST, Math.round(now.sy * vy));
+    if (keepRatio) {
+      w = Math.max(w, Math.round(h * now.ratio));
+      h = Math.max(LEAST, Math.round(w / now.ratio));
+    }
+    const [mx, my] = turned((now.sx * w) / 2, (now.sy * h) / 2, turn);
+    resize.to(id, { x: Math.round(now.fx + mx - w / 2), y: Math.round(now.fy + my - h / 2), w, h });
+  };
+  const up = (event: ReactPointerEvent<HTMLSpanElement>) => {
+    if (held.current === null) return;
+    held.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    resize.end();
+  };
+  return (
+    <>
+      {CORNERS.map(([sx, sy]) => (
+        <span
+          key={`${sx}${sy}`}
+          // nodrag and nopan: the drag is the corner's, not the box's nor the canvas's.
+          className={`${styles.turnedHandle} nodrag nopan`}
+          style={{ left: sx < 0 ? 0 : '100%', top: sy < 0 ? 0 : '100%', cursor: cornerCursor(sx, sy, turn) }}
+          onPointerDown={(event) => down(event, sx, sy)}
+          onPointerMove={move}
+          onPointerUp={up}
+          onPointerCancel={up}
+          data-testid="diagram-node-turned-resize"
+          data-corner={`${sy < 0 ? 'top' : 'bottom'}-${sx < 0 ? 'left' : 'right'}`}
+        />
+      ))}
+    </>
+  );
+}
 
 /**
  * A label typed over where it is drawn: a text box over the words, in their
@@ -339,7 +468,7 @@ function dark(fill: string): boolean {
  * loosely - because which side a line leaves from is drawn, not stored: a line
  * runs between the two boxes' edges wherever they are (see [FloatingLink]).
  */
-export function ShapeNodeView({ id, data, selected, width, height }: NodeProps<ShapeNode>) {
+export function ShapeNodeView({ id, data, selected, width, height, positionAbsoluteX, positionAbsoluteY }: NodeProps<ShapeNode>) {
   const editing = useContext(LabelEditingContext);
   const viewing = useContext(ViewingContext);
   const typing = editing.target?.kind === 'node' && editing.target.id === id;
@@ -347,10 +476,22 @@ export function ShapeNodeView({ id, data, selected, width, height }: NodeProps<S
   const style = filled ? { background: data.color, color: dark(data.color as string) ? 'var(--diagram-ink-on-dark)' : 'var(--diagram-ink-on-light)' } : undefined;
   // Fitted to the node's own size, so a wide one keeps small features at its sides.
   const outline = outlineOf(data.kind, width ?? 100, height ?? 100);
-  return (
+  const turn = data.rotation ?? 0;
+  /*
+   * React Flow reads where a node's handles are when the node is measured, and
+   * a turn changes where they are without changing its size - so it is told,
+   * or a line dragged out of a turned box would start where the handle was.
+   */
+  const remeasure = useUpdateNodeInternals();
+  const measuredAt = useRef(turn);
+  useEffect(() => {
+    // Not on mount: the first measurement is made of the node as it is drawn, turned or not.
+    if (measuredAt.current === turn) return;
+    measuredAt.current = turn;
+    remeasure(id);
+  }, [remeasure, id, turn]);
+  const drawn = (
     <>
-      {/* A picture keeps its proportions while it is resized, as one does in any editor. */}
-      <NodeResizer isVisible={selected && !viewing} minWidth={24} minHeight={24} keepAspectRatio={data.kind === 'image'} lineClassName={styles.resizeLine} handleClassName={styles.resizeHandle} />
       {data.kind === 'link' ? (
         <LinkCardNode link={data.link} label={data.label} />
       ) : data.kind === 'image' ? (
@@ -423,6 +564,29 @@ export function ShapeNodeView({ id, data, selected, width, height }: NodeProps<S
       ))}
     </>
   );
+  if (turn === 0) {
+    return (
+      <>
+        {/* A picture keeps its proportions while it is resized, as one does in any editor. */}
+        <NodeResizer isVisible={selected && !viewing} minWidth={LEAST} minHeight={LEAST} keepAspectRatio={data.kind === 'image'} lineClassName={styles.resizeLine} handleClassName={styles.resizeHandle} />
+        {drawn}
+      </>
+    );
+  }
+  /*
+   * Turned: everything the node draws - its shape, its marks, the four handles
+   * a line is dragged out of - turns together about its middle, inside the
+   * upright box React Flow still places and measures. The corners it is
+   * resized by turn with it.
+   */
+  return (
+    <div className={styles.turned} style={{ transform: `rotate(${turn}deg)` }} data-testid="diagram-node-turned" data-rotation={turn}>
+      {drawn}
+      {selected && !viewing && (
+        <TurnedResizer id={id} x={positionAbsoluteX} y={positionAbsoluteY} width={width ?? 100} height={height ?? 100} turn={turn} keepRatio={data.kind === 'image'} />
+      )}
+    </div>
+  );
 }
 
 /**
@@ -480,10 +644,11 @@ function OutlinedShape({ kind, outline, label, typing, fill, ink }: { kind: Diag
 }
 
 /** The centre of a node, and its half sizes, in the canvas's own coordinates. */
-function boxOf(node: InternalNode): { cx: number; cy: number; hw: number; hh: number } {
+function boxOf(node: InternalNode): RouteBox {
   const w = node.measured.width ?? node.width ?? 0;
   const h = node.measured.height ?? node.height ?? 0;
-  return { cx: node.internals.positionAbsolute.x + w / 2, cy: node.internals.positionAbsolute.y + h / 2, hw: w / 2, hh: h / 2 };
+  const turn = (node.data as ShapeData | undefined)?.rotation;
+  return { cx: node.internals.positionAbsolute.x + w / 2, cy: node.internals.positionAbsolute.y + h / 2, hw: w / 2, hh: h / 2, ...(turn ? { turn } : {}) };
 }
 
 /** Where a ray from (ox, oy) inside this box towards (tx, ty) leaves the box. */
@@ -543,18 +708,55 @@ function routeBetween(
   const b = boxOf(to);
   const fromKind = (from.data as ShapeData | undefined)?.kind;
   const toKind = (to.data as ShapeData | undefined)?.kind;
-  const edge = (kind: DiagramNodeKind | undefined, box: typeof a, tx: number, ty: number) => rimBorder(kind, box, tx, ty) ?? border(box, tx, ty);
+  /*
+   * A turned shape is met in its own frame - the server's `DiagramOutline.borderFrom`:
+   * the way to the target turned back, the upright outline met from its
+   * middle, and that point turned forward again.
+   */
+  const edge = (kind: DiagramNodeKind | undefined, box: typeof a, tx: number, ty: number) => {
+    if (!box.turn) return rimBorder(kind, box, tx, ty) ?? border(box, tx, ty);
+    const [ux, uy] = turned(tx - box.cx, ty - box.cy, -box.turn);
+    if (ux === 0 && uy === 0) return { x: box.cx, y: box.cy };
+    const met = rimBorder(kind, box, box.cx + ux, box.cy + uy) ?? border(box, box.cx + ux, box.cy + uy);
+    const [rx, ry] = turned(met.x - box.cx, met.y - box.cy, box.turn);
+    return { x: box.cx + rx, y: box.cy + ry };
+  };
   const leave = (box: typeof a, tx: number, ty: number) => {
-    const [ax, ay] = sideAim(box, box === a ? fromSide : toSide, tx, ty);
+    const side = box === a ? fromSide : toSide;
+    let [ax, ay] = sideAim(box, side, tx, ty);
+    // A pinned side turns with its box: the top of one turned a quarter is on its right.
+    if (box.turn && side !== undefined) {
+      const [sx, sy] = turned(ax - box.cx, ay - box.cy, box.turn);
+      ax = box.cx + sx;
+      ay = box.cy + sy;
+    }
     return edge(box === a ? fromKind : toKind, box, ax, ay);
   };
   if (routing === 'right-angles' && points !== undefined && points.length > 0) {
     // Out of a side from a point inside it: the outline of the shape, or its box where the shape is its box.
     const leaveFrom = (box: typeof a, ox: number, oy: number, tx: number, ty: number) =>
-      rimBorderFrom(box === a ? fromKind : toKind, box, ox, oy, tx, ty) ?? rectFrom(box, ox, oy, tx, ty);
+      // A turned shape is left from its middle, the same way.
+      box.turn
+        ? edge(box === a ? fromKind : toKind, box, box.cx + (tx - ox), box.cy + (ty - oy))
+        : (rimBorderFrom(box === a ? fromKind : toKind, box, ox, oy, tx, ty) ?? rectFrom(box, ox, oy, tx, ty));
     return routeThrough(a, b, points, leaveFrom, labelAt);
   }
   return routeOf(a, b, routing, leave);
+}
+
+/**
+ * Where a drawn line starts and where it ends. A line of straight runs has its
+ * corners; a curve has only its path, which begins `M x,y` and ends on its last
+ * pair of numbers.
+ */
+function tipsOf(route: Route): [Point, Point] | null {
+  if (route.points !== undefined && route.points.length >= 2) return [route.points[0], route.points[route.points.length - 1]];
+  const numbers = (route.d.match(/-?\d+(?:\.\d+)?(?:e-?\d+)?/gi) ?? []).map(Number);
+  if (numbers.length < 4 || numbers.some((one) => !Number.isFinite(one))) return null;
+  return [
+    { x: numbers[0], y: numbers[1] },
+    { x: numbers[numbers.length - 2], y: numbers[numbers.length - 1] },
+  ];
 }
 
 export function FloatingLink({ id, source, target, data, selected, markerEnd, markerStart }: EdgeProps<LinkEdge>) {
@@ -570,8 +772,21 @@ export function FloatingLink({ id, source, target, data, selected, markerEnd, ma
   const edges = useStore((state) => state.edges);
   const lookup = useStore((state) => state.nodeLookup);
   useStore((state) => state.nodes);
+  const viewing = useContext(ViewingContext);
+  const ends = useContext(LinkEndsContext);
+  const flow = useReactFlow();
+  const zoom = useStore((state) => state.transform[2]);
+  // The end being dragged and where the pointer has it, and whether the pointer is on a grip.
+  const [held, setHeld] = useState<{ end: LinkEnd; x: number; y: number; moved: boolean } | null>(null);
+  const [onGrip, setOnGrip] = useState(false);
+  const pressed = useRef<{ x: number; y: number } | null>(null);
   if (from === undefined || to === undefined) return null;
   const route = routeBetween(from, to, data?.routing ?? 'straight', data?.points, data?.labelAt, data?.fromSide, data?.toSide);
+  const tips = tipsOf(route);
+  const gripped = !viewing && tips !== null && (selected === true || ends.hovered === id || onGrip || held !== null);
+  const landing = held !== null && held.moved ? ends.aim(id, held.end, held.x, held.y) : null;
+  // A lit line that has no grips - its box is what is selected, or the diagram is only being viewed - still says where it is attached.
+  const marked = !gripped && tips !== null && (selected === true || data?.touched === true);
   const under: Point[][] = [];
   if (route.points !== undefined) {
     for (const other of edges) {
@@ -631,6 +846,104 @@ export function FloatingLink({ id, source, target, data, selected, markerEnd, ma
               </path>
             ))}
         </>
+      )}
+      {/* The end being dragged, as it would be drawn let go of here: from the end that stays to where it lands, or to the pointer. */}
+      {held !== null && held.moved && tips !== null && (
+        <path
+          className={styles.endAim}
+          d={`M ${tips[held.end === 'from' ? 1 : 0].x},${tips[held.end === 'from' ? 1 : 0].y} L ${(landing ?? held).x},${(landing ?? held).y}`}
+          data-testid="diagram-end-aim"
+        />
+      )}
+      {/*
+       * A grip on each end. In the viewport's portal, which is drawn over the
+       * boxes: a line ends on its box's outline, and anything drawn with the
+       * line is under the box and under the handle a new line starts from.
+       */}
+      {gripped && tips !== null && (
+        <ViewportPortal>
+          {landing !== null && (
+            <div
+              className={styles.endLanding}
+              style={{ transform: `translate(${landing.x}px, ${landing.y}px) translate(-50%, -50%) scale(${1 / Math.min(1, zoom)})` }}
+              data-testid="diagram-end-landing"
+            />
+          )}
+          {(['from', 'to'] as const).map((end) => {
+            const home = tips[end === 'from' ? 0 : 1];
+            const mine = held !== null && held.end === end ? held : null;
+            const at = mine !== null && mine.moved ? mine : home;
+            return (
+              <div
+                key={end}
+                // Kept at a size a pointer can hit however far out the canvas is zoomed.
+                style={{ transform: `translate(${at.x}px, ${at.y}px) translate(-50%, -50%) scale(${1 / Math.min(1, zoom)})` }}
+                className={`${styles.endGrip} ${mine !== null ? styles.endGripHeld : ''} nodrag nopan`}
+                title={t('Drag onto a side of a shape to pin this end there, or onto another shape')}
+                data-testid={`diagram-end-${end}`}
+                data-edge={id}
+                onPointerEnter={() => setOnGrip(true)}
+                onPointerLeave={() => setOnGrip(false)}
+                onPointerDown={(event: ReactPointerEvent<HTMLDivElement>) => {
+                  if (event.button !== 0) return;
+                  event.stopPropagation();
+                  event.preventDefault();
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                  pressed.current = { x: event.clientX, y: event.clientY };
+                  setHeld({ end, x: home.x, y: home.y, moved: false });
+                }}
+                onPointerMove={(event: ReactPointerEvent<HTMLDivElement>) => {
+                  if (mine === null || pressed.current === null) return;
+                  const far = Math.hypot(event.clientX - pressed.current.x, event.clientY - pressed.current.y) > GRIP_SLACK;
+                  if (!mine.moved && !far) return;
+                  // Where the pointer is, not the grid point nearest it: a side is a matter of which part of a box it is over.
+                  const where = flow.screenToFlowPosition({ x: event.clientX, y: event.clientY }, { snapToGrid: false });
+                  setHeld({ end, x: where.x, y: where.y, moved: true });
+                }}
+                onPointerUp={(event: ReactPointerEvent<HTMLDivElement>) => {
+                  if (mine === null) return;
+                  event.stopPropagation();
+                  if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+                  pressed.current = null;
+                  setHeld(null);
+                  if (!mine.moved) return;
+                  const where = flow.screenToFlowPosition({ x: event.clientX, y: event.clientY }, { snapToGrid: false });
+                  ends.drop(id, end, where.x, where.y);
+                }}
+                onPointerCancel={() => {
+                  pressed.current = null;
+                  setHeld(null);
+                }}
+                // A click on a grip is not a click on the canvas under it.
+                onClick={(event) => event.stopPropagation()}
+              />
+            );
+          })}
+        </ViewportPortal>
+      )}
+      {/*
+       * Where a lit line is attached, on a line that has no grips. A selected
+       * box is outlined in the colour its lines are lit in, so a line's end
+       * was lost in that outline exactly where it met it. A mark and not a
+       * grip: a selected box shows the handles a new line is drawn from, an
+       * end very often sits on one, and a grip there would be what the pointer
+       * took hold of instead. Pointing at the line is what turns these into grips.
+       */}
+      {marked && tips !== null && (
+        <ViewportPortal>
+          {(['from', 'to'] as const).map((end) => {
+            const at = tips[end === 'from' ? 0 : 1];
+            return (
+              <div
+                key={end}
+                className={styles.endMark}
+                style={{ transform: `translate(${at.x}px, ${at.y}px) translate(-50%, -50%) scale(${1 / Math.min(1, zoom)})` }}
+                data-testid={`diagram-end-mark-${end}`}
+                data-edge={id}
+              />
+            );
+          })}
+        </ViewportPortal>
       )}
       {typing && (
         <EdgeLabelRenderer>

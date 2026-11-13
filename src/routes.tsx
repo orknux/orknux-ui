@@ -8,6 +8,7 @@ import { AdminDoctorPage } from './pages/admin/AdminDoctorPage';
 import { AdminIntegrationsPage } from './pages/admin/AdminIntegrationsPage';
 import { AdminLibrariesPage } from './pages/admin/AdminLibrariesPage';
 import { AdminReportsPage } from './pages/admin/AdminReportsPage';
+import { AdminClientsPage } from './pages/admin/AdminClientsPage';
 import { AdminMonitoringPage } from './pages/admin/AdminMonitoringPage';
 import { AdminCertificatePage } from './pages/admin/AdminCertificatePage';
 import { AdminNetworkingPage } from './pages/admin/AdminNetworkingPage';
@@ -233,6 +234,7 @@ export const PAGE_ELEMENTS: Record<PagePath, PageElement> = {
   '/admin/users/:userId': (session, onSignOut) => <AdminUserPage session={session} onSignOut={onSignOut} />,
   '/admin/monitoring': (session, onSignOut) => <AdminMonitoringPage session={session} onSignOut={onSignOut} />,
   '/admin/reports': (session, onSignOut) => <AdminReportsPage session={session} onSignOut={onSignOut} />,
+  '/admin/clients': (session, onSignOut) => <AdminClientsPage session={session} onSignOut={onSignOut} />,
   '/admin/doctor': (session, onSignOut) => <AdminDoctorPage session={session} onSignOut={onSignOut} />,
   '/admin/updates': (session, onSignOut) => <AdminUpdatesPage session={session} onSignOut={onSignOut} />,
   '/admin/settings': (session, onSignOut) => <AdminSettingsPage session={session} onSignOut={onSignOut} />,

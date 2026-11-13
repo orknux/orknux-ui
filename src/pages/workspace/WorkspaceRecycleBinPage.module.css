@@ -110,7 +110,8 @@
   display: flex;
   flex-shrink: 0;
   align-items: center;
-  width: 100px;
+  /* Wide enough for the longest kind on one line - "Katalog umiejętności". */
+  width: 170px;
 }
 
 /* When it was deleted, and by whom, takes what is left. */
@@ -146,6 +147,8 @@
   font-weight: 500;
   font-size: var(--text-xs);
   color: var(--color-text-secondary);
+  /* A kind is a name, and a name broken over two lines made its row taller than the rest. */
+  white-space: nowrap;
 }
 
 .muted {

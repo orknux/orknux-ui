@@ -186,7 +186,7 @@ export async function setWorkflowEnabled(id: string, enabled: boolean): Promise<
   return data.setWorkflowEnabled;
 }
 
-/** Unassigns the workflow from the workspace; the definition is kept. */
+/** Takes the workflow off the workspace and into its recycle bin, where it is kept whole until it is restored or purged. */
 export async function removeWorkflow(id: string): Promise<boolean> {
   const data = await graphql<{ removeWorkflow: boolean }>(REMOVE_WORKFLOW_MUTATION, { id });
   return data.removeWorkflow;

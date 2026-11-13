@@ -2,6 +2,7 @@ import commandIcon from '../assets/command.svg';
 import containerIcon from '../assets/container.svg';
 import chartColumnIcon from '../assets/chart-column.svg';
 import chartLineIcon from '../assets/chart-line.svg';
+import monitorIcon from '../assets/monitor.svg';
 import cloudDownloadIcon from '../assets/cloud-download.svg';
 import fileTextIcon from '../assets/file-text.svg';
 import globeIcon from '../assets/globe.svg';
@@ -32,6 +33,7 @@ export type AdminSection =
   | 'boxes'
   | 'monitoring'
   | 'reports'
+  | 'clients'
   | 'doctor'
   | 'updates'
   | 'settings';
@@ -112,6 +114,13 @@ export function AdminSidebar({ active }: { active: AdminSection }) {
         icon={chartColumnIcon}
         active={active === 'reports'}
         to="/admin/reports"
+      />
+      {/* Beside Reports, and separate from it: one is what was used, the other who connects - which client each person runs. */}
+      <SidebarNavItem
+        label={t('Clients')}
+        icon={monitorIcon}
+        active={active === 'clients'}
+        to="/admin/clients"
       />
       <SidebarNavItem
         label={t('Monitoring')}
