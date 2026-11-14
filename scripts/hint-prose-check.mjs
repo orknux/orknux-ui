@@ -677,6 +677,18 @@ const IN_THE_OPEN = [
     why: 'an empty report, in place of an empty table',
   },
   {
+    file: 'src/pages/admin/AdminClientsPage.tsx',
+    says: 'No client has connected in this period.',
+    because: 'status',
+    why: 'the Clients page empty, in place of an empty table, as the reports say',
+  },
+  {
+    file: 'src/pages/workspace/WorkspaceRecycleBinPage.tsx',
+    says: 'The recycle bin is empty.',
+    because: 'status',
+    why: 'an empty bin, in place of an empty list',
+  },
+  {
     file: 'src/pages/admin/RatingsReport.tsx',
     says: 'No reviews in this period.',
     because: 'status',

@@ -209,7 +209,7 @@ export function WorkspaceRecycleBinPage({ session, onSignOut }: WorkspaceRecycle
             pageSize={pageSize}
             totalItems={total}
             onPageChange={setPage}
-            unit="items"
+            unit="entries"
             pageSizes={PAGE_SIZES}
             onPageSizeChange={(chosen) => {
               setPageSize(chosen);

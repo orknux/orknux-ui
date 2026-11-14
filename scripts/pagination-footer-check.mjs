@@ -210,6 +210,14 @@ const LISTS = [
     column: 'Action',
     why: 'a row of an audit log is an entry, and "audit logs" would be the log itself',
   },
+  {
+    file: 'WorkspaceRecycleBinPage.tsx',
+    path: '/recycle-bin',
+    title: 'Recycle Bin',
+    unit: 'entries',
+    column: 'Name',
+    why: 'the bin holds every kind a workspace deletes, so a row has no noun of its own but the bin’s: an entry',
+  },
   /*
    * The admin lists, which drew the older, larger pager until it was folded
    * into this one. Source only: they live under /admin rather than a
