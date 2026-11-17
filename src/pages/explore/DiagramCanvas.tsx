@@ -1,20 +1,21 @@
-import { createContext, useContext, useEffect, useRef, useState } from 'react';
-import type { PointerEvent as ReactPointerEvent } from 'react';
+import { createContext, memo, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import linkIcon from '../../assets/link.svg';
 import type { CSSProperties } from 'react';
-import { BaseEdge, EdgeLabelRenderer, Handle, NodeResizer, Position, ViewportPortal, useInternalNode, useReactFlow, useStore, useUpdateNodeInternals } from '@xyflow/react';
-import type { Edge, EdgeProps, InternalNode, Node, NodeProps } from '@xyflow/react';
+import { BaseEdge, Handle, NodeResizer, Position, useReactFlow, useStore, useUpdateNodeInternals } from '@xyflow/react';
+import type { Edge, EdgeProps, InternalNode, Node, NodeProps, ReactFlowState } from '@xyflow/react';
 
-import type { DiagramLineStyle, DiagramNodeKind, DiagramRouting, DiagramSide } from '../../api/diagrams';
+import type { DiagramLineStyle, DiagramNodeKind, DiagramRouting, DiagramSide, DiagramTextAlign, DiagramTextValign } from '../../api/diagrams';
 import { t, tf } from '../../i18n';
 import { pictureUrl } from '../../api/diagrams';
 import { dashesOf } from './DiagramLineStyles';
-import { jumped, routeOf, routeThrough, turned } from './DiagramRoutes';
+import { jumped, pathOf, routeBent, routeOf, routeThrough, straightened, turned } from './DiagramRoutes';
 import type { Point, Route, RouteBox } from './DiagramRoutes';
 import { ICON_LABEL, OutlinePieces, compartments, outlineOf, rimBorder, rimBorderFrom } from './DiagramShapes';
 import type { Outline } from './DiagramShapes';
 import styles from './DiagramEditorPage.module.css';
+import type { Guide } from './DiagramGuides';
 
 /** What a node on the canvas carries: what it is, and how it is drawn. */
 /** How long one arrowhead takes from a lit line's start to its end, and where along it the three start. */
@@ -40,7 +41,37 @@ export type ShapeData = {
   loading?: boolean;
   /** How far it is turned about its middle, in degrees clockwise; left out, upright. */
   rotation?: number;
+  /** Where its label sits inside it, across and down; left out, where the shape usually has it. */
+  align?: DiagramTextAlign;
+  valign?: DiagramTextValign;
+  /** How big its words are, in pixels; left out, the size its kind of shape usually writes in. */
+  textSize?: number;
 };
+
+const ACROSS = { left: 'flex-start', center: 'center', right: 'flex-end' } as const;
+const DOWN = { top: 'flex-start', middle: 'center', bottom: 'flex-end' } as const;
+
+/**
+ * Where a label was asked to sit, as the two styles that put it there: the box
+ * around the words, which is a row, and the words themselves. Only what was
+ * chosen is said, so a shape nobody aligned keeps the place its stylesheet
+ * gives it - the middle of a box, the top left of a group.
+ */
+function seatOf(align: DiagramTextAlign | undefined, valign: DiagramTextValign | undefined, textSize: number | undefined): Seat {
+  // The size its words were given, and the line that goes with it - the export's own sum, so a label wraps to the same height there.
+  const size: CSSProperties = textSize === undefined ? {} : { fontSize: textSize, lineHeight: `${Math.max(textSize + 2, Math.round((textSize * 18) / 14))}px` };
+  return {
+    box: {
+      ...(align === undefined ? {} : { justifyContent: ACROSS[align] }),
+      ...(valign === undefined ? {} : { alignItems: DOWN[valign] }),
+    },
+    words: { ...(align === undefined ? {} : { textAlign: align }), ...size },
+    size,
+  };
+}
+
+/** Where a label sits and how big it is written: for the box round the words, for words that can be aligned, and for words that cannot. */
+type Seat = { box: CSSProperties; words: CSSProperties; size: CSSProperties };
 
 /** What a box's link is, said on its card: the diagram's own name and what it is for, or the address. */
 export interface LinkCard {
@@ -81,6 +112,8 @@ export type LinkData = {
   width?: number;
   /** Whether it runs to or from a selected box, and is lit with it. */
   touched?: boolean;
+  /** Which way its arrowheads point - to its target, or back to its source; left out where it points neither way, or both. */
+  heading?: 'forward' | 'backward';
 };
 
 export type LinkEdge = Edge<LinkData, 'link'>;
@@ -154,12 +187,23 @@ export interface LinkEnds {
   aim: (id: string, end: LinkEnd, x: number, y: number) => Point | null;
   /** This end let go of at (x, y). */
   drop: (id: string, end: LinkEnd, x: number, y: number) => void;
+  /** A right-angle line given corners of its own, one of its runs having been dragged aside; none, and it finds its own way again. */
+  bend: (id: string, corners: [number, number][]) => void;
 }
 
-export const LinkEndsContext = createContext<LinkEnds>({ hovered: null, aim: () => null, drop: () => {} });
+export const LinkEndsContext = createContext<LinkEnds>({ hovered: null, aim: () => null, drop: () => {}, bend: () => {} });
+
+/** The grid a shape settles on, and a run of a line dragged aside. */
+export const GRID = 8;
+
+/** The shortest run of a right-angle line that is given a grip to drag it by. */
+const RUN_LEAST = 16;
 
 /** How far, in the screen's pixels, a grip is moved before it counts as a drag and not a click. */
 const GRIP_SLACK = 4;
+
+/** How wide the strip along a part between two bends is, to take it hold of; on screen, whatever the zoom. */
+const SPAN_REACH = 12;
 
 /** The smallest a shape is resized to, on either side: the editor's own least. */
 const LEAST = 24;
@@ -353,7 +397,7 @@ function NodeLink({ link, beside = false }: { link: string; beside?: boolean }) 
  * card does the same. Its label is only the name it was made with, shown
  * while what it leads to is not known yet, or for a web address.
  */
-function LinkCardNode({ link, label }: { link?: string; label: string }) {
+function LinkCardNode({ link, label, size }: { link?: string; label: string; size?: CSSProperties }) {
   const links = useContext(LinkOpenContext);
   // Resting on the card shows where it goes, as a box's link button does: what it is, where it is, its first words.
   const root = useRef<HTMLDivElement>(null);
@@ -388,7 +432,7 @@ function LinkCardNode({ link, label }: { link?: string; label: string }) {
     >
       <img className={styles.linkNodeIcon} src={linkIcon} alt="" width={18} height={18} />
       <span className={styles.linkNodeWords}>
-        <span className={styles.linkNodeName} data-testid="diagram-node-label-text">
+        <span className={styles.linkNodeName} style={size} data-testid="diagram-node-label-text">
           {name}
         </span>
         <span className={styles.linkNodeWhere}>{where}</span>
@@ -428,13 +472,14 @@ function LinkCardNode({ link, label }: { link?: string; label: string }) {
  * as a link in a document does, with no button beside it. A press that moves
  * is a drag of the text, and opens nothing.
  */
-function LinkedWords({ link, label }: { link?: string; label: string }) {
+function LinkedWords({ link, label, style }: { link?: string; label: string; style?: CSSProperties }) {
   const links = useContext(LinkOpenContext);
   const down = useRef<{ x: number; y: number } | null>(null);
   const linked = link !== undefined && link !== '';
   return (
     <span
       className={`${styles.textNodeWords} ${linked ? styles.textNodeLinked : ''}`}
+      style={style}
       title={linked ? links.describe(link).name : undefined}
       onPointerDown={(event) => {
         down.current = { x: event.clientX, y: event.clientY };
@@ -477,6 +522,7 @@ export function ShapeNodeView({ id, data, selected, width, height, positionAbsol
   // Fitted to the node's own size, so a wide one keeps small features at its sides.
   const outline = outlineOf(data.kind, width ?? 100, height ?? 100);
   const turn = data.rotation ?? 0;
+  const seat = seatOf(data.align, data.valign, data.textSize);
   /*
    * React Flow reads where a node's handles are when the node is measured, and
    * a turn changes where they are without changing its size - so it is told,
@@ -493,7 +539,7 @@ export function ShapeNodeView({ id, data, selected, width, height, positionAbsol
   const drawn = (
     <>
       {data.kind === 'link' ? (
-        <LinkCardNode link={data.link} label={data.label} />
+        <LinkCardNode link={data.link} label={data.label} size={seat.size} />
       ) : data.kind === 'image' ? (
         <div className={styles.picture} data-testid="diagram-node-shape" data-kind="image">
           {data.loading === true ? (
@@ -506,45 +552,45 @@ export function ShapeNodeView({ id, data, selected, width, height, positionAbsol
             <span className={styles.pictureNone}>{t('No picture')}</span>
           )}
           {typing ? (
-            <InPlaceLabel initial={data.label} className={`${styles.pictureCaption} ${styles.labelEditor}`} multiline={false} />
+            <InPlaceLabel initial={data.label} className={`${styles.pictureCaption} ${styles.labelEditor}`} multiline={false} style={seat.size} />
           ) : (
             data.label !== '' && (
-              <span className={styles.pictureCaption} data-testid="diagram-node-label-text">
+              <span className={styles.pictureCaption} style={seat.size} data-testid="diagram-node-label-text">
                 {data.label}
               </span>
             )
           )}
         </div>
       ) : outline !== undefined ? (
-        <OutlinedShape kind={data.kind} outline={outline} label={data.label} typing={typing} fill={data.color} ink={filled ? style?.color : undefined} />
+        <OutlinedShape kind={data.kind} outline={outline} label={data.label} typing={typing} fill={data.color} ink={filled ? style?.color : undefined} seat={seat} />
       ) : data.kind === 'text' ? (
         // Words alone: no box, no outline; a fill, if one was picked, sits behind them.
-        <div className={styles.textNode} style={filled ? style : undefined} data-testid="diagram-node-shape" data-kind="text">
+        <div className={styles.textNode} style={{ ...(filled ? style : {}), ...seat.box }} data-testid="diagram-node-shape" data-kind="text">
           {typing ? (
-            <InPlaceLabel initial={data.label} className={`${styles.textNodeWords} ${styles.labelEditor}`} multiline />
+            <InPlaceLabel initial={data.label} className={`${styles.textNodeWords} ${styles.labelEditor}`} multiline style={seat.words} />
           ) : (
-            <LinkedWords link={data.link} label={data.label} />
+            <LinkedWords link={data.link} label={data.label} style={seat.words} />
           )}
         </div>
       ) : data.kind === 'diamond' ? (
-        <div className={styles.shapeDiamondBox} data-testid="diagram-node-shape" data-kind={data.kind}>
+        <div className={styles.shapeDiamondBox} style={seat.box} data-testid="diagram-node-shape" data-kind={data.kind}>
           <svg className={styles.diamond} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
             <polygon points="50,1 99,50 50,99 1,50" style={filled ? { fill: data.color } : undefined} />
           </svg>
           {typing ? (
-            <InPlaceLabel initial={data.label} className={`${styles.shapeLabel} ${styles.labelEditor}`} multiline style={filled ? { color: style?.color } : undefined} />
+            <InPlaceLabel initial={data.label} className={`${styles.shapeLabel} ${styles.labelEditor}`} multiline style={{ ...(filled ? { color: style?.color } : {}), ...seat.words }} />
           ) : (
-            <span className={styles.shapeLabel} style={filled ? { color: style?.color } : undefined} data-testid="diagram-node-label-text">
+            <span className={styles.shapeLabel} style={{ ...(filled ? { color: style?.color } : {}), ...seat.words }} data-testid="diagram-node-label-text">
               {data.label}
             </span>
           )}
         </div>
       ) : (
-        <div className={`${styles.shape} ${styles[`shape_${data.kind}`] ?? ''}`} style={style} data-testid="diagram-node-shape" data-kind={data.kind}>
+        <div className={`${styles.shape} ${styles[`shape_${data.kind}`] ?? ''}`} style={{ ...style, ...seat.box }} data-testid="diagram-node-shape" data-kind={data.kind}>
           {typing ? (
-            <InPlaceLabel initial={data.label} className={`${data.kind === 'group' ? styles.groupLabel : styles.shapeLabel} ${styles.labelEditor}`} multiline />
+            <InPlaceLabel initial={data.label} className={`${data.kind === 'group' ? styles.groupLabel : styles.shapeLabel} ${styles.labelEditor}`} multiline style={seat.words} />
           ) : (
-            <span className={data.kind === 'group' ? styles.groupLabel : styles.shapeLabel} data-testid="diagram-node-label-text">
+            <span className={data.kind === 'group' ? styles.groupLabel : styles.shapeLabel} style={seat.words} data-testid="diagram-node-label-text">
               {data.label}
             </span>
           )}
@@ -594,24 +640,26 @@ export function ShapeNodeView({ id, data, selected, width, height, positionAbsol
  * icon, kept square above its label - and its words where the outline keeps
  * them. A class's words are its compartments.
  */
-function OutlinedShape({ kind, outline, label, typing, fill, ink }: { kind: DiagramNodeKind; outline: Outline; label: string; typing: boolean; fill?: string; ink?: string }) {
+function OutlinedShape({ kind, outline, label, typing, fill, ink, seat }: { kind: DiagramNodeKind; outline: Outline; label: string; typing: boolean; fill?: string; ink?: string; seat: Seat }) {
   const words = (className: string) =>
     typing ? (
-      <InPlaceLabel initial={label} className={`${className} ${styles.labelEditor}`} multiline style={ink ? { color: ink } : undefined} />
+      <InPlaceLabel initial={label} className={`${className} ${styles.labelEditor}`} multiline style={{ ...(ink ? { color: ink } : {}), ...seat.words }} />
     ) : (
-      <span className={className} style={ink ? { color: ink } : undefined} data-testid="diagram-node-label-text">
+      <span className={className} style={{ ...(ink ? { color: ink } : {}), ...seat.words }} data-testid="diagram-node-label-text">
         {label}
       </span>
     );
   if (outline.icon) {
+    // Under the icon the label keeps its band, so the art is the size it was; bigger words stand out of the band rather than being cut by it.
+    const under: CSSProperties | undefined = seat.size.fontSize === undefined ? undefined : { fontSize: seat.size.fontSize, overflow: 'visible' };
     return (
       <div className={styles.shapeIconBox} data-testid="diagram-node-shape" data-kind={kind}>
         <svg className={styles.shapeIconArt} style={{ height: `calc(100% - ${ICON_LABEL}px)` }} viewBox="-2 -2 104 104" preserveAspectRatio="xMidYMid meet" aria-hidden="true" data-testid="diagram-node-outline">
           <OutlinePieces outline={outline} fill={fill} className={styles.outlinePiece} />
         </svg>
         {/* Beneath the icon, on the paper, so it is ink whatever the fill. */}
-        {typing ? <InPlaceLabel initial={label} className={`${styles.shapeIconLabel} ${styles.labelEditor}`} multiline={false} /> : (
-          <span className={styles.shapeIconLabel} data-testid="diagram-node-label-text">
+        {typing ? <InPlaceLabel initial={label} className={`${styles.shapeIconLabel} ${styles.labelEditor}`} multiline={false} style={under} /> : (
+          <span className={styles.shapeIconLabel} style={under} data-testid="diagram-node-label-text">
             {label}
           </span>
         )}
@@ -625,7 +673,7 @@ function OutlinedShape({ kind, outline, label, typing, fill, ink }: { kind: Diag
         <OutlinePieces outline={outline} fill={fill} className={styles.outlinePiece} />
       </svg>
       {kind === 'class' && !typing ? (
-        <div className={styles.classBox} style={ink ? { color: ink } : undefined} data-testid="diagram-node-label-text">
+        <div className={styles.classBox} style={{ ...(ink ? { color: ink } : {}), ...seat.size }} data-testid="diagram-node-label-text">
           {compartments(label).map((lines, at) => (
             <div key={at} className={at === 0 ? styles.className : styles.classPart}>
               {lines.map((line, row) => (
@@ -635,7 +683,7 @@ function OutlinedShape({ kind, outline, label, typing, fill, ink }: { kind: Diag
           ))}
         </div>
       ) : (
-        <div className={styles.outlineInside} style={{ left: `${left}%`, top: `${top}%`, right: `${100 - right}%`, bottom: `${100 - bottom}%` }}>
+        <div className={styles.outlineInside} style={{ left: `${left}%`, top: `${top}%`, right: `${100 - right}%`, bottom: `${100 - bottom}%`, ...seat.box }}>
           {words(styles.shapeLabel)}
         </div>
       )}
@@ -741,7 +789,17 @@ function routeBetween(
         : (rimBorderFrom(box === a ? fromKind : toKind, box, ox, oy, tx, ty) ?? rectFrom(box, ox, oy, tx, ty));
     return routeThrough(a, b, points, leaveFrom, labelAt);
   }
-  return routeOf(a, b, routing, leave);
+  // Bent by hand: through its own points, as straight runs or as a curve.
+  if (points !== undefined && points.length > 0) return routeBent(a, b, routing, points, leave, { from: outOf(a, fromSide), to: outOf(b, toSide) }, labelAt);
+  return routeOf(a, b, routing, leave, { from: outOf(a, fromSide), to: outOf(b, toSide) });
+}
+
+/** The way out of a box through a side an end is pinned to, a step long and turned with the box; nothing for an end pinned nowhere. */
+function outOf(box: RouteBox, side: DiagramSide | undefined): Point | undefined {
+  if (side === undefined) return undefined;
+  const [dx, dy] = side === 'top' ? [0, -1] : side === 'bottom' ? [0, 1] : side === 'left' ? [-1, 0] : [1, 0];
+  const [x, y] = box.turn ? turned(dx, dy, box.turn) : [dx, dy];
+  return { x, y };
 }
 
 /**
@@ -759,54 +817,208 @@ function tipsOf(route: Route): [Point, Point] | null {
   ];
 }
 
-export function FloatingLink({ id, source, target, data, selected, markerEnd, markerStart }: EdgeProps<LinkEdge>) {
+/** Whether two lists hold the same things in the same places. */
+export function sameAll(a: readonly unknown[], b: readonly unknown[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let at = 0; at < a.length; at += 1) if (a[at] !== b[at]) return false;
+  return true;
+}
+
+/** One line as it is drawn: the way it runs, its path with the hops over the lines under it, and its two ends. */
+interface DrawnLine {
+  route: Route;
+  path: string;
+  tips: [Point, Point] | null;
+}
+
+/** Every line of one canvas, as last worked out, and what each was worked out from. */
+interface DrawnLines {
+  state: ReactFlowState;
+  order: string[];
+  routes: Map<string, { key: readonly unknown[]; route: Route }>;
+  lines: Map<string, DrawnLine>;
+}
+
+/** Per canvas, by the one map of nodes its store keeps for as long as it lives. */
+const drawnLines = new WeakMap<object, DrawnLines>();
+
+/**
+ * Every line of the canvas, worked out once for each state of it and handed to
+ * each line by its id.
+ *
+ * A line hops over the straight runs of every line drawn before it - the later
+ * line is the one on top - so each one used to route every line before it for
+ * itself, on every change to the canvas: on a diagram of a few hundred lines,
+ * tens of thousands of routes for each pixel a box was dragged, which is what
+ * made a big diagram lag. Here the lines are walked once, in their order, each
+ * routed again only where one of its boxes moved or it was itself changed, and
+ * a line whose drawing came out the same keeps the same object - so the lines
+ * that are drawn again are the ones a change reached.
+ */
+function linesOf(state: ReactFlowState): Map<string, DrawnLine> {
+  const before = drawnLines.get(state.nodeLookup);
+  if (before !== undefined && before.state === state) return before.lines;
+  const order: string[] = [];
+  const routes = new Map<string, { key: readonly unknown[]; route: Route }>();
+  const lines = new Map<string, DrawnLine>();
+  const under: Point[][] = [];
+  // Whether anything a later line hops over has changed, after which every later line with runs is looked at again.
+  let stale = false;
+  for (const edge of state.edges) {
+    if (before?.order[order.length] !== edge.id) stale = true;
+    order.push(edge.id);
+    const from = state.nodeLookup.get(edge.source);
+    const to = state.nodeLookup.get(edge.target);
+    if (from === undefined || to === undefined) continue;
+    const data = edge.data as LinkData | undefined;
+    const a = boxOf(from);
+    const b = boxOf(to);
+    const key = [
+      a.cx, a.cy, a.hw, a.hh, a.turn, (from.data as ShapeData | undefined)?.kind,
+      b.cx, b.cy, b.hw, b.hh, b.turn, (to.data as ShapeData | undefined)?.kind,
+      data?.routing, data?.points, data?.labelAt, data?.fromSide, data?.toSide,
+    ];
+    const held = before?.routes.get(edge.id);
+    const kept = held !== undefined && sameAll(held.key, key);
+    const route = kept ? held.route : routeBetween(from, to, data?.routing ?? 'straight', data?.points, data?.labelAt, data?.fromSide, data?.toSide);
+    routes.set(edge.id, { key, route });
+    if (!kept && (route.points !== undefined || held?.route.points !== undefined)) stale = true;
+    const was = before?.lines.get(edge.id);
+    if (kept && was !== undefined && (!stale || route.points === undefined)) {
+      lines.set(edge.id, was);
+    } else {
+      const path = (route.points !== undefined ? jumped(route.points, under) : null) ?? route.d;
+      lines.set(edge.id, was !== undefined && was.route === route && was.path === path ? was : { route, path, tips: tipsOf(route) });
+    }
+    if (route.points !== undefined) under.push(route.points);
+  }
+  drawnLines.set(state.nodeLookup, { state, order, routes, lines });
+  return lines;
+}
+
+/**
+ * Something drawn in one of the canvas's own layers over the boxes - the one
+ * for line labels, or the one that moves with the viewport. React Flow's part
+ * for each looks its layer up in the whole canvas again every time anything
+ * in the canvas's state changes: asked for by a label on each of a few
+ * hundred lines, that was a few hundred searches of the page for every pixel
+ * a box was dragged. The layer is there for as long as the canvas is, so this
+ * finds it once.
+ */
+function OverCanvas({ layer, children }: { layer: 'react-flow__edgelabel-renderer' | 'react-flow__viewport-portal'; children: ReactNode }) {
+  const canvas = useStore((state) => state.domNode);
+  const [into, setInto] = useState<Element | null>(null);
+  useLayoutEffect(() => {
+    setInto(canvas?.querySelector(`.${layer}`) ?? null);
+  }, [canvas, layer]);
+  return into === null ? null : createPortal(children, into);
+}
+
+export function FloatingLink({ id, data, selected, markerEnd, markerStart }: EdgeProps<LinkEdge>) {
   const editing = useContext(LabelEditingContext);
   const typing = editing.target?.kind === 'edge' && editing.target.id === id;
-  const from = useInternalNode(source);
-  const to = useInternalNode(target);
-  /*
-   * The straight runs of every line drawn before this one, which it hops over
-   * where it crosses them: the later line is the one on top. Read off the
-   * store, so a box being dragged moves the hops on the lines it carries.
-   */
-  const edges = useStore((state) => state.edges);
-  const lookup = useStore((state) => state.nodeLookup);
-  useStore((state) => state.nodes);
+  // Its drawing, which is a new object only when it is drawn differently - see [linesOf].
+  const drawn = useStore((state) => linesOf(state).get(id));
   const viewing = useContext(ViewingContext);
   const ends = useContext(LinkEndsContext);
   const flow = useReactFlow();
-  const zoom = useStore((state) => state.transform[2]);
   // The end being dragged and where the pointer has it, and whether the pointer is on a grip.
   const [held, setHeld] = useState<{ end: LinkEnd; x: number; y: number; moved: boolean } | null>(null);
   const [onGrip, setOnGrip] = useState(false);
   const pressed = useRef<{ x: number; y: number } | null>(null);
-  if (from === undefined || to === undefined) return null;
-  const route = routeBetween(from, to, data?.routing ?? 'straight', data?.points, data?.labelAt, data?.fromSide, data?.toSide);
-  const tips = tipsOf(route);
-  const gripped = !viewing && tips !== null && (selected === true || ends.hovered === id || onGrip || held !== null);
+  // The run being dragged aside - the one from corner `at` to the next - and the line's corners as they would be let go of here.
+  const [run, setRun] = useState<{ at: number; points: Point[]; moved: boolean } | null>(null);
+  // A bend being dragged - one of the line's own, or one being made from the middle of a part - and the bends as they would be let go of here.
+  // With [both], a part between two bends taken hold of: both move together, by how far the pointer has gone from [both.start].
+  const [bending, setBending] = useState<{ at: number; points: Point[]; moved: boolean; both?: { base: Point[]; start: Point } } | null>(null);
+  /*
+   * How much its grips and marks are scaled to stay a size a pointer can hit
+   * however far out the canvas is. Read only by a line that draws any, so a
+   * zoom draws the lit lines again and not every line there is.
+   */
+  const lit = selected === true || data?.touched === true || ends.hovered === id || onGrip || held !== null || run !== null || bending !== null;
+  const scale = useStore((state) => (lit ? 1 / Math.min(1, state.transform[2]) : 1));
+  if (drawn === undefined) return null;
+  const { route, path, tips } = drawn;
+  const gripped = !viewing && tips !== null && (selected === true || ends.hovered === id || onGrip || held !== null || run !== null || bending !== null);
+  /*
+   * A straight or curved line is bent by hand: a grip on each bend it has,
+   * which moves it and a double-click takes out, and a fainter one in the
+   * middle of each part, which makes a new bend where it is dragged. The
+   * middles stay where they were while a bend is dragged, so the grip that
+   * was pressed is still there to be let go of.
+   */
+  // On a selected line only: shown on one the pointer merely crossed, the grip in its middle was what a click to select it landed on.
+  const bendable = !viewing && tips !== null && (selected === true || bending !== null) && held === null && run === null && data?.routing !== 'right-angles';
+  const bends = bending?.points ?? (data?.points ?? []).map(([x, y]) => ({ x, y }));
+  const bendMids = bendable ? (route.mids ?? []) : [];
+  const asCorners = (points: Point[]): [number, number][] => points.map((point) => [Math.round(point.x), Math.round(point.y)]);
+  const pressBend = (event: ReactPointerEvent<HTMLDivElement>, at: number, points: Point[]) => {
+    if (event.button !== 0) return;
+    event.stopPropagation();
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    pressed.current = { x: event.clientX, y: event.clientY };
+    setBending({ at, points, moved: false });
+  };
+  const moveBend = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (bending === null || pressed.current === null) return;
+    const far = Math.hypot(event.clientX - pressed.current.x, event.clientY - pressed.current.y) > GRIP_SLACK;
+    if (!bending.moved && !far) return;
+    const where = flow.screenToFlowPosition({ x: event.clientX, y: event.clientY }, { snapToGrid: false });
+    const { both } = bending;
+    if (both !== undefined) {
+      // The part keeps its shape: both its bends go the same way, by whole steps of the grid.
+      const dx = Math.round((where.x - both.start.x) / GRID) * GRID;
+      const dy = Math.round((where.y - both.start.y) / GRID) * GRID;
+      setBending({ ...bending, moved: true, points: both.base.map((point, index) => (index === bending.at || index === bending.at + 1 ? { x: point.x + dx, y: point.y + dy } : point)) });
+      return;
+    }
+    // On the grid, as a box is: bends lined up by eye are lined up.
+    const to = { x: Math.round(where.x / GRID) * GRID, y: Math.round(where.y / GRID) * GRID };
+    setBending({ at: bending.at, moved: true, points: bending.points.map((point, index) => (index === bending.at ? to : point)) });
+  };
+  /** A part between bend [at] and the next, taken hold of along its length. */
+  const pressSpan = (event: ReactPointerEvent<HTMLDivElement>, at: number) => {
+    if (event.button !== 0) return;
+    event.stopPropagation();
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    pressed.current = { x: event.clientX, y: event.clientY };
+    const start = flow.screenToFlowPosition({ x: event.clientX, y: event.clientY }, { snapToGrid: false });
+    setBending({ at, points: bends, moved: false, both: { base: bends, start } });
+  };
+  const dropBend = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (bending === null) return;
+    event.stopPropagation();
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    pressed.current = null;
+    setBending(null);
+    if (bending.moved) ends.bend(id, asCorners(bending.points));
+  };
+  const cancelBend = () => {
+    pressed.current = null;
+    setBending(null);
+  };
+  /*
+   * The runs of a right-angle line that can be dragged aside: every one but
+   * the first and the last, which leave and meet its boxes. A run across is
+   * moved up and down, a run down is moved across, and its neighbours stretch.
+   */
+  const corners = run?.points ?? route.points;
+  const runs =
+    gripped && held === null && data?.routing === 'right-angles' && corners !== undefined && corners.length >= 4
+      ? corners.slice(1, -2).flatMap((from, index) => {
+          const at = index + 1;
+          const to = corners[at + 1];
+          const flat = Math.abs(from.y - to.y) < 0.5;
+          if (run?.at !== at && Math.hypot(to.x - from.x, to.y - from.y) < RUN_LEAST) return [];
+          return [{ at, flat, x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 }];
+        })
+      : [];
   const landing = held !== null && held.moved ? ends.aim(id, held.end, held.x, held.y) : null;
   // A lit line that has no grips - its box is what is selected, or the diagram is only being viewed - still says where it is attached.
   const marked = !gripped && tips !== null && (selected === true || data?.touched === true);
-  const under: Point[][] = [];
-  if (route.points !== undefined) {
-    for (const other of edges) {
-      if (other.id === id) break;
-      const one = lookup.get(other.source);
-      const two = lookup.get(other.target);
-      if (one === undefined || two === undefined) continue;
-      const theirs = routeBetween(
-        one,
-        two,
-        (other.data as LinkData | undefined)?.routing ?? 'straight',
-        (other.data as LinkData | undefined)?.points,
-        undefined,
-        (other.data as LinkData | undefined)?.fromSide,
-        (other.data as LinkData | undefined)?.toSide,
-      ).points;
-      if (theirs !== undefined) under.push(theirs);
-    }
-  }
-  const path = (route.points !== undefined ? jumped(route.points, under) : null) ?? route.d;
   const middle = route.label;
   const dashes = dashesOf(data?.line ?? 'solid');
   return (
@@ -827,13 +1039,15 @@ export function FloatingLink({ id, source, target, data, selected, markerEnd, ma
       />
       {/*
        * Which way it goes, on a line that is lit - its own box selected, or
-       * itself: dots running from its start to its end over it, as a workflow
-       * shows a line a run travels. Drawn from source to target, so the dots
-       * go the way the arrow points; see `.linkFlow`.
+       * itself: dots running along it the way its arrowhead points, as a
+       * workflow shows a line a run travels. Only on a line that points one
+       * way: one with no arrowhead, or with one at each end, goes nowhere in
+       * particular and is lit by its colour and weight alone - a plain line
+       * drew arrows running along it that it does not have. See `.linkFlow`.
        */}
-      {(selected || data?.touched === true) && (
+      {(selected || data?.touched === true) && data?.heading !== undefined && (
         <>
-          <path className={styles.linkFlow} d={path} data-flow="" />
+          <path className={`${styles.linkFlow} ${data.heading === 'backward' ? styles.linkFlowBack : ''}`} d={path} data-flow={data.heading} />
           {/*
            * And arrowheads travelling along it, the way it points: dots said
            * that something moved, not which way, and a still frame of these
@@ -842,7 +1056,12 @@ export function FloatingLink({ id, source, target, data, selected, markerEnd, ma
           {!stillWanted() &&
             FLOW_HEADS.map((at) => (
               <path key={at} className={styles.linkFlowHead} d="M -6 -5 L 5 0 L -6 5 Z" data-flow-head="">
-                <animateMotion dur={`${FLOW_SECONDS}s`} begin={`${-at * FLOW_SECONDS}s`} repeatCount="indefinite" rotate="auto" path={path} />
+                {data.heading === 'backward' ? (
+                  // The path is drawn from source to target; a line pointing back is travelled from its far end.
+                  <animateMotion dur={`${FLOW_SECONDS}s`} begin={`${-at * FLOW_SECONDS}s`} repeatCount="indefinite" rotate="auto-reverse" keyPoints="1;0" keyTimes="0;1" calcMode="linear" path={path} />
+                ) : (
+                  <animateMotion dur={`${FLOW_SECONDS}s`} begin={`${-at * FLOW_SECONDS}s`} repeatCount="indefinite" rotate="auto" path={path} />
+                )}
               </path>
             ))}
         </>
@@ -855,17 +1074,184 @@ export function FloatingLink({ id, source, target, data, selected, markerEnd, ma
           data-testid="diagram-end-aim"
         />
       )}
+      {/* A run being dragged aside, as the line would be drawn let go of here. */}
+      {run !== null && run.moved && <path className={styles.endAim} d={pathOf(run.points, [])} data-testid="diagram-run-aim" />}
+      {/* A bend being dragged, as the line would run through its bends let go of here. */}
+      {bending !== null && bending.moved && tips !== null && <path className={styles.endAim} d={pathOf([tips[0], ...bending.points, tips[1]], [])} data-testid="diagram-bend-aim" />}
+      {bendable && (
+        <OverCanvas layer="react-flow__viewport-portal">
+          {/*
+            Each part between two bends, to be taken hold of along its length
+            and moved whole - both its bends with it - as a right-angle line's
+            middle run is. Under the grips: the dot in its middle still makes
+            a new bend, and a bend's own grip still moves that bend alone.
+          */}
+          {bends.slice(0, -1).map((from, index) => {
+            const to = bends[index + 1];
+            const length = Math.hypot(to.x - from.x, to.y - from.y);
+            if (length < 1) return null;
+            const angle = (Math.atan2(to.y - from.y, to.x - from.x) * 180) / Math.PI;
+            return (
+              <div
+                key={`span-${index}`}
+                style={{
+                  width: length,
+                  height: SPAN_REACH * scale,
+                  transform: `translate(${(from.x + to.x) / 2}px, ${(from.y + to.y) / 2}px) translate(-50%, -50%) rotate(${angle}deg)`,
+                }}
+                className={`${styles.bendSpan} ${bending?.both !== undefined && bending.at === index ? styles.bendSpanHeld : ''} nodrag nopan`}
+                title={t('Drag to move this part of the line')}
+                data-testid="diagram-bend-span"
+                data-edge={id}
+                data-part={index}
+                onPointerEnter={() => setOnGrip(true)}
+                onPointerLeave={() => setOnGrip(false)}
+                onPointerDown={(event) => pressSpan(event, index)}
+                onPointerMove={moveBend}
+                onPointerUp={dropBend}
+                onPointerCancel={cancelBend}
+                onClick={(event) => event.stopPropagation()}
+              />
+            );
+          })}
+          {bendMids.map((at, index) => (
+            <div
+              key={`add-${index}`}
+              style={{ transform: `translate(${at.x}px, ${at.y}px) translate(-50%, -50%) scale(${scale})` }}
+              className={`${styles.bendAdd} ${bending !== null ? styles.bendAddAway : ''} nodrag nopan`}
+              title={t('Drag to bend the line here')}
+              data-testid="diagram-bend-add"
+              data-edge={id}
+              data-part={index}
+              onPointerEnter={() => setOnGrip(true)}
+              onPointerLeave={() => setOnGrip(false)}
+              onPointerDown={(event) => pressBend(event, index, [...bends.slice(0, index), at, ...bends.slice(index)])}
+              onPointerMove={moveBend}
+              onPointerUp={dropBend}
+              onPointerCancel={cancelBend}
+              onClick={(event) => event.stopPropagation()}
+            />
+          ))}
+          {bends.map((at, index) => (
+            /*
+              A bend's grip, and beside it a cross that takes the bend out -
+              which a double-click on the grip does too, and which nothing on
+              the screen said. Shown on every bend of a selected line: one
+              shown only under the pointer was not found. One hold for both.
+            */
+            <div
+              key={`bend-${index}`}
+              style={{ transform: `translate(${at.x}px, ${at.y}px) translate(-50%, -50%) scale(${scale})` }}
+              className={`${styles.bendHold} nodrag nopan`}
+              onPointerEnter={() => setOnGrip(true)}
+              onPointerLeave={() => setOnGrip(false)}
+            >
+              <div
+                className={`${styles.bendGrip} ${bending?.at === index && bending.both === undefined ? styles.endGripHeld : ''}`}
+                title={t('Drag to move this bend; double-click to take it out')}
+                data-testid="diagram-bend"
+                data-edge={id}
+                data-bend={index}
+                onPointerDown={(event) => pressBend(event, index, bends)}
+                onPointerMove={moveBend}
+                onPointerUp={dropBend}
+                onPointerCancel={cancelBend}
+                onClick={(event) => event.stopPropagation()}
+                onDoubleClick={(event) => {
+                  event.stopPropagation();
+                  ends.bend(id, asCorners(bends.filter((_, other) => other !== index)));
+                }}
+              />
+              {bending === null && (
+                <button
+                  type="button"
+                  className={styles.bendRemove}
+                  title={t('Take this bend out')}
+                  aria-label={t('Take this bend out')}
+                  data-testid="diagram-bend-remove"
+                  data-edge={id}
+                  data-bend={index}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    ends.bend(id, asCorners(bends.filter((_, other) => other !== index)));
+                  }}
+                >
+                  {/* Drawn here rather than an icon file: it takes the selection's colour, which an image cannot. */}
+                  <svg viewBox="0 0 16 16" width={12} height={12} aria-hidden="true">
+                    <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          ))}
+        </OverCanvas>
+      )}
+      {runs.length > 0 && route.points !== undefined && (
+        <OverCanvas layer="react-flow__viewport-portal">
+          {runs.map((one) => (
+            <div
+              key={one.at}
+              style={{ transform: `translate(${one.x}px, ${one.y}px) translate(-50%, -50%) scale(${scale})`, cursor: one.flat ? 'ns-resize' : 'ew-resize' }}
+              className={`${styles.runGrip} ${one.flat ? styles.runGripFlat : ''} ${run?.at === one.at ? styles.endGripHeld : ''} nodrag nopan`}
+              title={t('Drag to move this part of the line')}
+              data-testid="diagram-run-grip"
+              data-edge={id}
+              data-run={one.at}
+              data-axis={one.flat ? 'y' : 'x'}
+              onPointerEnter={() => setOnGrip(true)}
+              onPointerLeave={() => setOnGrip(false)}
+              onPointerDown={(event: ReactPointerEvent<HTMLDivElement>) => {
+                if (event.button !== 0 || route.points === undefined) return;
+                event.stopPropagation();
+                event.preventDefault();
+                event.currentTarget.setPointerCapture(event.pointerId);
+                pressed.current = { x: event.clientX, y: event.clientY };
+                setRun({ at: one.at, points: route.points, moved: false });
+              }}
+              onPointerMove={(event: ReactPointerEvent<HTMLDivElement>) => {
+                if (run === null || run.at !== one.at || pressed.current === null) return;
+                const far = Math.hypot(event.clientX - pressed.current.x, event.clientY - pressed.current.y) > GRIP_SLACK;
+                if (!run.moved && !far) return;
+                const where = flow.screenToFlowPosition({ x: event.clientX, y: event.clientY }, { snapToGrid: false });
+                // On the grid, as a box is: a run dragged level with another by eye is level.
+                const to = Math.round((one.flat ? where.y : where.x) / GRID) * GRID;
+                setRun({
+                  at: one.at,
+                  moved: true,
+                  points: run.points.map((point, index) => (index === one.at || index === one.at + 1 ? (one.flat ? { x: point.x, y: to } : { x: to, y: point.y }) : point)),
+                });
+              }}
+              onPointerUp={(event: ReactPointerEvent<HTMLDivElement>) => {
+                if (run === null || run.at !== one.at) return;
+                event.stopPropagation();
+                if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+                pressed.current = null;
+                setRun(null);
+                if (!run.moved) return;
+                // Its corners between its two ends; the ends themselves are found again from the boxes.
+                ends.bend(id, straightened(run.points).slice(1, -1).map((point) => [Math.round(point.x), Math.round(point.y)]));
+              }}
+              onPointerCancel={() => {
+                pressed.current = null;
+                setRun(null);
+              }}
+              onClick={(event) => event.stopPropagation()}
+            />
+          ))}
+        </OverCanvas>
+      )}
       {/*
        * A grip on each end. In the viewport's portal, which is drawn over the
        * boxes: a line ends on its box's outline, and anything drawn with the
        * line is under the box and under the handle a new line starts from.
        */}
       {gripped && tips !== null && (
-        <ViewportPortal>
+        <OverCanvas layer="react-flow__viewport-portal">
           {landing !== null && (
             <div
               className={styles.endLanding}
-              style={{ transform: `translate(${landing.x}px, ${landing.y}px) translate(-50%, -50%) scale(${1 / Math.min(1, zoom)})` }}
+              style={{ transform: `translate(${landing.x}px, ${landing.y}px) translate(-50%, -50%) scale(${scale})` }}
               data-testid="diagram-end-landing"
             />
           )}
@@ -877,7 +1263,7 @@ export function FloatingLink({ id, source, target, data, selected, markerEnd, ma
               <div
                 key={end}
                 // Kept at a size a pointer can hit however far out the canvas is zoomed.
-                style={{ transform: `translate(${at.x}px, ${at.y}px) translate(-50%, -50%) scale(${1 / Math.min(1, zoom)})` }}
+                style={{ transform: `translate(${at.x}px, ${at.y}px) translate(-50%, -50%) scale(${scale})` }}
                 className={`${styles.endGrip} ${mine !== null ? styles.endGripHeld : ''} nodrag nopan`}
                 title={t('Drag onto a side of a shape to pin this end there, or onto another shape')}
                 data-testid={`diagram-end-${end}`}
@@ -919,7 +1305,7 @@ export function FloatingLink({ id, source, target, data, selected, markerEnd, ma
               />
             );
           })}
-        </ViewportPortal>
+        </OverCanvas>
       )}
       {/*
        * Where a lit line is attached, on a line that has no grips. A selected
@@ -930,23 +1316,23 @@ export function FloatingLink({ id, source, target, data, selected, markerEnd, ma
        * took hold of instead. Pointing at the line is what turns these into grips.
        */}
       {marked && tips !== null && (
-        <ViewportPortal>
+        <OverCanvas layer="react-flow__viewport-portal">
           {(['from', 'to'] as const).map((end) => {
             const at = tips[end === 'from' ? 0 : 1];
             return (
               <div
                 key={end}
                 className={styles.endMark}
-                style={{ transform: `translate(${at.x}px, ${at.y}px) translate(-50%, -50%) scale(${1 / Math.min(1, zoom)})` }}
+                style={{ transform: `translate(${at.x}px, ${at.y}px) translate(-50%, -50%) scale(${scale})` }}
                 data-testid={`diagram-end-mark-${end}`}
                 data-edge={id}
               />
             );
           })}
-        </ViewportPortal>
+        </OverCanvas>
       )}
       {typing && (
-        <EdgeLabelRenderer>
+        <OverCanvas layer="react-flow__edgelabel-renderer">
           <div
             className={`${styles.linkLabel} ${styles.linkLabelEditing}`}
             style={{ transform: `translate(-50%, -50%) translate(${middle.x}px, ${middle.y}px)` }}
@@ -954,10 +1340,10 @@ export function FloatingLink({ id, source, target, data, selected, markerEnd, ma
             {/* One line: a connection's label is drawn on one. */}
             <InPlaceLabel initial={data?.label ?? ''} className={styles.linkLabelEditor} multiline={false} />
           </div>
-        </EdgeLabelRenderer>
+        </OverCanvas>
       )}
       {!typing && data?.label !== undefined && data.label !== '' && (
-        <EdgeLabelRenderer>
+        <OverCanvas layer="react-flow__edgelabel-renderer">
           <div
             className={`${styles.linkLabel} ${selected || data?.touched ? styles.linkLabelSelected : ''}`}
             style={{ transform: `translate(-50%, -50%) translate(${middle.x}px, ${middle.y}px)` }}
@@ -965,11 +1351,84 @@ export function FloatingLink({ id, source, target, data, selected, markerEnd, ma
           >
             {data.label}
           </div>
-        </EdgeLabelRenderer>
+        </OverCanvas>
       )}
     </>
   );
 }
 
-export const NODE_TYPES = { shape: ShapeNodeView };
-export const EDGE_TYPES = { link: FloatingLink };
+// Each drawn again only when what it is handed changes: a canvas of hundreds is otherwise drawn whole for a change to one.
+/**
+ * The alignment guides, drawn on the canvas while a box is dragged or resized:
+ * a line down or across it through the edge or the middle the box has come
+ * level with. In the canvas's own coordinates, so they move and scale with it,
+ * and a hair wide whatever the zoom.
+ */
+export function AlignmentGuides({ guides }: { guides: Guide[] }) {
+  const zoom = useStore((state) => state.transform[2]);
+  if (guides.length === 0) return null;
+  return (
+    <OverCanvas layer="react-flow__viewport-portal">
+      {guides.map((one) => (
+        <div
+          key={`${one.axis}${one.at}`}
+          className={styles.guide}
+          data-testid="diagram-guide"
+          data-axis={one.axis}
+          data-at={one.at}
+          style={
+            one.axis === 'x'
+              ? { left: one.at, top: one.from, height: one.to - one.from, borderLeftWidth: 1 / zoom }
+              : { left: one.from, top: one.at, width: one.to - one.from, borderTopWidth: 1 / zoom }
+          }
+        />
+      ))}
+    </OverCanvas>
+  );
+}
+
+/** What a click on a side's handle would draw: a line to the box that way, or a copy of this one with a line to it. */
+export interface Suggestion {
+  kind: 'line' | 'copy';
+  /** The box and the side it would be drawn from. */
+  from: string;
+  side: DiagramSide;
+  /** The line, as a path in the drawing's own coordinates, and where its arrowhead lies. */
+  path: string;
+  tip: { x: number; y: number; angle: number };
+  /** The box it would end on: one already there, or the copy to be made. */
+  to?: string;
+  /** The side of that box the line would arrive at. */
+  toSide?: DiagramSide;
+  box?: { x: number; y: number; w: number; h: number; rotation?: number };
+  /** The group the copy would be made in, when it would stand inside one. */
+  home?: string;
+}
+
+/**
+ * The suggestion, drawn faintly over the canvas while the pointer rests on a
+ * side's handle. It takes no pointer, so the handle under it is still what is
+ * clicked or dragged.
+ */
+export function SuggestionGhost({ suggestion }: { suggestion: Suggestion | null }) {
+  if (suggestion === null) return null;
+  const { box, tip } = suggestion;
+  return (
+    <OverCanvas layer="react-flow__viewport-portal">
+      {box !== undefined && (
+        <div
+          className={styles.suggestion}
+          style={{ width: box.w, height: box.h, transform: `translate(${box.x}px, ${box.y}px)${box.rotation ? ` rotate(${box.rotation}deg)` : ''}` }}
+          data-testid="diagram-suggestion-box"
+        />
+      )}
+      <svg className={styles.suggestionLine} width={1} height={1} aria-hidden="true" data-testid="diagram-suggestion" data-kind={suggestion.kind} data-side={suggestion.side}>
+        <path d={suggestion.path} />
+        <polygon points="0,0 -10,-4.5 -10,4.5" transform={`translate(${tip.x} ${tip.y}) rotate(${tip.angle})`} />
+      </svg>
+    </OverCanvas>
+  );
+}
+
+export const NODE_TYPES = { shape: memo(ShapeNodeView) };
+export const EDGE_TYPES = { link: memo(FloatingLink) };

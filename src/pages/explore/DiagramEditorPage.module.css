@@ -391,16 +391,61 @@
 }
 
 .handle {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   background: var(--diagram-paper);
   border: 1.5px solid var(--diagram-select);
   opacity: 0;
 }
 
+/*
+ * What is aimed at is bigger than what is drawn: a 10px ring was the whole of
+ * the target, and half of it lay outside the box, where the pointer had left
+ * the box and the ring had gone. The room round each handle is the handle's
+ * own, so the pointer coming at a side from outside finds it - and lights the
+ * four - well before it reaches the outline. Further out than in: inside is
+ * the box, which is dragged and typed into.
+ */
+.handle::after {
+  position: absolute;
+  inset: -5px;
+  content: '';
+}
+
+.handle:global(.react-flow__handle-top)::after {
+  top: -16px;
+}
+
+.handle:global(.react-flow__handle-right)::after {
+  right: -16px;
+}
+
+.handle:global(.react-flow__handle-bottom)::after {
+  bottom: -16px;
+}
+
+.handle:global(.react-flow__handle-left)::after {
+  left: -16px;
+}
+
 :global(.react-flow__node):hover .handle,
 :global(.react-flow__node.selected) .handle {
   opacity: 1;
+}
+
+.handle:hover {
+  background: var(--diagram-select);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--diagram-select) 30%, transparent);
+}
+
+/* An alignment guide: a hair of a line through what the dragged box has come level with, over everything drawn. */
+.guide {
+  position: absolute;
+  z-index: 1001;
+  width: 0;
+  height: 0;
+  border: 0 solid var(--diagram-guide);
+  pointer-events: none;
 }
 
 /*
@@ -413,10 +458,23 @@
 }
 
 .resizeHandle {
-  width: 8px !important;
-  height: 8px !important;
+  width: 10px !important;
+  height: 10px !important;
   background: var(--diagram-paper) !important;
   border: 1.5px solid var(--diagram-select) !important;
+}
+
+/* A corner is taken hold of from a little way off, as a side's handle is. */
+.resizeHandle::after,
+.turnedHandle::after {
+  position: absolute;
+  inset: -7px;
+  content: '';
+}
+
+.resizeHandle:hover,
+.turnedHandle:hover {
+  background: var(--diagram-select) !important;
 }
 
 /*
@@ -435,8 +493,8 @@
   position: absolute;
   z-index: 2;
   box-sizing: border-box;
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   background: var(--diagram-paper);
   border: 1.5px solid var(--diagram-select);
   transform: translate(-50%, -50%);
@@ -516,6 +574,148 @@
 
 .endGrip:hover {
   box-shadow: 0 0 0 3px var(--diagram-select);
+}
+
+/*
+ * A run of a right-angle line, to be moved aside: a short bar across the
+ * middle of it, lying the way it is dragged. Only the runs between the first
+ * and the last, which are the ones that can move without leaving a box.
+ */
+.runGrip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2001;
+  box-sizing: border-box;
+  width: 18px;
+  height: 9px;
+  background: var(--diagram-paper);
+  border: 2px solid var(--diagram-select);
+  border-radius: 5px;
+  pointer-events: all;
+  touch-action: none;
+}
+
+/* A run across is moved up and down, so its bar lies along it. */
+.runGripFlat {
+  width: 18px;
+  height: 9px;
+}
+
+.runGrip:not(.runGripFlat) {
+  width: 9px;
+  height: 18px;
+}
+
+/* A part between two bends: an unseen strip along it that moves it whole, lit faintly under the pointer. */
+.bendSpan {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1999;
+  box-sizing: border-box;
+  border-radius: 999px;
+  cursor: move;
+  pointer-events: all;
+  touch-action: none;
+}
+
+.bendSpan:hover,
+.bendSpanHeld {
+  background: var(--diagram-select-soft);
+}
+
+/* A bend's grip and the cross beside it, held together so the pointer can go from one to the other. */
+.bendHold {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2001;
+  width: 12px;
+  height: 12px;
+  pointer-events: all;
+}
+
+/* The cross that takes a bend out: up and to the right of it, a blue cross in a blue ring, on the diagram's paper. */
+.bendRemove {
+  position: absolute;
+  top: -15px;
+  left: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  background: var(--diagram-paper);
+  border: 1.5px solid var(--diagram-select);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.bendRemove svg {
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: var(--diagram-select);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+
+.bendRemove:hover svg {
+  stroke-width: 3;
+}
+
+/* A bend of a straight or curved line: a grip like an end's, solid, which moves it. */
+.bendGrip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  box-sizing: border-box;
+  width: 12px;
+  height: 12px;
+  background: var(--diagram-paper);
+  border: 2px solid var(--diagram-select);
+  border-radius: 50%;
+  cursor: move;
+  pointer-events: all;
+  touch-action: none;
+}
+
+.bendGrip:hover {
+  background: var(--diagram-select);
+}
+
+/* The middle of a part, where a new bend is made: smaller and fainter, so it reads as an offer and not as a bend. */
+.bendAdd {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2000;
+  box-sizing: border-box;
+  width: 10px;
+  height: 10px;
+  background: var(--diagram-paper);
+  border: 1.5px solid var(--diagram-select);
+  border-radius: 50%;
+  opacity: 0.6;
+  cursor: copy;
+  pointer-events: all;
+  touch-action: none;
+}
+
+.bendAdd:hover {
+  opacity: 1;
+}
+
+/* Out of sight while a bend is dragged, and still there to be let go of. */
+.bendAddAway {
+  opacity: 0;
+}
+
+.runGrip:hover {
+  background: var(--diagram-select);
 }
 
 /*
@@ -698,8 +898,28 @@
 
 .swatches {
   display: grid;
-  grid-template-columns: repeat(12, 20px);
+  /*
+   * Twelve across, as wide as the panel lets them be and no wider than a
+   * swatch: fixed at 20px the row was wider than a panel at its narrowest,
+   * and the last colours were cut off behind a scrollbar. An empty column of
+   * no width stands before the toggle: the gap either side of it keeps the
+   * toggle clear of the picker's ring, and every column shrinks alike.
+   */
+  grid-template-columns: repeat(11, minmax(0, 20px)) 0 minmax(0, 20px);
   gap: var(--space-6);
+}
+
+.swatches .swatch,
+.swatches .swatchMore {
+  width: 100%;
+  height: auto;
+  margin-left: 0;
+  aspect-ratio: 1;
+}
+
+/* Past the empty column, clear of the ring a chosen colour wears, as the toggle always was. */
+.swatches .swatchMore {
+  grid-column: 13;
 }
 
 .swatch {
@@ -780,11 +1000,11 @@
  */
 .panelSettings {
   display: flex;
-  flex: none;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: var(--space-12);
   min-height: 0;
-  max-height: 55%;
+  overflow-x: hidden;
   overflow-y: auto;
 }
 
@@ -839,6 +1059,15 @@
   margin: 0;
   padding: 0;
   border: 0;
+}
+
+/*
+ * What the panel's fields hold, a step up from the labels over them and no
+ * more: at the dialogs' size, a label at 11 pixels sat over a value at 14 and
+ * the panel read as a form shouting its answers.
+ */
+.panelFields :is(input, textarea, button[aria-haspopup='listbox']) {
+  font-size: var(--text-md);
 }
 
 /* ---- Find ---- */
@@ -1002,6 +1231,11 @@
   pointer-events: none;
 }
 
+/* A line whose only arrowhead is at its start: the dots run back to it. */
+.linkFlowBack {
+  animation-direction: reverse;
+}
+
 @keyframes linkFlow {
   from {
     stroke-dashoffset: 20;
@@ -1151,10 +1385,74 @@
 }
 
 .layersCorner .layersMenu {
-  top: auto;
+  top: calc(100% + var(--space-4));
   right: 0;
-  bottom: calc(100% + var(--space-4));
+  bottom: auto;
   left: auto;
+}
+
+/*
+ * View and Edit, and the layers beside them: each its own shadow, at one
+ * height - the corner's shadow round both drew a band under the shorter.
+ */
+.topRight.topRight {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  box-shadow: none;
+}
+
+.topRight > .modeSwitch {
+  box-shadow: var(--shadow-menu);
+}
+
+.topRight .layersCorner > button {
+  padding: var(--space-2) var(--space-8);
+  font-size: var(--text-sm);
+}
+
+/*
+ * The chat, a panel of its own on the canvas's left: its border on the side
+ * that faces the canvas, and a row at its top that folds it away.
+ */
+.chatPanel {
+  border-right: 1px solid var(--color-border);
+  border-left: 0;
+}
+
+.chatPanelHead {
+  display: flex;
+  flex-shrink: 0;
+  justify-content: flex-end;
+  margin-bottom: calc(-1 * var(--space-8));
+}
+
+/* Folded, the chat's button on the canvas: the layers button's look and size, in the other top corner. */
+.chatCorner > button {
+  padding: var(--space-2) var(--space-8);
+  font-size: var(--text-sm);
+}
+
+.chatFold {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-6);
+  cursor: pointer;
+}
+
+.chatFold:hover {
+  background: var(--color-surface-hover);
+}
+
+/* The icon's chevrons point right; the panel folds to the left. */
+.chatFoldBack {
+  transform: rotate(180deg);
 }
 
 /* The arrows inside the field: small enough to leave the words their room. */
@@ -1251,6 +1549,16 @@
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   font-weight: 400;
+}
+
+/*
+ * A menu's scrollbar, bright enough to see on the menu: the page's own thumb
+ * is drawn for the page, and on a menu's raised surface it all but vanished,
+ * so a list that went on past its bottom looked as if it ended there.
+ */
+.rightMenu,
+.menu {
+  scrollbar-color: var(--color-scrollbar-raised) transparent;
 }
 
 .rightMenu .menuItem,
@@ -1624,4 +1932,226 @@
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
+}
+
+/* ---- Fields side by side ---- */
+
+/* Two short pickers on one row, each with its own name over it: a line's style beside its routing, its start beside its end. */
+.fieldPair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-8);
+}
+
+/* ---- Where a box's words sit, and how big they are ---- */
+
+.textRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4) var(--space-12);
+}
+
+.textGroup {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--color-field);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-6);
+}
+
+.textChoice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-4);
+  cursor: pointer;
+}
+
+.textChoice img {
+  opacity: 0.6;
+}
+
+.textChoice:hover img {
+  opacity: 1;
+}
+
+.textChoice[aria-pressed='true'] {
+  background: var(--color-surface-hover);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+}
+
+.textChoice[aria-pressed='true'] img {
+  opacity: 1;
+}
+
+.textSize {
+  flex: 1;
+  min-width: 64px;
+  max-width: 96px;
+}
+
+/* ---- The small map, and the tools in the canvas's bottom left corner ---- */
+
+.minimap {
+  /* The canvas's own colours, small: a map that was dark beside a light drawing read as a different thing. */
+  background: var(--diagram-desk);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+}
+
+/* Above the map's own corner when the map is drawn, so the two never overlap. */
+.cornerTools {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  box-shadow: var(--shadow-menu);
+}
+
+.cornerTool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-4);
+  cursor: pointer;
+}
+
+.cornerTool img {
+  opacity: 0.65;
+}
+
+.cornerTool:hover:not(:disabled) img,
+.cornerTool[aria-pressed='true'] img {
+  opacity: 1;
+}
+
+.cornerTool[aria-pressed='true'] {
+  background: var(--color-accent-brand);
+}
+
+.cornerTool:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+/* ---- The Add menu the shortcut opens, where the pointer is ---- */
+
+.addAtMenu {
+  width: 220px;
+  max-height: min(70vh, 520px);
+}
+
+.addAtMenu .menuItem:focus-visible {
+  background: var(--color-surface-hover);
+  outline: none;
+}
+
+/* The Add menu's search, at its top: the dialogs' field, small. */
+.addSearch {
+  flex-shrink: 0;
+  margin: var(--space-2) var(--space-2) var(--space-4);
+  padding: var(--space-6) var(--space-8);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--text-sm);
+  background: var(--color-field);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-4);
+}
+
+.addSearch:focus {
+  border-color: var(--color-accent-brand);
+  outline: none;
+}
+
+.addSearchNone {
+  margin: 0;
+  padding: var(--space-6) var(--space-10);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* A category's name: a row that opens its shapes beside the menu, with how many it holds and an arrow that says so. */
+.addMenuGroup {
+  font-weight: 500;
+}
+
+.addMenuGroupOn {
+  background: var(--color-surface-hover);
+}
+
+.addMenuGroupArrow {
+  transform: rotate(-90deg);
+}
+
+.addMenuCount {
+  margin-left: auto;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.addMenuRecent {
+  display: flex;
+  flex-direction: column;
+}
+
+/* A category's shapes, beside the menu: as wide, and above the shade it stands on. */
+.addSideMenu {
+  z-index: 1001;
+}
+
+/* Between what was used last and the categories. */
+.addMenuRule {
+  flex-shrink: 0;
+  height: 1px;
+  margin: var(--space-4) var(--space-6);
+  background: var(--color-border);
+}
+
+/* ---- What a click on a side's handle would draw ---- */
+
+.suggestion {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  box-sizing: border-box;
+  background: color-mix(in srgb, var(--diagram-select) 8%, transparent);
+  border: 1.5px dashed var(--diagram-select);
+  border-radius: var(--radius-4);
+  pointer-events: none;
+}
+
+.suggestionLine {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.suggestionLine path {
+  fill: none;
+  stroke: var(--diagram-select);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+
+.suggestionLine polygon {
+  fill: var(--diagram-select);
 }

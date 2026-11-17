@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -6,15 +6,17 @@ import {
   BackgroundVariant,
   ConnectionMode,
   MarkerType,
+  MiniMap,
   Panel,
   ReactFlow,
   ReactFlowProvider,
+  SelectionMode,
   useNodesInitialized,
   useReactFlow,
   useStore,
   useViewport,
 } from '@xyflow/react';
-import type { EdgeChange, FinalConnectionState, NodeChange, Viewport } from '@xyflow/react';
+import type { EdgeChange, FinalConnectionState, NodeChange, ReactFlowProps, Viewport } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
@@ -57,9 +59,21 @@ import type {
   DiagramNodeKind,
   DiagramRouting,
   DiagramSide,
+  DiagramTextAlign,
+  DiagramTextValign,
   DiagramTurn,
 } from '../../api/diagrams';
 import type { SessionUser } from '../../api/session';
+import alignLeftIcon from '../../assets/align-left.svg';
+import alignCenterIcon from '../../assets/align-center.svg';
+import alignRightIcon from '../../assets/align-right.svg';
+import alignTopIcon from '../../assets/align-vertical-top.svg';
+import alignMiddleIcon from '../../assets/align-vertical-middle.svg';
+import alignBottomIcon from '../../assets/align-vertical-bottom.svg';
+import mapIcon from '../../assets/map.svg';
+import messageIcon from '../../assets/message-square.svg';
+import panelCollapseIcon from '../../assets/panel-collapse.svg';
+import marqueeIcon from '../../assets/marquee.svg';
 import circleIcon from '../../assets/circle-dot.svg';
 import dashboardIcon from '../../assets/layout-dashboard.svg';
 import frameIcon from '../../assets/frame.svg';
@@ -108,6 +122,8 @@ import form from '../../components/Dialog.module.css';
 import { t, tf } from '../../i18n';
 import {
   matches,
+  useAddShortcut,
+  useSelectShortcut,
   useArrangeShortcut,
   useDiagramFindShortcut,
   useDiagramModeShortcut,
@@ -127,15 +143,18 @@ import { CLAUDE_CODE_MODEL, DesignChat, askThroughClaudeCode, useChatFiles, useC
 import type { ChatIdea } from '../design/DesignChat';
 import shell from '../design/DesignImageEditorPage.module.css';
 import chat from '../design/WireframeEditorPage.module.css';
-import { EDGE_TYPES, LabelEditingContext, LinkEndsContext, LinkOpenContext, NODE_TYPES, SWATCH_ROW, SWATCHES, TurnedResizeContext, ViewingContext } from './DiagramCanvas';
+import { AlignmentGuides, EDGE_TYPES, GRID, LabelEditingContext, LinkEndsContext, LinkOpenContext, NODE_TYPES, SWATCH_ROW, SWATCHES, SuggestionGhost, TurnedResizeContext, ViewingContext, sameAll } from './DiagramCanvas';
+import { DiagramAddMenu, rememberAdded } from './DiagramAddMenu';
 import { turned } from './DiagramRoutes';
+import { alignTo, boundsOf, stretched } from './DiagramGuides';
+import type { Guide, GuideBox, GuideLine } from './DiagramGuides';
 import type { LinkCard } from './DiagramCanvas';
 import type { Linkable } from './DiagramLinkSearch';
 import { fetchDocuments } from '../../api/documents';
 import { fetchWireframes } from '../../api/wireframes';
-import type { LinkEdge, LinkEnd, LinkEnds, ShapeNode } from './DiagramCanvas';
-import { EndIcon, LineIcon, MarkerDefs, RoutingIcon, endStyleLabel, lineStyleLabel, markerId, nearestKind, routingLabel, styleOf } from './DiagramLineStyles';
-import { ShapeIcon } from './DiagramShapes';
+import type { LinkEdge, LinkEnd, LinkEnds, ShapeNode, Suggestion, TurnedResize } from './DiagramCanvas';
+import { EndIcon, LineIcon, MarkerDefs, RoutingIcon, endStyleLabel, headingOf, lineStyleLabel, markerId, nearestKind, routingLabel, styleOf } from './DiagramLineStyles';
+import { ShapeIcon, outlineOf } from './DiagramShapes';
 import { agentAccessOptions } from './DiagramsPage';
 import { DiagramHistory } from './DiagramHistory';
 import styles from './DiagramEditorPage.module.css';
@@ -149,14 +168,17 @@ export interface DiagramEditorPageProps {
 }
 
 /** The grid things snap to, in the drawing's pixels. */
-const GRID = 8;
 
 /** How narrow the side panel may be dragged, and how much of the canvas it must leave. */
 const PANEL_NARROWEST = 300;
 const CANVAS_NARROWEST = 320;
 /** How short the settings above the chat may be dragged, and how much height the chat keeps. */
-const SETTINGS_SHORTEST = 60;
-const CHAT_SHORTEST = 200;
+const CHAT_NARROWEST = 280;
+/** How much of the canvas's corner the small map takes, its margin included: what stands above it is lifted by this. */
+// The map's size, smaller than React Flow's own 200 by 150: it is for finding one's way, and the canvas is for the drawing.
+const MAP_SIZE = { width: 150, height: 100 };
+// The corner's tools stand left of the map, foot to foot with it: its width and the gap between them.
+const MAP_BESIDE = { marginRight: MAP_SIZE.width + 15 + 8 };
 /** How many steps undo keeps. */
 const UNDO_DEPTH = 100;
 /** How wide a picture is put on the diagram at most, in pixels; bigger ones are drawn smaller, in proportion. */
@@ -368,6 +390,151 @@ function sideAt(box: { x: number; y: number; w: number; h: number; rotation?: nu
 }
 const snap = (value: number) => Math.round(value / GRID) * GRID;
 
+/** Which way each side of an upright box faces, and the side across from it. */
+const FACING: Record<DiagramSide, [number, number]> = { top: [0, -1], right: [1, 0], bottom: [0, 1], left: [-1, 0] };
+const ACROSS_FROM: Record<DiagramSide, DiagramSide> = { top: 'bottom', right: 'left', bottom: 'top', left: 'right' };
+/** How far from a side a box may stand and still be the one a line is suggested to; how far off a suggested copy is put. */
+const SUGGEST_REACH = 320;
+const SUGGEST_GAP = 80;
+/** How long the pointer rests on a side's handle before what a click would draw is shown, in milliseconds: a pointer only passing shows nothing. */
+const SUGGEST_AFTER = 140;
+/** How far a press on a handle moves before it is a line being dragged out and no longer a click, in pixels. */
+const CLICK_SLACK = 4;
+
+/** The middle of a side of a box as it is drawn - turned, if the box is - and the way that side faces. */
+function sideMiddle(box: { x: number; y: number; w: number; h: number; rotation?: number }, side: DiagramSide) {
+  const [ux, uy] = FACING[side];
+  const [nx, ny] = box.rotation ? turned(ux, uy, box.rotation) : [ux, uy];
+  const reach = side === 'left' || side === 'right' ? box.w / 2 : box.h / 2;
+  return { x: box.x + box.w / 2 + nx * reach, y: box.y + box.h / 2 + ny * reach, nx, ny };
+}
+
+/**
+ * What a click on [side]'s handle of box [id] would draw. A line, where a box
+ * it is not yet joined to stands that way within reach: the nearest, by the
+ * gap between them. Otherwise a copy of the box, a little way off on that
+ * side, with a line to it - unless something already stands there. Boxes
+ * [skipped] - hidden, or on a locked layer - are neither joined nor copied.
+ */
+function suggestionFor(drawing: DiagramDrawing, skipped: (node: DiagramNodeData) => boolean, id: string, side: DiagramSide): Suggestion | null {
+  const a = drawing.nodes.find((node) => node.id === id);
+  if (a === undefined || skipped(a)) return null;
+  const out = sideMiddle(a, side);
+  const level = side === 'left' || side === 'right';
+  const joined = new Set(drawing.edges.flatMap((edge) => (edge.from === id ? [edge.to] : edge.to === id ? [edge.from] : [])));
+  const drawn = (to: { x: number; y: number; nx: number; ny: number }) => {
+    const pull = Math.max(16, Math.min(SUGGEST_GAP, Math.hypot(to.x - out.x, to.y - out.y) / 2));
+    return {
+      path: `M ${out.x},${out.y} C ${out.x + out.nx * pull},${out.y + out.ny * pull} ${to.x + to.nx * pull},${to.y + to.ny * pull} ${to.x},${to.y}`,
+      tip: { x: to.x, y: to.y, angle: (Math.atan2(-to.ny, -to.nx) * 180) / Math.PI },
+    };
+  };
+  let nearest: { node: DiagramNodeData; gap: number } | null = null;
+  for (const b of drawing.nodes) {
+    if (b.id === id || b.kind === 'group' || b.kind === 'text' || joined.has(b.id) || skipped(b)) continue;
+    const dx = b.x + b.w / 2 - out.x;
+    const dy = b.y + b.h / 2 - out.y;
+    // How far it stands the way the side faces, and how far off to one side of that.
+    const along = dx * out.nx + dy * out.ny;
+    const aside = Math.abs(dy * out.nx - dx * out.ny);
+    const deep = (Math.abs(out.nx) * b.w + Math.abs(out.ny) * b.h) / 2;
+    const wide = (Math.abs(out.ny) * b.w + Math.abs(out.nx) * b.h) / 2;
+    const gap = along - deep;
+    if (gap <= 0 || gap > SUGGEST_REACH || aside >= wide + (level ? a.h : a.w) / 2) continue;
+    if (nearest === null || gap < nearest.gap) nearest = { node: b, gap };
+  }
+  if (nearest !== null) {
+    const toSide = sideAt(nearest.node, out.x, out.y) ?? ACROSS_FROM[side];
+    return { kind: 'line', from: id, side, to: nearest.node.id, toSide, ...drawn(sideMiddle(nearest.node, toSide)) };
+  }
+  // A group is not copied - it would be an empty frame - and words alone take no line's end.
+  if (a.kind === 'group' || a.kind === 'text') return null;
+  const reach = level ? a.w / 2 : a.h / 2;
+  let x = a.x + out.nx * (2 * reach + SUGGEST_GAP);
+  let y = a.y + out.ny * (2 * reach + SUGGEST_GAP);
+  // On the grid the way it was moved, and level with the box it copies the other way.
+  if (!a.rotation) {
+    if (level) x = snap(x);
+    else y = snap(y);
+  }
+  if (drawing.nodes.some((b) => b.id !== id && b.kind !== 'group' && !skipped(b) && x < b.x + b.w && x + a.w > b.x && y < b.y + b.h && y + a.h > b.y)) return null;
+  const box = { x, y, w: a.w, h: a.h, ...(a.rotation ? { rotation: a.rotation } : {}) };
+  const home = drawing.nodes
+    .filter((group) => group.kind === 'group' && !skipped(group))
+    .filter((group) => x + a.w / 2 >= group.x && x + a.w / 2 <= group.x + group.w && y + a.h / 2 >= group.y && y + a.h / 2 <= group.y + group.h)
+    .sort((one, other) => one.w * one.h - other.w * other.h)[0];
+  return { kind: 'copy', from: id, side, toSide: ACROSS_FROM[side], box, ...(home !== undefined ? { home: home.id } : {}), ...drawn(sideMiddle(box, ACROSS_FROM[side])) };
+}
+
+/** What a new shape says until it is typed over; a class starts with its compartments, so how to write one is on the canvas. */
+function startingLabel(kind: DiagramNodeKind): string {
+  return kind === 'group' ? t('Group') : kind === 'note' ? t('Note') : kind === 'text' ? t('Text') : kind === 'class' ? `${t('New node')}\n--\n\n--\n` : t('New node');
+}
+
+/** Where a shape's words can be put, across and down, as the side panel offers them. */
+const TEXT_ACROSS: { value: DiagramTextAlign; icon: string; label: () => string }[] = [
+  { value: 'left', icon: alignLeftIcon, label: () => t('Text to the left') },
+  { value: 'center', icon: alignCenterIcon, label: () => t('Text in the centre') },
+  { value: 'right', icon: alignRightIcon, label: () => t('Text to the right') },
+];
+const TEXT_DOWN: { value: DiagramTextValign; icon: string; label: () => string }[] = [
+  { value: 'top', icon: alignTopIcon, label: () => t('Text at the top') },
+  { value: 'middle', icon: alignMiddleIcon, label: () => t('Text in the middle') },
+  { value: 'bottom', icon: alignBottomIcon, label: () => t('Text at the bottom') },
+];
+/** The smallest and the biggest a shape's words may be, in pixels - the server's own limits. */
+const TEXT_LEAST = 6;
+const TEXT_MOST = 96;
+
+/**
+ * How big a shape's words are, typed. A size is taken the moment it is one the
+ * server keeps, and what is half typed - the 1 of 18 - is left in the field
+ * and not on the shape. Emptied, the shape writes at its usual size again,
+ * which the field then shows faintly.
+ */
+function TextSizeField({ value, usual, onChange, onFocus, onBlur }: { value: number | undefined; usual: number; onChange: (size: number | undefined) => void; onFocus: () => void; onBlur: () => void }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  return (
+    <input
+      type="number"
+      className={`${form.input} ${styles.textSize}`}
+      min={TEXT_LEAST}
+      max={TEXT_MOST}
+      step={1}
+      value={draft ?? (value === undefined ? '' : String(value))}
+      placeholder={String(usual)}
+      aria-label={t('Text size')}
+      title={t('Text size, in pixels')}
+      onFocus={onFocus}
+      onBlur={() => {
+        setDraft(null);
+        onBlur();
+      }}
+      onChange={(event) => {
+        const said = event.target.value;
+        setDraft(said);
+        if (said.trim() === '') {
+          onChange(undefined);
+          return;
+        }
+        const size = Number(said);
+        if (Number.isInteger(size) && size >= TEXT_LEAST && size <= TEXT_MOST) onChange(size);
+      }}
+      data-testid="diagram-node-text-size"
+    />
+  );
+}
+
+/** How near, in pixels on the screen, an edge or a middle comes to another box's before it is pulled level with it. */
+const GUIDE_REACH = 5;
+
+/** Which edges of a box a resize has moved, as the lines a guide may pull: across, then down. */
+function edgesMoved(before: GuideBox, now: GuideBox): [GuideLine[], GuideLine[]] {
+  const across: GuideLine[] = now.x !== before.x ? ['start'] : now.x + now.w !== before.x + before.w ? ['end'] : [];
+  const down: GuideLine[] = now.y !== before.y ? ['start'] : now.y + now.h !== before.y + before.h ? ['end'] : [];
+  return [across, down];
+}
+
 /** What Copy and Cut put down and Paste picks up: for the length of the tab, across diagrams. */
 let clipboard: DiagramDrawing | null = null;
 /*
@@ -441,6 +608,97 @@ export function DiagramEditorRoute(props: DiagramEditorPageProps) {
   );
 }
 
+/**
+ * How far in the canvas is, as the toolbar says it. A part of its own, as the
+ * pointers below are: the page read the viewport itself, so every frame of a
+ * pan or a zoom drew the whole editor again - toolbar, panel and chat - which
+ * on a big diagram is what made moving about it drag.
+ */
+function ZoomReadout() {
+  const zoom = useStore((state) => state.transform[2]);
+  return <>{`${Math.round(zoom * 100)}%`}</>;
+}
+
+/** Where everybody else points, kept in place as the canvas is moved. */
+function PointersOnCanvas({ pointers }: { pointers: Parameters<typeof LivePointers>[0]['pointers'] }) {
+  const viewport = useViewport();
+  return <LivePointers pointers={pointers} place={(x, y) => ({ left: x * viewport.zoom + viewport.x, top: y * viewport.zoom + viewport.y })} />;
+}
+
+/**
+ * What the canvas is told to call, as functions that stay the same ones from
+ * one drawing of the page to the next and call whatever was handed last.
+ * React Flow hands these down to every box and every line, and each of those
+ * is drawn again when one it holds is a new function - which one written
+ * where it is passed always is. So a box dragged across a diagram of six
+ * hundred drew all six hundred and their lines again for every pixel.
+ */
+function useSteady<T extends object>(now: T): T {
+  const latest = useRef(now);
+  useLayoutEffect(() => {
+    latest.current = now;
+  });
+  const names = useRef(Object.keys(now));
+  return useMemo(() => {
+    const steady: Record<string, unknown> = {};
+    for (const name of names.current) {
+      steady[name] = (...given: unknown[]) => (latest.current as Record<string, (...all: unknown[]) => unknown>)[name](...given);
+    }
+    return steady as T;
+  }, []);
+}
+
+/** The handlers of the canvas that are kept steady - see [useSteady]. */
+type CanvasCalls = Required<
+  Pick<
+    ReactFlowProps<ShapeNode, LinkEdge>,
+    | 'onNodesChange'
+    | 'onEdgesChange'
+    | 'onConnect'
+    | 'onConnectStart'
+    | 'onConnectEnd'
+    | 'onEdgeMouseEnter'
+    | 'onEdgeMouseLeave'
+    | 'onNodeDragStart'
+    | 'onNodeDoubleClick'
+    | 'onEdgeDoubleClick'
+    | 'onNodeDragStop'
+    | 'onSelectionDragStart'
+    | 'onSelectionDragStop'
+    | 'onPaneClick'
+    | 'onNodeContextMenu'
+    | 'onEdgeContextMenu'
+    | 'onSelectionContextMenu'
+    | 'onPaneContextMenu'
+    | 'onMoveStart'
+    | 'onMoveEnd'
+  >
+>;
+
+// Said once, for the same reason: a list or an object written where it is passed is a new one each time.
+const MANY_KEYS = ['Shift', 'Meta', 'Control'];
+const MIDDLE_BUTTON = [1];
+const NO_ATTRIBUTION = { hideAttribution: true };
+/*
+ * On the map a shape with no colour of its own is coloured by its kind - one
+ * colour for every box, another for every ellipse - so the map shows what is
+ * where, and not a page of white boxes alike. Only on the map: the drawing is
+ * untouched. The tints are the palette's middle row, so nothing on the map is
+ * a colour the drawing could not have.
+ */
+const MAP_TINTS = SWATCHES.slice(SWATCH_ROW + 1, SWATCH_ROW * 2);
+// The shapes most drawn, each its own; any other kind takes one of the same eight by its name.
+const MAP_TINT_OF: Partial<Record<string, number>> = { box: 0, ellipse: 1, diamond: 2, note: 3, hexagon: 4, database: 5, document: 6, rounded: 7 };
+function tintOf(kind: string): string {
+  const fixed = MAP_TINT_OF[kind];
+  if (fixed !== undefined) return MAP_TINTS[fixed];
+  let hash = 0;
+  for (const letter of kind) hash = (hash * 31 + letter.charCodeAt(0)) >>> 0;
+  return MAP_TINTS[hash % MAP_TINTS.length];
+}
+const mapFill = (node: ShapeNode) => node.data.color ?? (node.data.kind === 'group' ? 'var(--diagram-group)' : node.data.kind === 'text' ? 'transparent' : tintOf(node.data.kind));
+const mapStroke = (node: ShapeNode) => ((node.selected ?? false) ? 'var(--diagram-select)' : node.data.kind === 'text' ? 'var(--diagram-muted)' : 'var(--diagram-ink)');
+
 /** A node's place among the others: how many groups it sits in. */
 function depthOf(node: DiagramNodeData, byId: Map<string, DiagramNodeData>): number {
   let depth = 0;
@@ -490,7 +748,6 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
   // The diagram's versions, in a dialog over the editor.
   const [historyOpen, setHistoryOpen] = useState(false);
   const flow = useReactFlow();
-  const viewport = useViewport();
   /*
    * The box a link named (`?node=`), waiting for the canvas to be ready to
    * show it. Centring it the moment the drawing arrived ran before React Flow
@@ -599,6 +856,20 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
   const diagramOpen = diagramFold !== 'closed';
   /** The label being typed over in place, on the canvas. */
   const [labelling, setLabelling] = useState<{ kind: 'node' | 'edge'; id: string } | null>(null);
+  /** The small map of the whole diagram in the canvas's corner: drawn unless this person put it away. */
+  const [mapFold, setMapFold] = useSieve('diagram.editor.minimap');
+  const mapShown = mapFold !== 'off';
+  /** Whether a drag on empty canvas draws a rectangle that selects, where it otherwise moves the canvas; remembered. */
+  const [marqueeFold, setMarqueeFold] = useSieve('diagram.editor.marquee');
+  const marquee = marqueeFold === 'on';
+  /** The Add menu the shortcut opens: where on the screen, and where on the drawing what is picked goes. */
+  const [addMenu, setAddMenu] = useState<{ x: number; y: number; at: { x: number; y: number } } | null>(null);
+  /** What a click on the handle under the pointer would draw, shown faintly; see [suggestionFor]. */
+  const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
+  const suggestWait = useRef<number | null>(null);
+  const suggestOn = useRef<string | null>(null);
+  /** A line being dragged out of a handle: nothing is suggested under it. */
+  const connecting = useRef(false);
 
   const { models, modelId, choose } = useChatModels(workspaceId, modelKey, true);
   const [talk, setTalk] = useState<DiagramTurn[]>([]);
@@ -609,6 +880,9 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
 
   /** The drawing as it was when a drag, a resize or a typed field began, so the whole gesture is one step. */
   const gestureStart = useRef<DiagramDrawing | null>(null);
+  /** The alignment guides on the canvas while a box is dragged or resized, and the axes they hold it on. */
+  const [guides, setGuides] = useState<Guide[]>([]);
+  const guideLock = useRef({ x: false, y: false });
 
   const undoKey = useUndoShortcut();
   const redoKey = useRedoShortcut();
@@ -623,6 +897,9 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
   const findKey = useDiagramFindShortcut();
   const modeKey = useDiagramModeShortcut();
   const rotateKey = useDiagramRotateShortcut();
+  // The workflow editor's own two, so the same key adds and the same key selects on either canvas.
+  const addKey = useAddShortcut();
+  const selectKey = useSelectShortcut();
   /**
    * Finding a box or a line by its words. A diagram of forty services and
    * sixty topics is one where the browser's own find sees nothing - the boxes
@@ -670,7 +947,9 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
   }, [workspaceId]);
   const finder = useRef<HTMLInputElement>(null);
 
-  const unsaved = diagram !== null && JSON.stringify(drawing) !== saved;
+  /** The drawing as it would be sent, made once per change and not once per reader of it: a big diagram is a long string. */
+  const drawn = useMemo(() => JSON.stringify(drawing), [drawing]);
+  const unsaved = diagram !== null && drawn !== saved;
 
   /*
    * Working on it together, as the workflow editor does: who else is here,
@@ -845,81 +1124,163 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
   const hiddenNow = useMemo(() => hiddenLayers(drawing, viewing ? hiddenHere : new Set()), [drawing, viewing, hiddenHere]);
   const lockedNow = useMemo(() => lockedLayers(drawing), [drawing]);
 
+  /*
+   * The objects React Flow is handed, kept from one rebuild to the next
+   * wherever nothing a shape or a line is drawn from has changed. React Flow
+   * keeps its own record of a node for as long as it is handed the same
+   * object and draws again only what arrives new - so a box dragged across a
+   * big diagram redraws itself and the lines it carries, where every box and
+   * every line was made again, and drawn again, for each pixel of the way.
+   * A box is keyed on what is drawn and not on its object in the drawing: one
+   * inside a group being dragged is a new object there, and exactly where it
+   * was inside its group.
+   */
+  const builtNodes = useRef(new Map<string, { key: readonly unknown[]; built: ShapeNode }>());
+  const builtEdges = useRef(new Map<string, { key: readonly unknown[]; built: LinkEdge }>());
+  const madeEdges = useRef<LinkEdge[]>([]);
+
   const nodes = useMemo<ShapeNode[]>(() => {
     const ordered = [...drawing.nodes].sort((a, b) => {
       const groups = Number(b.kind === 'group') - Number(a.kind === 'group');
       return depthOf(a, byId) - depthOf(b, byId) || groups;
     });
-    return ordered.map((node) => {
+    const chosen = new Set(selectedNodes);
+    const kept = new Map<string, { key: readonly unknown[]; built: ShapeNode }>();
+    const made = ordered.map((node) => {
       const parent = node.parent === undefined ? undefined : byId.get(node.parent);
-      return {
+      const x = node.x - (parent?.x ?? 0);
+      const y = node.y - (parent?.y ?? 0);
+      const noted = (node.notes ?? '') !== '';
+      const loading = uploading.has(node.id);
+      const selected = chosen.has(node.id);
+      const hidden = hiddenNow.has(layerOf(node, drawing));
+      const locked = lockedNow.has(layerOf(node, drawing));
+      const key = [
+        x, y, parent?.id, node.kind, node.label, node.color, noted, node.link, node.image, loading, node.rotation,
+        node.align, node.valign, node.textSize, node.border, node.borderWidth, node.w, node.h, selected, hidden, locked,
+      ];
+      const before = builtNodes.current.get(node.id);
+      if (before !== undefined && sameAll(before.key, key)) {
+        kept.set(node.id, before);
+        return before.built;
+      }
+      const built: ShapeNode = {
         id: node.id,
         type: 'shape',
-        position: { x: node.x - (parent?.x ?? 0), y: node.y - (parent?.y ?? 0) },
+        position: { x, y },
         parentId: parent?.id,
-        data: { kind: node.kind, label: node.label, color: node.color, noted: (node.notes ?? '') !== '', link: node.link, image: node.image, loading: uploading.has(node.id), rotation: node.rotation },
-          // Its own outline, read by the shape's CSS through these, so every kind of shape takes it the same way.
-          style: {
-            ...(node.border !== undefined ? { '--node-border': node.border } : {}),
-            ...(node.borderWidth !== undefined ? { '--node-border-width': `${node.borderWidth}px`, '--node-stroke': String(node.borderWidth) } : {}),
-          } as CSSProperties,
+        data: {
+          kind: node.kind,
+          label: node.label,
+          color: node.color,
+          noted,
+          link: node.link,
+          image: node.image,
+          loading,
+          rotation: node.rotation,
+          align: node.align,
+          valign: node.valign,
+          textSize: node.textSize,
+        },
+        // Its own outline, read by the shape's CSS through these, so every kind of shape takes it the same way.
+        style: {
+          ...(node.border !== undefined ? { '--node-border': node.border } : {}),
+          ...(node.borderWidth !== undefined ? { '--node-border-width': `${node.borderWidth}px`, '--node-stroke': String(node.borderWidth) } : {}),
+        } as CSSProperties,
         width: node.w,
         height: node.h,
         initialWidth: node.w,
         initialHeight: node.h,
         measured: { width: node.w, height: node.h },
-        selected: selectedNodes.includes(node.id),
+        selected,
         zIndex: node.kind === 'group' ? -1 : undefined,
         // A hidden layer's boxes are not drawn; a locked one's are drawn and cannot be picked up.
-        hidden: hiddenNow.has(layerOf(node, drawing)),
-        ...(lockedNow.has(layerOf(node, drawing)) ? { draggable: false, selectable: false, connectable: false, deletable: false } : {}),
+        hidden,
+        ...(locked ? { draggable: false, selectable: false, connectable: false, deletable: false } : {}),
       };
+      kept.set(node.id, { key, built });
+      return built;
     });
-  }, [drawing, byId, selectedNodes, hiddenNow, lockedNow]);
+    builtNodes.current = kept;
+    return made;
+  }, [drawing, byId, selectedNodes, hiddenNow, lockedNow, uploading]);
 
-  const edges = useMemo<LinkEdge[]>(
-    () =>
-      drawing.edges.map((edge) => {
-        const { line, start, end } = styleOf(edge);
-        // The arrow is React Flow's own closed arrow, as it always was; the other marks are this page's markers.
-        const mark = (style: DiagramEndStyle, atEnd: boolean) =>
-          style === 'arrow'
-            ? { type: MarkerType.ArrowClosed, width: 18, height: 18, ...(edge.color !== undefined ? { color: edge.color } : {}), ...(atEnd ? {} : { orient: 'auto-start-reverse' }) }
-            : (markerId(style, atEnd) ?? undefined);
-        const fromHidden = hiddenNow.has(layerOf(byId.get(edge.from) ?? {}, drawing));
-        const toHidden = hiddenNow.has(layerOf(byId.get(edge.to) ?? {}, drawing));
-        const locked = lockedNow.has(layerOf(edge, drawing));
-        return {
-          // Hidden with its layer, or with either of its boxes.
-          hidden: hiddenNow.has(layerOf(edge, drawing)) || fromHidden || toHidden,
-          ...(locked ? { selectable: false, deletable: false } : {}),
-          id: edge.id,
-          source: edge.from,
-          target: edge.to,
-          // A pinned end names its box's handle, so React Flow sits its reconnect anchor on that side; a floating end names none.
-          ...(edge.fromSide !== undefined ? { sourceHandle: edge.fromSide } : {}),
-          ...(edge.toSide !== undefined ? { targetHandle: edge.toSide } : {}),
-          type: 'link' as const,
-          data: { line, label: edge.label, routing: edge.routing ?? 'straight', fromSide: edge.fromSide, toSide: edge.toSide, points: edge.points, labelAt: edge.labelAt, color: edge.color, width: edge.width },
-          markerEnd: mark(end, true),
-          markerStart: mark(start, false),
-          selected: selectedEdges.includes(edge.id),
-        };
-      }).map((edge) =>
-        /*
-         * A selected box lights every line it has, in or out, so where it
-         * reaches is seen at a glance rather than traced line by line.
-         */
-        selectedNodes.includes(edge.source) || selectedNodes.includes(edge.target)
-          ? { ...edge, data: { ...edge.data, touched: true }, zIndex: 1 }
-          : edge,
-      ),
-    [drawing, selectedEdges, selectedNodes, hiddenNow, lockedNow, byId],
-  );
+  const edges = useMemo<LinkEdge[]>(() => {
+    const chosen = new Set(selectedEdges);
+    const chosenNodes = new Set(selectedNodes);
+    const kept = new Map<string, { key: readonly unknown[]; built: LinkEdge }>();
+    const made = drawing.edges.map((edge) => {
+      const selected = chosen.has(edge.id);
+      /*
+       * A selected box lights every line it has, in or out, so where it
+       * reaches is seen at a glance rather than traced line by line.
+       */
+      const touched = chosenNodes.has(edge.from) || chosenNodes.has(edge.to);
+      // Hidden with its layer, or with either of its boxes.
+      const hidden =
+        hiddenNow.has(layerOf(edge, drawing)) ||
+        hiddenNow.has(layerOf(byId.get(edge.from) ?? {}, drawing)) ||
+        hiddenNow.has(layerOf(byId.get(edge.to) ?? {}, drawing));
+      const locked = lockedNow.has(layerOf(edge, drawing));
+      // The line's own object in the drawing, which moving a box leaves alone: a line is made again only when it is changed.
+      const key = [edge, selected, touched, hidden, locked];
+      const before = builtEdges.current.get(edge.id);
+      if (before !== undefined && sameAll(before.key, key)) {
+        kept.set(edge.id, before);
+        return before.built;
+      }
+      const { line, start, end } = styleOf(edge);
+      // The arrow is React Flow's own closed arrow, as it always was; the other marks are this page's markers.
+      const mark = (style: DiagramEndStyle, atEnd: boolean) =>
+        style === 'arrow'
+          ? { type: MarkerType.ArrowClosed, width: 18, height: 18, ...(edge.color !== undefined ? { color: edge.color } : {}), ...(atEnd ? {} : { orient: 'auto-start-reverse' }) }
+          : (markerId(style, atEnd) ?? undefined);
+      const built: LinkEdge = {
+        hidden,
+        ...(locked ? { selectable: false, deletable: false } : {}),
+        id: edge.id,
+        source: edge.from,
+        target: edge.to,
+        // A pinned end names its box's handle, so React Flow sits its reconnect anchor on that side; a floating end names none.
+        ...(edge.fromSide !== undefined ? { sourceHandle: edge.fromSide } : {}),
+        ...(edge.toSide !== undefined ? { targetHandle: edge.toSide } : {}),
+        type: 'link' as const,
+        data: {
+          line,
+          label: edge.label,
+          routing: edge.routing ?? 'straight',
+          fromSide: edge.fromSide,
+          toSide: edge.toSide,
+          points: edge.points,
+          labelAt: edge.labelAt,
+          color: edge.color,
+          width: edge.width,
+          heading: headingOf(start, end),
+          ...(touched ? { touched: true } : {}),
+        },
+        markerEnd: mark(end, true),
+        markerStart: mark(start, false),
+        selected,
+        ...(touched ? { zIndex: 1 } : {}),
+      };
+      kept.set(edge.id, { key, built });
+      return built;
+    });
+    builtEdges.current = kept;
+    // The list itself too: handed the one it already has, the canvas has nothing to look through, and moving a box changes no line.
+    if (sameAll(madeEdges.current, made)) return madeEdges.current;
+    madeEdges.current = made;
+    return made;
+  }, [drawing, selectedEdges, selectedNodes, hiddenNow, lockedNow, byId]);
 
   /** A node and everything inside it moved by the same amount. */
-  function shifted(from: DiagramDrawing, id: string, dx: number, dy: number): DiagramDrawing {
-    const index = new Map(from.nodes.map((node) => [node.id, node]));
+  function shifted(
+    from: DiagramDrawing,
+    id: string,
+    dx: number,
+    dy: number,
+    index: Map<string, DiagramNodeData> = new Map(from.nodes.map((node) => [node.id, node])),
+  ): DiagramDrawing {
     return {
       ...from,
       nodes: from.nodes.map((node) => (within(node.id, id, index) ? { ...node, x: node.x + dx, y: node.y + dy } : node)),
@@ -931,26 +1292,126 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
     if (viewing) changes = changes.filter((one) => one.type === 'select');
     let next = drawing;
     let picked = selectedNodes;
+    // The boxes by id, made once for the changes that find nothing moved and again only after one that did.
+    let index: Map<string, DiagramNodeData> | null = null;
+    const held = (id: string) => {
+      index ??= new Map(next.nodes.map((node) => [node.id, node]));
+      return index.get(id);
+    };
+    // What the pointer has hold of in this batch: the boxes it is dragging, or the one it is resizing.
+    const dragging: string[] = [];
+    let resizing: string | null = null;
+    let resized: string | null = null;
     for (const one of changes) {
       if (one.type === 'select') {
         picked = one.selected ? [...new Set([...picked, one.id])] : picked.filter((id) => id !== one.id);
       } else if (one.type === 'position' && one.position !== undefined) {
-        const node = next.nodes.find((held) => held.id === one.id);
+        const node = held(one.id);
         if (node === undefined) continue;
-        const parent = node.parent === undefined ? undefined : next.nodes.find((held) => held.id === node.parent);
+        const parent = node.parent === undefined ? undefined : held(node.parent);
         const x = Math.round(one.position.x + (parent?.x ?? 0));
         const y = Math.round(one.position.y + (parent?.y ?? 0));
-        if (x !== node.x || y !== node.y) next = shifted(next, node.id, x - node.x, y - node.y);
+        if (x !== node.x || y !== node.y) {
+          next = shifted(next, node.id, x - node.x, y - node.y, index ?? undefined);
+          index = null;
+        }
+        if (one.dragging === true) dragging.push(one.id);
       } else if (one.type === 'dimensions' && one.dimensions !== undefined && one.resizing !== undefined) {
         if (one.resizing) begin();
         const w = Math.max(GRID * 3, Math.round(one.dimensions.width));
         const h = Math.max(GRID * 3, Math.round(one.dimensions.height));
         next = { ...next, nodes: next.nodes.map((node) => (node.id === one.id ? { ...node, w, h } : node)) };
+        index = null;
+        if (one.resizing) resizing = one.id;
+        else resized = one.id;
         if (!one.resizing) window.requestAnimationFrame(() => end());
       }
     }
+    if (dragging.length > 0) {
+      /*
+       * Dragged, a box follows the pointer a pixel at a time and is pulled
+       * level with a box near it - the guides say with which. The pull is on
+       * what is dragged as a whole, so a selection keeps its own arrangement.
+       */
+      const byNow = new Map(next.nodes.map((node) => [node.id, node]));
+      const tops = dragging.filter((id) => !dragging.some((other) => other !== id && within(id, other, byNow)));
+      const moving = boundsOf(tops.map((id) => byNow.get(id)).filter((node): node is DiagramNodeData => node !== undefined));
+      const level = moving === null ? null : alignTo(moving, othersFor(next, dragging, byNow), GUIDE_REACH / flow.getZoom());
+      if (level !== null && (level.dx !== 0 || level.dy !== 0)) {
+        for (const id of tops) next = shifted(next, id, level.dx, level.dy);
+      }
+      showGuides(level?.guides ?? []);
+    } else if (resizing !== null) {
+      const byNow = new Map(next.nodes.map((node) => [node.id, node]));
+      const now = byNow.get(resizing);
+      const before = gestureStart.current?.nodes.find((node) => node.id === resizing);
+      // A picture keeps its proportions and a turned shape has corners of its own: neither is pulled by one edge.
+      if (now !== undefined && before !== undefined && now.kind !== 'image' && !now.rotation) {
+        const [across, down] = edgesMoved(before, now);
+        const level = alignTo(now, othersFor(next, [now.id], byNow), GUIDE_REACH / flow.getZoom(), across, down, true);
+        const box = stretched(now, level.dx, level.dy, across, down);
+        if (box.w >= GRID * 3 && box.h >= GRID * 3) {
+          if (level.dx !== 0 || level.dy !== 0) next = { ...next, nodes: next.nodes.map((node) => (node.id === now.id ? { ...node, ...box } : node)) };
+          showGuides(level.guides);
+        } else {
+          showGuides([]);
+        }
+      }
+    } else if (resized !== null) {
+      /*
+       * Let go of, the edges that were moved settle on the grid - the ones a
+       * guide is holding level stay where the guide put them, and the edges
+       * that were not moved are not touched.
+       */
+      const now = next.nodes.find((node) => node.id === resized);
+      const before = gestureStart.current?.nodes.find((node) => node.id === resized);
+      if (now !== undefined && before !== undefined && now.kind !== 'image' && !now.rotation) {
+        const [across, down] = edgesMoved(before, now);
+        const lock = guideLock.current;
+        let { x, y, w, h } = now;
+        if (!lock.x && across.includes('start')) {
+          const right = x + w;
+          x = Math.min(snap(x), right - GRID * 3);
+          w = right - x;
+        } else if (!lock.x && across.includes('end')) {
+          w = Math.max(GRID * 3, snap(x + w) - x);
+        }
+        if (!lock.y && down.includes('start')) {
+          const bottom = y + h;
+          y = Math.min(snap(y), bottom - GRID * 3);
+          h = bottom - y;
+        } else if (!lock.y && down.includes('end')) {
+          h = Math.max(GRID * 3, snap(y + h) - y);
+        }
+        if (x !== now.x || y !== now.y || w !== now.w || h !== now.h) {
+          next = { ...next, nodes: next.nodes.map((node) => (node.id === now.id ? { ...node, x, y, w, h } : node)) };
+        }
+      }
+      showGuides([]);
+    }
     if (picked !== selectedNodes) setSelectedNodes(picked);
     if (next !== drawing) setDrawing(next);
+  }
+
+  /** The boxes a dragged or resized one may be brought level with: those on screen, shown, and not being moved with it. */
+  function othersFor(from: DiagramDrawing, moved: string[], index: Map<string, DiagramNodeData>): GuideBox[] {
+    const { x, y, zoom } = flow.getViewport();
+    const left = -x / zoom;
+    const top = -y / zoom;
+    const right = left + paneWidth / zoom;
+    const bottom = top + paneHeight / zoom;
+    return from.nodes.filter(
+      (node) =>
+        !hiddenNow.has(layerOf(node, from)) &&
+        !moved.some((id) => within(node.id, id, index)) &&
+        node.x < right && node.x + node.w > left && node.y < bottom && node.y + node.h > top,
+    );
+  }
+
+  /** The guides drawn, and which axes they hold - so letting go does not move onto the grid what a guide has just put level. */
+  function showGuides(next: Guide[]) {
+    guideLock.current = { x: next.some((one) => one.axis === 'x'), y: next.some((one) => one.axis === 'y') };
+    setGuides((held) => (held.length === next.length && held.every((one, at) => sameAll(Object.values(one), Object.values(next[at]))) ? held : next));
   }
 
   function onEdgesChange(changes: EdgeChange<LinkEdge>[]) {
@@ -987,14 +1448,29 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
    * middle it floats, on empty canvas nothing is made. Done on end rather than
    * onConnect so an end landing anywhere on a box pins to the side it fell
    * toward, not only on the small centre handle.
+   *
+   * Curved, as a line drawn by hand starts: it bends out of the side it leaves
+   * and into the one it meets, where a straight one cut across at whatever
+   * angle the two boxes happened to make. Said on the line itself, since a
+   * line that names no routing is a straight one - every line drawn before
+   * this, and every one an agent draws without saying.
    */
   function onConnectEnd(event: MouseEvent | TouchEvent, state: FinalConnectionState) {
+    connecting.current = false;
     if (viewing || state.fromNode == null) return;
     const at = pointerFlow(event);
-    const onto = nodeUnder(at.x, at.y);
+    /*
+     * The handle the line was drawn to, where it snapped to one: that is what
+     * the line was shown reaching while it was dragged, and what it ends on.
+     * A handle sits on its shape's outline and is taken hold of from a little
+     * way outside it, so the pointer let go there is very often over no shape
+     * at all - and the line that was shown reaching a handle was not made.
+     */
+    const snapped = state.toNode != null && state.toNode.id !== state.fromNode.id ? byId.get(state.toNode.id) : undefined;
+    const onto = snapped ?? nodeUnder(at.x, at.y);
     if (onto === undefined || onto.id === state.fromNode.id) return;
     const fromSide = asSide(state.fromHandle?.id);
-    const toSide = sideAt(onto, at.x, at.y);
+    const toSide = snapped !== undefined && state.toHandle != null ? asSide(state.toHandle.id) : sideAt(onto, at.x, at.y);
     const made: DiagramEdgeData = {
       id: freshId('e'),
       from: state.fromNode.id,
@@ -1003,6 +1479,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
       line: 'solid',
       start: 'none',
       end: 'arrow',
+      routing: 'curved',
       ...(fromSide !== undefined ? { fromSide } : {}),
       ...(toSide !== undefined ? { toSide } : {}),
     };
@@ -1032,8 +1509,13 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
    * the side, so an end pins wherever on a box it is dropped, and the other
    * end is untouched. Both ends, the same way: a line's start is an end too.
    */
-  const linkEnds: LinkEnds = {
-    hovered: viewing ? null : hoveredEdge,
+  /*
+   * Read through a ref and handed to the canvas as one object that changes only
+   * with what it shows: every line reads this, and a new object on every
+   * render was every line drawn again on every render.
+   */
+  const linkEndsNow = useRef<Omit<LinkEnds, 'hovered'>>({ aim: () => null, drop: () => {}, bend: () => {} });
+  linkEndsNow.current = {
     // Shown while it is dragged: the middle of the side it would pin to, or of the box it would float on.
     aim: (edgeId, end, fx, fy) => {
       const landing = landingOf(edgeId, end, fx, fy);
@@ -1058,12 +1540,51 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
       setSelectedNodes([]);
       setSelectedEdges([edgeId]);
     },
+    // A run dragged aside: the line keeps the corners it was left with, until its routing is chosen again.
+    bend: (edgeId, corners) => {
+      if (viewing) return;
+      change({
+        ...drawing,
+        edges: drawing.edges.map((one) => (one.id === edgeId ? { ...one, points: corners.length > 0 ? corners : undefined, labelAt: undefined } : one)),
+      });
+      setSelectedNodes([]);
+      setSelectedEdges([edgeId]);
+    },
   };
+  const linkEnds = useMemo<LinkEnds>(
+    () => ({
+      hovered: viewing ? null : hoveredEdge,
+      aim: (edgeId, end, fx, fy) => linkEndsNow.current.aim(edgeId, end, fx, fy),
+      drop: (edgeId, end, fx, fy) => linkEndsNow.current.drop(edgeId, end, fx, fy),
+      bend: (edgeId, corners) => linkEndsNow.current.bend(edgeId, corners),
+    }),
+    [viewing, hoveredEdge],
+  );
 
-  /** A node let go of lands in the smallest group under its middle, or in none. */
-  function onDragStop(dragged: string[]) {
+  /**
+   * What was dragged, let go of. It settles on the grid - by one amount for
+   * all of it, taken from the box that was held, so a selection keeps its
+   * arrangement - except along an axis a guide is holding it level on. Then
+   * each lands in the smallest group under its middle, or in none.
+   *
+   * On the grid here and not while it moves: snapped as it was dragged, a box
+   * stood still until the pointer had gone four pixels and then jumped eight.
+   */
+  function onDragStop(grabbed: string | undefined, dragged: string[]) {
     let next = drawing;
-    const index = new Map(next.nodes.map((node) => [node.id, node]));
+    let index = new Map(next.nodes.map((node) => [node.id, node]));
+    const lock = guideLock.current;
+    const lead = index.get(grabbed ?? dragged[0] ?? '');
+    if (lead !== undefined) {
+      const dx = lock.x ? 0 : snap(lead.x) - lead.x;
+      const dy = lock.y ? 0 : snap(lead.y) - lead.y;
+      if (dx !== 0 || dy !== 0) {
+        const tops = dragged.filter((id) => !dragged.some((other) => other !== id && within(id, other, index)));
+        for (const id of tops) next = shifted(next, id, dx, dy);
+        index = new Map(next.nodes.map((node) => [node.id, node]));
+      }
+    }
+    showGuides([]);
     for (const id of dragged) {
       const node = index.get(id);
       if (node === undefined) continue;
@@ -1083,18 +1604,17 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
 
   // -- Edits ----------------------------------------------------------------
 
-  /** A new node of [kind], in the middle of what is on screen. */
-  function add(kind: DiagramNodeKind) {
+  /** A new node of [kind]: in the middle of what is on screen, or with its middle [at] a point of the drawing. */
+  function add(kind: DiagramNodeKind, at?: { x: number; y: number }) {
     const size = MADE[kind];
     const box = document.querySelector('[data-testid="diagram-canvas"]')?.getBoundingClientRect();
-    const middle = box === undefined ? { x: 0, y: 0 } : flow.screenToFlowPosition({ x: box.left + box.width / 2, y: box.top + box.height / 2 });
-    // Each new one a little further on than the last, so a row of clicks is not one pile.
-    const offset = (drawing.nodes.length % 6) * GRID * 3;
+    const middle = at ?? (box === undefined ? { x: 0, y: 0 } : flow.screenToFlowPosition({ x: box.left + box.width / 2, y: box.top + box.height / 2 }));
+    // Each new one a little further on than the last, so a row of clicks is not one pile; one put where the pointer is goes exactly there.
+    const offset = at !== undefined ? 0 : (drawing.nodes.length % 6) * GRID * 3;
     const made: DiagramNodeData = {
       id: freshId('n'),
       kind,
-      // A class starts with its compartments, so how to write one is on the canvas rather than in a hint.
-      label: kind === 'group' ? t('Group') : kind === 'note' ? t('Note') : kind === 'text' ? t('Text') : kind === 'class' ? `${t('New node')}\n--\n\n--\n` : t('New node'),
+      label: startingLabel(kind),
       x: snap(middle.x - size.w / 2 + offset),
       y: snap(middle.y - size.h / 2 + offset),
       w: size.w,
@@ -1104,6 +1624,122 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
     change({ ...drawing, nodes: kind === 'group' ? [made, ...drawing.nodes] : [...drawing.nodes, made] });
     setSelectedNodes([made.id]);
     setSelectedEdges([]);
+    // From the toolbar or the Add menu alike: what was reached for leads the menu next time.
+    rememberAdded(kind);
+  }
+
+  /**
+   * The Add menu, opened by its key where the pointer is - or in the middle of
+   * the canvas when the pointer is somewhere else - so a diagram is built from
+   * the keyboard as a workflow is: the key, the arrows, Enter.
+   */
+  function openAddMenu() {
+    const box = document.querySelector('[data-testid="diagram-canvas"]')?.getBoundingClientRect();
+    if (box === undefined) return;
+    const held = pointerOnScreen.current;
+    const over = held !== null && held.x >= box.left && held.x <= box.right && held.y >= box.top && held.y <= box.bottom;
+    const x = over ? held.x : box.left + box.width / 2;
+    const y = over ? held.y : box.top + box.height / 2;
+    setMenu(null);
+    setRightMenu(null);
+    setAddMenu({ x, y, at: flow.screenToFlowPosition({ x, y }) });
+  }
+
+  /** What the Add menu's pick makes: a shape where the menu was opened; a picture or a link through its own menu, which asks what. */
+  function addPicked(kind: DiagramNodeKind) {
+    const at = addMenu?.at;
+    setAddMenu(null);
+    // A picture or a link is made through its own menu, which [add] is not: it is remembered here.
+    if (kind === 'image' || kind === 'link') rememberAdded(kind);
+    if (kind === 'image') setMenu('picture');
+    else if (kind === 'link') setMenu('link');
+    else add(kind, at);
+  }
+
+  // -- Suggested lines -------------------------------------------------------
+
+  const suggestionNow = useRef((_id: string, _side: DiagramSide): Suggestion | null => null);
+  suggestionNow.current = (id, side) =>
+    suggestionFor(drawing, (node) => hiddenNow.has(layerOf(node, drawing)) || lockedNow.has(layerOf(node, drawing)), id, side);
+
+  /**
+   * The pointer over the canvas: resting on a side's handle, what a click
+   * there would draw is shown after a moment; anywhere else, nothing is. Not
+   * while a button is down - that is a drag, of a box or of a line.
+   */
+  function hoverHandle(target: EventTarget | null, buttons: number) {
+    const handle = viewing || connecting.current || buttons !== 0 || !(target instanceof Element) ? null : target.closest('.react-flow__handle');
+    const id = handle?.getAttribute('data-nodeid') ?? null;
+    const side = asSide(handle?.getAttribute('data-handleid'));
+    const key = id !== null && side !== undefined ? `${id}:${side}` : null;
+    if (key === suggestOn.current) return;
+    suggestOn.current = key;
+    if (suggestWait.current !== null) window.clearTimeout(suggestWait.current);
+    suggestWait.current = null;
+    setSuggestion(null);
+    if (id === null || side === undefined) return;
+    suggestWait.current = window.setTimeout(() => {
+      suggestWait.current = null;
+      setSuggestion(suggestionNow.current(id, side));
+    }, SUGGEST_AFTER);
+  }
+  useEffect(
+    () => () => {
+      if (suggestWait.current !== null) window.clearTimeout(suggestWait.current);
+    },
+    [],
+  );
+
+  /** The suggestion, taken by a click on its handle: the line, and for a copy the box it ends on, its label ready to be typed. */
+  function takeSuggestion(shown: Suggestion) {
+    const source = byId.get(shown.from);
+    suggestOn.current = null;
+    setSuggestion(null);
+    if (source === undefined) return;
+    const line = (to: string): DiagramEdgeData => ({
+      id: freshId('e'),
+      from: source.id,
+      to,
+      kind: 'arrow',
+      line: 'solid',
+      start: 'none',
+      end: 'arrow',
+      routing: 'curved',
+      fromSide: shown.side,
+      ...(shown.toSide !== undefined ? { toSide: shown.toSide } : {}),
+    });
+    if (shown.kind === 'line' && shown.to !== undefined) {
+      const made = line(shown.to);
+      change({ ...drawing, edges: [...drawing.edges, made] });
+      setSelectedNodes([]);
+      setSelectedEdges([made.id]);
+      return;
+    }
+    if (shown.box === undefined) return;
+    // A picture or a link card is not made twice by a click: what follows one is a box.
+    const kind: DiagramNodeKind = source.kind === 'image' || source.kind === 'link' ? 'rounded' : source.kind;
+    const copy: DiagramNodeData = {
+      id: freshId('n'),
+      kind,
+      label: startingLabel(kind),
+      x: shown.box.x,
+      y: shown.box.y,
+      w: shown.box.w,
+      h: shown.box.h,
+      layer: source.layer,
+      ...(shown.home !== undefined ? { parent: shown.home } : {}),
+      ...(source.color !== undefined ? { color: source.color } : {}),
+      ...(source.border !== undefined ? { border: source.border } : {}),
+      ...(source.borderWidth !== undefined ? { borderWidth: source.borderWidth } : {}),
+      ...(source.rotation !== undefined ? { rotation: source.rotation } : {}),
+      ...(source.align !== undefined ? { align: source.align } : {}),
+      ...(source.valign !== undefined ? { valign: source.valign } : {}),
+      ...(source.textSize !== undefined ? { textSize: source.textSize } : {}),
+    };
+    change({ ...drawing, nodes: [...drawing.nodes, copy], edges: [...drawing.edges, line(copy.id)] });
+    setSelectedNodes([copy.id]);
+    setSelectedEdges([]);
+    setLabelling({ kind: 'node', id: copy.id });
   }
 
   /**
@@ -1183,6 +1819,8 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
   addPicturesRef.current = addPictures;
   /** Where the pointer is on the canvas, in the diagram's own units; null while it is elsewhere. What is pasted lands there. */
   const pointerAt = useRef<{ x: number; y: number } | null>(null);
+  /** The same, on the screen: where a menu opened from the keyboard is put. */
+  const pointerOnScreen = useRef<{ x: number; y: number } | null>(null);
   const pasteTextRef = useRef(pasteText);
   const labellingNow = useRef(labelling);
   labellingNow.current = labelling;
@@ -1501,7 +2139,8 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
   }
 
   /** A turned shape dragged by a corner: the upright box it comes to, as its own resizer worked it out. */
-  const turnedResize = {
+  const turnedResizeNow = useRef<TurnedResize>({ start: () => {}, to: () => {}, end: () => {} });
+  turnedResizeNow.current = {
     start: () => begin(),
     to: (id: string, box: { x: number; y: number; w: number; h: number }) => {
       if (viewing) return;
@@ -1509,6 +2148,15 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
     },
     end: () => window.requestAnimationFrame(() => end()),
   };
+  // One object for as long as the page is open: every shape reads it, and a new one would draw them all again.
+  const turnedResize = useMemo<TurnedResize>(
+    () => ({
+      start: () => turnedResizeNow.current.start(),
+      to: (id, box) => turnedResizeNow.current.to(id, box),
+      end: () => turnedResizeNow.current.end(),
+    }),
+    [],
+  );
 
   function nudge(dx: number, dy: number) {
     if (selectedNodes.length === 0) return;
@@ -1575,11 +2223,12 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
     }
   }
 
+  // The commit reads the drawing as it is now through a ref, so what every shape and line is handed changes only with what is being typed over.
+  const commitNow = useRef(commitLabel);
+  commitNow.current = commitLabel;
   const labelEditing = useMemo(
-    () => ({ target: labelling, commit: commitLabel, cancel: () => setLabelling(null) }),
-    // The commit reads the drawing as it is now, so it is made again with it.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [labelling, drawing],
+    () => ({ target: labelling, commit: (text: string) => commitNow.current(text), cancel: () => setLabelling(null) }),
+    [labelling],
   );
 
   // -- Saving -------------------------------------------------------------
@@ -1635,7 +2284,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
   }
 
   // Saved as it is drawn, once it has been still for Admin Settings' pause.
-  useAutosave(unsaved, JSON.stringify(drawing), answering || gestureStart.current !== null, save);
+  useAutosave(unsaved, drawn, answering || gestureStart.current !== null, save);
 
   async function rename() {
     if (naming === null || diagram === null) return;
@@ -1761,7 +2410,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
     else if (selectedEdges.length === 1 && selectedNodes.length === 0) setLabelling({ kind: 'edge', id: selectedEdges[0] });
   }
 
-  const keys = useRef({ undo, redo, save, remove, duplicate, rotate, copy, cut, paste: () => paste(clipboard, pointerAt.current), nudge, arrange, label: () => {}, escape: () => {} });
+  const keys = useRef({ undo, redo, save, remove, duplicate, rotate, copy, cut, paste: () => paste(clipboard, pointerAt.current), nudge, arrange, label: () => {}, escape: () => {}, addMenu: () => {}, marquee: () => {} });
   keys.current = {
     undo,
     redo,
@@ -1775,6 +2424,8 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
     nudge,
     arrange,
     label: startLabelling,
+    addMenu: openAddMenu,
+    marquee: () => setMarqueeFold(marquee ? '' : 'on'),
     escape: () => {
       // An open right-click menu is closed first, keeping what it was opened on selected.
       if (rightMenuNow.current !== null) {
@@ -1875,6 +2526,8 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
       else if (matches(event, redoKey) || ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === 'y')) run(keys.current.redo);
       else if (matches(event, arrangeKey)) run(() => keys.current.arrange('LR'));
       else if (matches(event, rotateKey)) run(keys.current.rotate);
+      else if (matches(event, addKey)) run(keys.current.addMenu);
+      else if (matches(event, selectKey)) run(keys.current.marquee);
       else if (event.key.startsWith('Arrow') && !event.ctrlKey && !event.metaKey) {
         const step = event.shiftKey ? GRID : 1;
         const dx = event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0;
@@ -1884,7 +2537,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
     };
     document.addEventListener('keydown', pressed);
     return () => document.removeEventListener('keydown', pressed);
-  }, [undoKey, redoKey, saveKey, duplicateKey, copyKey, cutKey, pasteKey, zoomInKey, zoomOutKey, arrangeKey, findKey, modeKey, rotateKey, flow]);
+  }, [undoKey, redoKey, saveKey, duplicateKey, copyKey, cutKey, pasteKey, zoomInKey, zoomOutKey, arrangeKey, findKey, modeKey, rotateKey, addKey, selectKey, flow]);
 
   // -- Drawing ------------------------------------------------------------
 
@@ -1951,20 +2604,127 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
    * node with notes took the height and left the chat a strip at the bottom.
    */
   const [editorRoom, editorWidth] = useRoom('width');
-  const [panelRoom, panelHeight] = useRoom('height');
-  const [settingsRoom, settingsDrawn] = useRoom('height', 'border');
-  const panelWidest = editorWidth > 0 ? Math.max(PANEL_NARROWEST, editorWidth - CANVAS_NARROWEST) : null;
+  /*
+   * The chat is a panel of its own on the canvas's left, open unless it was
+   * folded away - which this browser remembers - and dragged wider by its
+   * right edge. The two panels share what the canvas leaves them.
+   */
+  const [chatFold, setChatFold] = useSieve('diagram.editor.chat');
+  const chatShown = chatFold !== 'hidden';
+  const chatWidest = editorWidth > 0 ? Math.max(CHAT_NARROWEST, editorWidth - CANVAS_NARROWEST - PANEL_NARROWEST) : null;
+  const chatWidth = useDragSize({ storageKey: 'orknux.diagram.chat-width', initial: 340, min: CHAT_NARROWEST, max: chatWidest, edge: 'right' });
+  const panelWidest = editorWidth > 0 ? Math.max(PANEL_NARROWEST, editorWidth - CANVAS_NARROWEST - (chatShown ? chatWidth.size : 0)) : null;
   const panelWidth = useDragSize({ storageKey: 'orknux.diagram.panel-width', initial: 340, min: PANEL_NARROWEST, max: panelWidest, edge: 'left' });
-  const settingsTallest = panelHeight > 0 ? Math.max(SETTINGS_SHORTEST, panelHeight - CHAT_SHORTEST) : null;
-  const settingsHeight = useDragSize({
-    storageKey: 'orknux.diagram.panel-settings-height',
-    initial: null,
-    measured: settingsDrawn,
-    min: SETTINGS_SHORTEST,
-    max: settingsTallest,
-    edge: 'bottom',
+
+  // The conversation, drawn in its own panel on the left of the canvas.
+  const chatPart = (
+    <DesignChat
+      prefix="diagram"
+      firstName={firstName}
+      question={t('What shall we map?')}
+      ideas={drawing.nodes.length > 0 ? [POLISH, ...IDEAS.slice(0, 3)] : IDEAS}
+      // Viewing, nothing is asked to change the diagram; Edit opens the conversation again.
+      ready={diagram !== null && !viewing}
+      talk={talk}
+      answering={answering}
+      talkError={talkError}
+      working={t('Working on the diagram…')}
+      asking={asking}
+      onAsking={setAsking}
+      onAsk={(event, idea) => void ask(event, idea)}
+      models={models}
+      modelId={modelId}
+      onModel={choose}
+      placeholder={viewing ? t('Switch to Edit to change the diagram') : t('Describe what to draw or change')}
+      inputLabel={t('What to draw')}
+      files={files}
+    />
+  );
+
+  const calls = useSteady<CanvasCalls>({
+    onNodesChange,
+    onEdgesChange,
+    onConnect,
+    onConnectStart: () => {
+      connecting.current = true;
+      hoverHandle(null, 1);
+    },
+    onConnectEnd,
+    onEdgeMouseEnter: (_, edge) => setHoveredEdge(edge.id),
+    onEdgeMouseLeave: (_, edge) => setHoveredEdge((now) => (now === edge.id ? null : now)),
+    onNodeDragStart: () => {
+      if (!viewing) begin();
+    },
+    onNodeDoubleClick: (_, node) => {
+      setSelectedNodes([node.id]);
+      setSelectedEdges([]);
+      // A link card is opened by a double click, as a file is: its name comes from what it leads to.
+      const held = byId.get(node.id);
+      if (held?.kind === 'link' && held.link !== undefined && held.link !== '') {
+        linkCtx.open(held.link);
+        return;
+      }
+      if (!viewing) setLabelling({ kind: 'node', id: node.id });
+    },
+    onEdgeDoubleClick: (_, edge) => {
+      setSelectedEdges([edge.id]);
+      setSelectedNodes([]);
+      if (!viewing) setLabelling({ kind: 'edge', id: edge.id });
+    },
+    onNodeDragStop: (_, node, dragged) => {
+      if (!viewing) onDragStop(node.id, dragged.map((one) => one.id));
+    },
+    // A selection dragged by the frame round it is the same gesture, and React Flow names it differently.
+    onSelectionDragStart: () => {
+      if (!viewing) begin();
+    },
+    onSelectionDragStop: (_, dragged) => {
+      if (!viewing) onDragStop(undefined, dragged.map((one) => one.id));
+    },
+    onPaneClick: () => {
+      setMenu(null);
+      setRightMenu(null);
+    },
+    // A right click on a box or a line selects it, where it was not already, and opens what can be done to it there. Not in View: the browser's own menu stays.
+    onNodeContextMenu: (event, node) => {
+      if (viewing) return;
+      event.preventDefault();
+      if (!selectedNodes.includes(node.id)) {
+        setSelectedNodes([node.id]);
+        setSelectedEdges([]);
+      }
+      setRightMenu({ x: event.clientX, y: event.clientY });
+    },
+    onEdgeContextMenu: (event, edge) => {
+      if (viewing) return;
+      event.preventDefault();
+      if (!selectedEdges.includes(edge.id)) {
+        setSelectedEdges([edge.id]);
+        setSelectedNodes([]);
+      }
+      setRightMenu({ x: event.clientX, y: event.clientY });
+    },
+    onSelectionContextMenu: (event) => {
+      if (viewing) return;
+      event.preventDefault();
+      setRightMenu({ x: event.clientX, y: event.clientY });
+    },
+    onPaneContextMenu: () => setRightMenu(null),
+    // Moving the canvas by hand stops following: the person wants to look elsewhere. A move the code makes has no event.
+    onMoveStart: (event) => {
+      if (event !== null && following !== null) setFollowing(null);
+    },
+    onMoveEnd: (_event, view) => {
+      if (!viewSettled.current) return;
+      try {
+        window.localStorage.setItem(viewKey, JSON.stringify({ x: view.x, y: view.y, zoom: view.zoom }));
+      } catch {
+        // A browser that keeps nothing fits the diagram again next time.
+      }
+    },
   });
 
+  // After every hook: a diagram gone while it is open changes no hook's place in the order.
   if (missing) {
     return (
       <AppShell title={t('Diagram editor')} user={shellUser(session)} workspacePath={`/workspace/${workspaceId}`} showAdmin={session.admin} onSignOut={onSignOut} sidebar={null} hideSidebar>
@@ -2277,7 +3037,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
             −
           </button>
           <button type="button" className={shell.zoomLevel} onClick={() => void flow.fitView({ padding: 0.2, duration: 200 })} title={t('Fit to the canvas')} data-testid="diagram-zoom">
-            {`${Math.round(viewport.zoom * 100)}%`}
+            <ZoomReadout />
           </button>
           <button type="button" className={shell.tool} onClick={() => void flow.zoomIn()} title={`${t('Zoom in')} (${zoomInKey})`} aria-label={t('Zoom in')} data-testid="diagram-zoom-in">
             +
@@ -2386,17 +3146,66 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
       />
 
       <div className={shell.editor} ref={editorRoom}>
+        {chatShown ? (
+          <>
+            <div className={`${shell.panel} ${chat.panel} ${styles.chatPanel}`} id="diagram-chat" style={{ flexBasis: chatWidth.size }} data-testid="diagram-chat-panel">
+              <div className={styles.chatPanelHead}>
+                <button
+                  type="button"
+                  className={styles.chatFold}
+                  onClick={() => setChatFold('hidden')}
+                  aria-expanded
+                  aria-controls="diagram-chat"
+                  aria-label={t('Hide the chat')}
+                  title={t('Hide the chat')}
+                  data-testid="diagram-chat-hide"
+                >
+                  <img src={panelCollapseIcon} alt="" width={14} height={14} className={styles.chatFoldBack} />
+                </button>
+              </div>
+              {chatPart}
+            </div>
+            <ResizeHandle
+              className={styles.panelHandle}
+              orientation="vertical"
+              label={t('Width of the chat')}
+              controls="diagram-chat"
+              valueNow={chatWidth.size}
+              valueMin={CHAT_NARROWEST}
+              valueMax={chatWidest ?? chatWidth.size}
+              title={t('Drag to change the width; double-click to put it back')}
+              dragging={chatWidth.dragging}
+              handlers={chatWidth.handlers}
+            />
+          </>
+        ) : null}
         <div
           className={styles.canvas}
           data-testid="diagram-canvas"
           onMouseMove={(event) => {
             const at = flow.screenToFlowPosition({ x: event.clientX, y: event.clientY });
             pointerAt.current = at;
+            pointerOnScreen.current = { x: event.clientX, y: event.clientY };
             live.point(at.x, at.y);
           }}
           onMouseLeave={() => {
             pointerAt.current = null;
+            pointerOnScreen.current = null;
             live.point(null, null);
+            hoverHandle(null, 0);
+          }}
+          onMouseOver={(event) => hoverHandle(event.target, event.buttons)}
+          /*
+           * A click on the handle whose suggestion is showing takes it. Before
+           * the canvas hears of the click, so the box the handle belongs to is
+           * not selected in its place.
+           */
+          onClickCapture={(event) => {
+            if (suggestion === null || viewing || !(event.target instanceof Element)) return;
+            const handle = event.target.closest('.react-flow__handle');
+            if (handle === null || handle.getAttribute('data-nodeid') !== suggestion.from || handle.getAttribute('data-handleid') !== suggestion.side) return;
+            event.stopPropagation();
+            takeSuggestion(suggestion);
           }}
           onDragOver={(event) => {
             if (viewing) return;
@@ -2555,6 +3364,20 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
               </>,
               document.body,
             )}
+            {addMenu !== null && !viewing && (
+              <DiagramAddMenu
+                at={addMenu}
+                basics={[
+                  ...SHAPES.map((one) => ({ kind: one.kind, icon: one.icon, label: one.label() })),
+                  { kind: 'image' as const, icon: pictureIcon, label: t('Picture') },
+                  { kind: 'link' as const, icon: linkToolIcon, label: t('Link') },
+                ]}
+                labelOf={kindLabel}
+                closeKey={addKey}
+                onPick={addPicked}
+                onClose={() => setAddMenu(null)}
+              />
+            )}
             <LinkOpenContext.Provider value={linkCtx}>
             <ViewingContext.Provider value={viewing}>
             <TurnedResizeContext.Provider value={turnedResize}>
@@ -2567,94 +3390,80 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
               edges={edges}
               nodeTypes={NODE_TYPES}
               edgeTypes={EDGE_TYPES}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onConnect={onConnect}
-              onConnectEnd={onConnectEnd}
+              {...calls}
+              // A press on a handle that barely moves is a click, which takes the suggestion shown there; further, and it is a line dragged out.
+              connectionDragThreshold={CLICK_SLACK}
+              connectOnClick={false}
               // An end is moved by the grip the canvas draws on it - see LinkEnds - and not by React Flow's unseen anchors.
               edgesReconnectable={false}
-              onEdgeMouseEnter={(_, edge) => setHoveredEdge(edge.id)}
-              onEdgeMouseLeave={(_, edge) => setHoveredEdge((now) => (now === edge.id ? null : now))}
-              onNodeDragStart={() => {
-                if (!viewing) begin();
-              }}
               nodesDraggable={!viewing}
               nodesConnectable={!viewing}
-              onNodeDoubleClick={(_, node) => {
-                setSelectedNodes([node.id]);
-                setSelectedEdges([]);
-                // A link card is opened by a double click, as a file is: its name comes from what it leads to.
-                const held = byId.get(node.id);
-                if (held?.kind === 'link' && held.link !== undefined && held.link !== '') {
-                  linkCtx.open(held.link);
-                  return;
-                }
-                if (!viewing) setLabelling({ kind: 'node', id: node.id });
-              }}
-              onEdgeDoubleClick={(_, edge) => {
-                setSelectedEdges([edge.id]);
-                setSelectedNodes([]);
-                if (!viewing) setLabelling({ kind: 'edge', id: edge.id });
-              }}
               zoomOnDoubleClick={false}
-              onNodeDragStop={(_, __, dragged) => {
-                if (!viewing) onDragStop(dragged.map((node) => node.id));
-              }}
-              onPaneClick={() => {
-                setMenu(null);
-                setRightMenu(null);
-              }}
-              /*
-               * A right click on a box or a line selects it, where it was not
-               * already, and opens what can be done to it there. Not in View,
-               * where nothing is changed: the browser's own menu stays.
-               */
-              onNodeContextMenu={(event, node) => {
-                if (viewing) return;
-                event.preventDefault();
-                if (!selectedNodes.includes(node.id)) {
-                  setSelectedNodes([node.id]);
-                  setSelectedEdges([]);
-                }
-                setRightMenu({ x: event.clientX, y: event.clientY });
-              }}
-              onEdgeContextMenu={(event, edge) => {
-                if (viewing) return;
-                event.preventDefault();
-                if (!selectedEdges.includes(edge.id)) {
-                  setSelectedEdges([edge.id]);
-                  setSelectedNodes([]);
-                }
-                setRightMenu({ x: event.clientX, y: event.clientY });
-              }}
-              onSelectionContextMenu={(event) => {
-                if (viewing) return;
-                event.preventDefault();
-                setRightMenu({ x: event.clientX, y: event.clientY });
-              }}
-              onPaneContextMenu={() => setRightMenu(null)}
-              // Moving the canvas by hand stops following: the person wants to look elsewhere. A move the code makes has no event.
-              onMoveStart={(event) => {
-                if (event !== null && following !== null) setFollowing(null);
-              }}
-              onMoveEnd={(_event, view) => {
-                if (!viewSettled.current) return;
-                try {
-                  window.localStorage.setItem(viewKey, JSON.stringify({ x: view.x, y: view.y, zoom: view.zoom }));
-                } catch {
-                  // A browser that keeps nothing fits the diagram again next time.
-                }
-              }}
               connectionMode={ConnectionMode.Loose}
               deleteKeyCode={null}
-              multiSelectionKeyCode={['Shift', 'Meta', 'Control']}
-              snapToGrid
-              snapGrid={[GRID, GRID]}
+              multiSelectionKeyCode={MANY_KEYS}
+              /*
+               * Rectangle select: a drag on empty canvas draws a rectangle and
+               * selects what it touches, and the canvas is moved with the
+               * middle button - the right one keeps its menu. Off, a drag
+               * moves the canvas and Shift-drag selects, as it always has.
+               */
+              selectionOnDrag={marquee && !viewing}
+              panOnDrag={marquee && !viewing ? MIDDLE_BUTTON : true}
+              selectionMode={SelectionMode.Partial}
               minZoom={0.1}
               maxZoom={4}
-              proOptions={{ hideAttribution: true }}
+              proOptions={NO_ATTRIBUTION}
             >
               <Background variant={BackgroundVariant.Dots} gap={GRID * 3} size={1.5} />
+              <AlignmentGuides guides={guides} />
+              <SuggestionGhost suggestion={viewing ? null : suggestion} />
+              {mapShown && (
+                <MiniMap<ShapeNode>
+                  position="bottom-right"
+                  className={styles.minimap}
+                  style={MAP_SIZE}
+                  bgColor="var(--diagram-desk)"
+                  maskColor="var(--diagram-map-mask)"
+                  maskStrokeColor="var(--diagram-select)"
+                  maskStrokeWidth={2}
+                  nodeColor={mapFill}
+                  nodeStrokeColor={mapStroke}
+                  nodeStrokeWidth={3}
+                  nodeBorderRadius={3}
+                  ariaLabel={t('Map of the diagram')}
+                  pannable
+                  zoomable
+                />
+              )}
+              <Panel position="bottom-right" style={mapShown ? MAP_BESIDE : undefined}>
+                <div className={styles.cornerTools} data-testid="diagram-corner-tools">
+                  {!viewing && (
+                    <button
+                      type="button"
+                      className={styles.cornerTool}
+                      onClick={() => setMarqueeFold(marquee ? '' : 'on')}
+                      aria-pressed={marquee}
+                      aria-label={`${t('Rectangle select')} (${selectKey})`}
+                      title={`${t('Rectangle select')} (${selectKey})\n${marquee ? t('On: a drag on the canvas selects what it touches; the middle button pans.') : t('Off: a drag on the canvas pans. Shift-drag selects at any time.')}`}
+                      data-testid="diagram-select-mode"
+                    >
+                      <img src={marqueeIcon} alt="" width={16} height={16} />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className={styles.cornerTool}
+                    onClick={() => setMapFold(mapShown ? 'off' : '')}
+                    aria-pressed={mapShown}
+                    aria-label={t('Map of the diagram')}
+                    title={mapShown ? t('Hide the map') : t('Show the map')}
+                    data-testid="diagram-minimap-toggle"
+                  >
+                    <img src={mapIcon} alt="" width={16} height={16} />
+                  </button>
+                </div>
+              </Panel>
               {notice !== null && (
                 <Panel position="bottom-center" className={styles.notice} data-testid="diagram-notice">
                   <span role="status">{notice}</span>
@@ -2753,6 +3562,24 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                 The one the canvas is on is lit and kept in view; a click goes
                 to another. Gone with the search.
               */}
+              {/* Folded, the chat is only its button, in the canvas's top left corner as the layers are in the right. */}
+              {!chatShown && (
+                <Panel position="top-left">
+                  <div className={`${styles.layersCorner} ${styles.chatCorner}`}>
+                    <button
+                      type="button"
+                      className={`${form.ghost} ${styles.layersButton}`}
+                      onClick={() => setChatFold('')}
+                      aria-expanded={false}
+                      aria-label={t('Show the chat')}
+                      title={t('Show the chat')}
+                      data-testid="diagram-chat-show"
+                    >
+                      <img src={messageIcon} alt="" width={18} height={18} />
+                    </button>
+                  </div>
+                </Panel>
+              )}
               {query.trim() !== '' && (
                 <Panel position="top-left" className={`${styles.canvasCorner} ${styles.findResults}`}>
                   <div
@@ -2810,7 +3637,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                   </div>
                 </Panel>
               )}
-              <Panel position="top-right" className={styles.canvasCorner}>
+              <Panel position="top-right" className={`${styles.canvasCorner} ${styles.topRight}`}>
               {/*
                 View or edit, for the person looking: viewing, the diagram can be
                 read and moved around in and not changed. Saved for this diagram in
@@ -2840,14 +3667,12 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                   {t('Edit')}
                 </button>
               </div>
-              </Panel>
               {/*
-                Layers, as draw.io has them, top of the stack first: in the
-                canvas's bottom right corner, out of the toolbar, and opening
-                upwards. Usable in View too: hiding a layer to read the rest is
-                reading.
+                Layers, as draw.io has them, top of the stack first: beside View
+                and Edit in the canvas's top right corner, out of the toolbar, and
+                opening downwards. Usable in View too: hiding a layer to read the
+                rest is reading.
               */}
-              <Panel position="bottom-right">
               <div className={`${styles.menuHolder} ${styles.layersCorner}`}>
                 <button
                   type="button"
@@ -2857,7 +3682,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                   title={t('Layers')}
                   data-testid="diagram-layers"
                 >
-                  <img src={layersIcon} alt="" width={20} height={20} />
+                  <img src={layersIcon} alt="" width={18} height={18} />
                   {/* The count only: the icon says what it is, and the word made the bar wrap at a laptop's width. */}
                   {layers.length > 1 ? String(layers.length) : null}
                 </button>
@@ -2964,7 +3789,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                 )}
               </div>
               </Panel>
-              <LivePointers pointers={live.pointers} place={(x, y) => ({ left: x * viewport.zoom + viewport.x, top: y * viewport.zoom + viewport.y })} />
+              <PointersOnCanvas pointers={live.pointers} />
             </ReactFlow>
             </LinkEndsContext.Provider>
             </LabelEditingContext.Provider>
@@ -2998,17 +3823,10 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
         <div
           className={`${shell.panel} ${chat.panel}`}
           id="diagram-panel"
-          ref={panelRoom}
           style={{ flexBasis: panelWidth.size }}
           data-testid="diagram-panel"
         >
-          <div
-            className={styles.panelSettings}
-            id="diagram-panel-settings"
-            ref={settingsRoom}
-            style={settingsHeight.size === null ? undefined : { height: settingsHeight.size, maxHeight: 'none' }}
-            data-testid="diagram-panel-settings"
-          >
+          <div className={styles.panelSettings} id="diagram-panel-settings" data-testid="diagram-panel-settings">
           {/* Viewing, what is shown here is read and not changed: every field in it is off at once. */}
           <fieldset className={styles.panelFields} disabled={viewing} data-testid="diagram-panel-fields">
           {diagram !== null && (
@@ -3207,6 +4025,66 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                   </span>
                 </label>
               )}
+              {(() => {
+                // Where its words sit is offered for a shape that has room to move them in: not a card, a picture, a class's compartments or an icon's caption.
+                const seated = oneNode.kind !== 'link' && oneNode.kind !== 'image' && oneNode.kind !== 'class' && outlineOf(oneNode.kind, oneNode.w, oneNode.h)?.icon !== true;
+                // What the kind does by itself is kept as nothing at all, so a drawing says only what somebody chose.
+                const usualAcross: DiagramTextAlign = oneNode.kind === 'text' || oneNode.kind === 'group' ? 'left' : 'center';
+                const usualDown: DiagramTextValign = oneNode.kind === 'group' ? 'top' : 'middle';
+                const across = oneNode.align ?? usualAcross;
+                const down = oneNode.valign ?? usualDown;
+                return (
+                  <div className={styles.field} data-testid="diagram-node-text">
+                    <span>{t('Text')}</span>
+                    <div className={styles.textRow}>
+                      {seated && (
+                        <>
+                          <span className={styles.textGroup} role="group" aria-label={t('Text across')}>
+                            {TEXT_ACROSS.map((one) => (
+                              <button
+                                key={one.value}
+                                type="button"
+                                className={styles.textChoice}
+                                aria-pressed={across === one.value}
+                                aria-label={one.label()}
+                                title={one.label()}
+                                onClick={() => setNode(oneNode.id, { align: one.value === usualAcross ? undefined : one.value })}
+                                data-testid={`diagram-node-align-${one.value}`}
+                              >
+                                <img src={one.icon} alt="" width={16} height={16} />
+                              </button>
+                            ))}
+                          </span>
+                          <span className={styles.textGroup} role="group" aria-label={t('Text down')}>
+                            {TEXT_DOWN.map((one) => (
+                              <button
+                                key={one.value}
+                                type="button"
+                                className={styles.textChoice}
+                                aria-pressed={down === one.value}
+                                aria-label={one.label()}
+                                title={one.label()}
+                                onClick={() => setNode(oneNode.id, { valign: one.value === usualDown ? undefined : one.value })}
+                                data-testid={`diagram-node-valign-${one.value}`}
+                              >
+                                <img src={one.icon} alt="" width={16} height={16} />
+                              </button>
+                            ))}
+                          </span>
+                        </>
+                      )}
+                      <TextSizeField
+                        key={oneNode.id}
+                        value={oneNode.textSize}
+                        usual={oneNode.kind === 'group' || oneNode.kind === 'image' ? 13 : 14}
+                        onChange={(size) => setNode(oneNode.id, { textSize: size })}
+                        onFocus={begin}
+                        onBlur={end}
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
               <label className={styles.field}>
                 <span className={styles.notesHead}>
                   {t('Notes')}
@@ -3333,6 +4211,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                 };
                 return (
                   <>
+                    <div className={styles.fieldPair}>
                     <label className={styles.field}>
                       <span>{t('Line style')}</span>
                       <Select
@@ -3374,6 +4253,18 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                         ))}
                       </Select>
                     </label>
+                    </div>
+                    {/* A line bent by hand is made straight - or curved - again here, as well as bend by bend on the canvas. */}
+                    {(oneEdge.points?.length ?? 0) > 0 && (oneEdge.routing ?? 'straight') !== 'right-angles' && (
+                      <button
+                        type="button"
+                        className={form.ghost}
+                        onClick={() => change({ ...drawing, edges: drawing.edges.map((edge) => (edge.id === oneEdge.id ? { ...edge, points: undefined, labelAt: undefined } : edge)) })}
+                        data-testid="diagram-edge-unbend"
+                      >
+                        {oneEdge.points?.length === 1 ? t('Take out its bend') : tf('Take out its {count} bends', { count: oneEdge.points?.length ?? 0 })}
+                      </button>
+                    )}
                     <StrokeField
                       label={t('Line colour')}
                       colour={oneEdge.color}
@@ -3383,6 +4274,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                       }
                       testId="diagram-edge-stroke-field"
                     />
+                    <div className={styles.fieldPair}>
                     {([
                       ['start', t('At the start'), false],
                       ['end', t('At the end'), true],
@@ -3407,6 +4299,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                         </Select>
                       </label>
                     ))}
+                    </div>
                   </>
                 );
               })()}
@@ -3419,49 +4312,12 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
           )}
           </fieldset>
           </div>
-          <ResizeHandle
-            orientation="horizontal"
-            label={t('Height of the settings above the chat')}
-            controls="diagram-panel-settings"
-            valueNow={settingsHeight.size ?? Math.round(settingsDrawn)}
-            valueMin={SETTINGS_SHORTEST}
-            valueMax={settingsTallest ?? Math.round(settingsDrawn)}
-            title={t('Drag to change the height; double-click to put it back')}
-            dragging={settingsHeight.dragging}
-            handlers={settingsHeight.handlers}
-          />
-
-          <DesignChat
-            prefix="diagram"
-            firstName={firstName}
-            question={t('What shall we map?')}
-            ideas={drawing.nodes.length > 0 ? [POLISH, ...IDEAS.slice(0, 3)] : IDEAS}
-            // Viewing, nothing is asked to change the diagram; Edit opens the conversation again.
-            ready={diagram !== null && !viewing}
-            talk={talk}
-            answering={answering}
-            talkError={talkError}
-            working={t('Working on the diagram…')}
-            asking={asking}
-            onAsking={setAsking}
-            onAsk={(event, idea) => void ask(event, idea)}
-            models={models}
-            modelId={modelId}
-            onModel={choose}
-            placeholder={viewing ? t('Switch to Edit to change the diagram') : t('Describe what to draw or change')}
-            inputLabel={t('What to draw')}
-            files={files}
-            footer={
-              <>
-                {error !== null && diagram !== null && (
-                  <p className={form.error} role="alert" data-testid="diagram-error">
-                    {error}
-                  </p>
-                )}
-                <span className={chat.count}>{tf('{nodes} nodes, {edges} connections', { nodes: drawing.nodes.length, edges: drawing.edges.length })}</span>
-              </>
-            }
-          />
+          {/* Here and not in the chat's foot: the chat may be folded away, and a diagram that did not save has to say so. */}
+          {error !== null && diagram !== null && (
+            <p className={form.error} role="alert" data-testid="diagram-error">
+              {error}
+            </p>
+          )}
         </div>
       </div>
       <UnsavedWorkDialog

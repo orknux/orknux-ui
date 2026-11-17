@@ -23,9 +23,10 @@ export type Point = { x: number; y: number };
 /**
  * A drawn line: its path, where its label sits, and - for a line made of
  * straight runs, straight or right angles - its corners, start to end. A curve
- * has none: it neither jumps nor is jumped.
+ * has none: it neither jumps nor is jumped. [mids] are where a straight or
+ * curved line can be taken hold of to bend it: the middle of each part of it.
  */
-export type Route = { d: string; label: Point; points?: Point[] };
+export type Route = { d: string; label: Point; points?: Point[]; mids?: Point[] };
 
 /**
  * The way a line runs between two boxes, as a path and the point its label
@@ -38,35 +39,231 @@ export type Route = { d: string; label: Point; points?: Point[] };
  * the two gaps between the boxes - so boxes side by side are joined across and
  * boxes stacked are joined down; right angles turns once in the middle of that
  * gap, and curved bends through it.
+ *
+ * An end pinned to a side says so in [pinned], as the way out of that side. A
+ * curve then leaves square to it before it turns for the other end, and a
+ * right-angle line leaves by it and goes round to arrive by the other's -
+ * where both used to be drawn as though the ends were pinned nowhere, only
+ * starting from those points, so a curve met a top nearly flat and a line from
+ * one right side to another ran back along the outline of its own box.
  */
-export function routeOf(a: RouteBox, b: RouteBox, routing: DiagramRouting, leave: Leave): Route {
+export function routeOf(a: RouteBox, b: RouteBox, routing: DiagramRouting, leave: Leave, pinned: Pinned = {}): Route {
   if (routing === 'straight') {
     const start = leave(a, b.cx, b.cy);
     const end = leave(b, a.cx, a.cy);
-    return { d: `M ${start.x},${start.y} L ${end.x},${end.y}`, label: { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 }, points: [start, end] };
+    const middle = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
+    return { d: `M ${start.x},${start.y} L ${end.x},${end.y}`, label: middle, points: [start, end], mids: [middle] };
   }
   const across = Math.max(b.cx - b.hw - (a.cx + a.hw), a.cx - a.hw - (b.cx + b.hw));
   const down = Math.max(b.cy - b.hh - (a.cy + a.hh), a.cy - a.hh - (b.cy + b.hh));
   // Far out along the axis, so the outline's own edge on that side is where the line leaves it.
   const far = 1_000_000;
-  if (across >= down) {
-    const toward = b.cx >= a.cx ? 1 : -1;
-    const s = leave(a, a.cx + toward * far, a.cy);
-    const e = leave(b, b.cx - toward * far, b.cy);
-    const mx = (s.x + e.x) / 2;
-    const points =
-      routing !== 'right-angles' ? undefined : Math.abs(s.y - e.y) < 0.5 ? [s, e] : [s, { x: mx, y: s.y }, { x: mx, y: e.y }, e];
-    const d = points !== undefined ? pathOf(points, []) : `M ${s.x},${s.y} C ${mx},${s.y} ${mx},${e.y} ${e.x},${e.y}`;
-    return { d, label: { x: mx, y: (s.y + e.y) / 2 }, points };
+  const flat = across >= down;
+  const toward = flat ? (b.cx >= a.cx ? 1 : -1) : b.cy >= a.cy ? 1 : -1;
+  const s = flat ? leave(a, a.cx + toward * far, a.cy) : leave(a, a.cx, a.cy + toward * far);
+  const e = flat ? leave(b, b.cx - toward * far, b.cy) : leave(b, b.cx, b.cy - toward * far);
+  const held = pinned.from !== undefined || pinned.to !== undefined;
+  if (routing === 'right-angles' && held) {
+    // An end pinned nowhere leaves by the side facing the other box, as it does on a line pinned at neither end.
+    const out = flat ? { x: toward, y: 0 } : { x: 0, y: toward };
+    const points = straightened(
+      squared(a, b, s, pinned.from !== undefined ? axisOf(pinned.from) : out, e, pinned.to !== undefined ? axisOf(pinned.to) : { x: -out.x, y: -out.y }),
+    );
+    return { d: pathOf(points, []), label: longestMiddle(points), points };
   }
-  const toward = b.cy >= a.cy ? 1 : -1;
-  const s = leave(a, a.cx, a.cy + toward * far);
-  const e = leave(b, b.cx, b.cy - toward * far);
+  if (flat) {
+    const mx = (s.x + e.x) / 2;
+    if (routing !== 'right-angles') {
+      return curve(s, pinned.from !== undefined ? bend(s, pinned.from, e) : { x: mx, y: s.y }, pinned.to !== undefined ? bend(e, pinned.to, s) : { x: mx, y: e.y }, e);
+    }
+    const points = Math.abs(s.y - e.y) < 0.5 ? [s, e] : [s, { x: mx, y: s.y }, { x: mx, y: e.y }, e];
+    return { d: pathOf(points, []), label: { x: mx, y: (s.y + e.y) / 2 }, points };
+  }
   const my = (s.y + e.y) / 2;
-  const points =
-    routing !== 'right-angles' ? undefined : Math.abs(s.x - e.x) < 0.5 ? [s, e] : [s, { x: s.x, y: my }, { x: e.x, y: my }, e];
-  const d = points !== undefined ? pathOf(points, []) : `M ${s.x},${s.y} C ${s.x},${my} ${e.x},${my} ${e.x},${e.y}`;
-  return { d, label: { x: (s.x + e.x) / 2, y: my }, points };
+  if (routing !== 'right-angles') {
+    return curve(s, pinned.from !== undefined ? bend(s, pinned.from, e) : { x: s.x, y: my }, pinned.to !== undefined ? bend(e, pinned.to, s) : { x: e.x, y: my }, e);
+  }
+  const points = Math.abs(s.x - e.x) < 0.5 ? [s, e] : [s, { x: s.x, y: my }, { x: e.x, y: my }, e];
+  return { d: pathOf(points, []), label: { x: (s.x + e.x) / 2, y: my }, points };
+}
+
+/** The way out of the side each end is pinned to: a step long, turned with its box. Left out for an end pinned nowhere. */
+export type Pinned = { from?: Point; to?: Point };
+
+/** How far out of a pinned side a curve runs before it turns, at the least. The server's `DiagramRoute.BEND`. */
+export const BEND = 40;
+
+/** How far out of a pinned side a right-angle line runs before it may turn. The server's `DiagramRoute.STUB`. */
+export const STUB = 24;
+
+/** The least room a right-angle line needs ahead of an end to turn there. The server's `DiagramRoute.ROOM`. */
+const ROOM = 16;
+
+/**
+ * Where a curve bends from an end pinned to a side: straight [out] of that
+ * side before it turns for the [other] end, so it meets the side square on -
+ * the server's `DiagramRoute.bend`. Half the way there, as an unpinned end
+ * goes; never less than [BEND] where there is room for it, and further out for
+ * an end that lies behind the side, which the curve has to come round to.
+ */
+function bend(at: Point, out: Point, other: Point): Point {
+  const dx = other.x - at.x;
+  const dy = other.y - at.y;
+  const gap = Math.hypot(dx, dy);
+  const ahead = dx * out.x + dy * out.y;
+  const reach = ahead >= 0 ? Math.max(ahead / 2, Math.min(BEND, gap / 2)) : Math.min(gap, BEND + Math.sqrt(-ahead) * 4);
+  return { x: at.x + out.x * reach, y: at.y + out.y * reach };
+}
+
+/** A curve from one end to the other by way of the two points it bends from; its label half way along it. */
+function curve(s: Point, c1: Point, c2: Point, e: Point): Route {
+  const middle = halfway(s, c1, c2, e);
+  return { d: `M ${s.x},${s.y} C ${c1.x},${c1.y} ${c2.x},${c2.y} ${e.x},${e.y}`, label: middle, mids: [middle] };
+}
+
+/** The point half way along a cubic curve. */
+function halfway(s: Point, c1: Point, c2: Point, e: Point): Point {
+  return { x: (s.x + 3 * c1.x + 3 * c2.x + e.x) / 8, y: (s.y + 3 * c1.y + 3 * c2.y + e.y) / 8 };
+}
+
+/**
+ * A straight or curved line bent through points of its own - dragged there by
+ * hand - the server's `DiagramRoute.bent`, so the editor and the exported
+ * pictures agree. Each end leaves its box toward the bend nearest it, or by
+ * the side it is pinned to. Straight, it runs bend to bend, its corners
+ * rounded as a right-angle line's are; curved, it passes smoothly through
+ * every bend, square out of a pinned side as an unbent curve is.
+ *
+ * The label sits on the middle bend where there is one in the middle, and
+ * half way along the middle part where there is not; [labelAt] puts it a
+ * share of the way along instead, on a straight line.
+ */
+export function routeBent(
+  a: RouteBox,
+  b: RouteBox,
+  routing: DiagramRouting,
+  bends: [number, number][],
+  leave: Leave,
+  pinned: Pinned = {},
+  labelAt?: number,
+): Route {
+  const inner = bends.map(([x, y]) => ({ x, y }));
+  const start = leave(a, inner[0].x, inner[0].y);
+  const end = leave(b, inner[inner.length - 1].x, inner[inner.length - 1].y);
+  const all = [start, ...inner, end];
+  const middles = all.slice(1).map((one, at) => ({ x: (all[at].x + one.x) / 2, y: (all[at].y + one.y) / 2 }));
+  if (routing === 'straight') {
+    return { d: pathOf(all, []), label: labelAt !== undefined ? along(all, labelAt) : longestMiddle(all), points: all, mids: middles };
+  }
+  let d = `M ${start.x},${start.y}`;
+  const mids: Point[] = [];
+  for (let at = 0; at < all.length - 1; at++) {
+    const p = all[at];
+    const q = all[at + 1];
+    const before = at === 0 ? null : all[at - 1];
+    const after = at + 2 < all.length ? all[at + 2] : null;
+    // A Catmull-Rom spline through the points, each part a cubic; at an end, square out of a pinned side or a sixth of the way along.
+    const c1 =
+      before !== null
+        ? { x: p.x + (q.x - before.x) / 6, y: p.y + (q.y - before.y) / 6 }
+        : pinned.from !== undefined
+          ? bend(p, pinned.from, q)
+          : { x: p.x + (q.x - p.x) / 6, y: p.y + (q.y - p.y) / 6 };
+    const c2 =
+      after !== null
+        ? { x: q.x - (after.x - p.x) / 6, y: q.y - (after.y - p.y) / 6 }
+        : pinned.to !== undefined
+          ? bend(q, pinned.to, p)
+          : { x: q.x - (q.x - p.x) / 6, y: q.y - (q.y - p.y) / 6 };
+    d += ` C ${c1.x},${c1.y} ${c2.x},${c2.y} ${q.x},${q.y}`;
+    mids.push(halfway(p, c1, c2, q));
+  }
+  const parts = all.length - 1;
+  return { d, label: parts % 2 === 0 ? all[parts / 2] : mids[(parts - 1) / 2], mids };
+}
+
+/** The way out of a side as one of the four ways a right-angle line can run: a turned box's side leaves by the nearest. */
+function axisOf(out: Point): Point {
+  return Math.abs(out.x) >= Math.abs(out.y) ? { x: out.x < 0 ? -1 : 1, y: 0 } : { x: 0, y: out.y < 0 ? -1 : 1 };
+}
+
+/** The middle of a line's longest run, where a label has the most room. */
+function longestMiddle(points: Point[]): Point {
+  let longest = 1;
+  let most = -1;
+  for (let at = 1; at < points.length; at++) {
+    const length = Math.hypot(points[at].x - points[at - 1].x, points[at].y - points[at - 1].y);
+    if (length > most) {
+      most = length;
+      longest = at;
+    }
+  }
+  return { x: (points[longest - 1].x + points[longest].x) / 2, y: (points[longest - 1].y + points[longest].y) / 2 };
+}
+
+const flipped = (point: Point): Point => ({ x: point.y, y: point.x });
+
+/**
+ * A right-angle line from [s], leaving the way [dS] points, to [e], which it
+ * reaches coming in against [dE] - the server's `DiagramRoute.squared`. Each
+ * is one of the four ways along the axes.
+ *
+ * Two ends that face each other with room between turn once in the middle, as
+ * a line pinned nowhere does; two that face away go out a [STUB] each and
+ * round between the boxes, or under them where they overlap. Two that leave
+ * the same way - right side to right side - run out past the further of the
+ * two and come back, round the other box where it stands in the way. And two
+ * at right angles meet in one corner where both have room ahead for it, and
+ * in three where one does not.
+ */
+function squared(a: RouteBox, b: RouteBox, s: Point, dS: Point, e: Point, dE: Point): Point[] {
+  // Written for a start that leaves across; one that leaves up or down is the same line with x and y exchanged.
+  if (dS.x === 0) {
+    const turnedBox = (box: RouteBox): RouteBox => ({ cx: box.cy, cy: box.cx, hw: box.hh, hh: box.hw });
+    return squared(turnedBox(a), turnedBox(b), flipped(s), flipped(dS), flipped(e), flipped(dE)).map(flipped);
+  }
+  const s1 = { x: s.x + dS.x * STUB, y: s.y };
+  const e1 = { x: e.x + dE.x * STUB, y: e.y + dE.y * STUB };
+  if (dE.x === 0) {
+    const corner = { x: e.x, y: s.y };
+    if ((corner.x - s.x) * dS.x >= ROOM && (corner.y - e.y) * dE.y >= ROOM) return [s, corner, e];
+    return [s, s1, { x: s1.x, y: e1.y }, e1, e];
+  }
+  if (dE.x === -dS.x) {
+    if ((e.x - s.x) * dS.x >= ROOM) {
+      const mx = (s.x + e.x) / 2;
+      return [s, { x: mx, y: s.y }, { x: mx, y: e.y }, e];
+    }
+    const my = between(a, b);
+    return [s, s1, { x: s1.x, y: my }, { x: e1.x, y: my }, e1, e];
+  }
+  const x = dS.x > 0 ? Math.max(s1.x, e1.x) : Math.min(s1.x, e1.x);
+  if (crosses(b, s.y, s.x, x)) {
+    const y = around(b, s.y);
+    return [s, s1, { x: s1.x, y }, { x, y }, { x, y: e.y }, e];
+  }
+  if (crosses(a, e.y, e.x, x)) {
+    const y = around(a, e.y);
+    return [s, { x, y: s.y }, { x, y }, { x: e1.x, y }, e1, e];
+  }
+  return [s, { x, y: s.y }, { x, y: e.y }, e];
+}
+
+/** Whether a run across at [y], between [x1] and [x2], passes through [box]. */
+function crosses(box: RouteBox, y: number, x1: number, x2: number): boolean {
+  return y > box.cy - box.hh && y < box.cy + box.hh && Math.max(x1, x2) > box.cx - box.hw && Math.min(x1, x2) < box.cx + box.hw;
+}
+
+/** The height to pass [box] at, a [STUB] clear of it: over it from a line nearer its top, under it otherwise. */
+function around(box: RouteBox, y: number): number {
+  return y < box.cy ? box.cy - box.hh - STUB : box.cy + box.hh + STUB;
+}
+
+/** The height a line runs at between two boxes it cannot cross straight between: the middle of the gap, or under both where there is none. */
+function between(a: RouteBox, b: RouteBox): number {
+  if (b.cy - b.hh - (a.cy + a.hh) >= ROOM) return (a.cy + a.hh + b.cy - b.hh) / 2;
+  if (a.cy - a.hh - (b.cy + b.hh) >= ROOM) return (b.cy + b.hh + a.cy - a.hh) / 2;
+  return Math.max(a.cy + a.hh, b.cy + b.hh) + STUB;
 }
 
 /** How far a jump reaches either side of the line it crosses: half its width. The server's `DiagramRoute.HOP`. */

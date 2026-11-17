@@ -69,7 +69,18 @@ export interface DiagramNodeData {
   rotation?: number;
   /** The picture an image shows: an uploaded one's id, or an address on the web. */
   image?: string;
+  /** Where its label sits inside it, across and down; left out, the shape's usual place - the middle of a box, the left of text, the top left of a group. */
+  align?: DiagramTextAlign;
+  valign?: DiagramTextValign;
+  /** How big its words are, in pixels, 6 to 96; left out, the size its kind of shape usually writes in. */
+  textSize?: number;
 }
+
+/** Where a shape's label sits across it, and down it (`DiagramTextAlign`, `DiagramTextValign`). */
+export const DIAGRAM_TEXT_ALIGNS = ['left', 'center', 'right'] as const;
+export type DiagramTextAlign = (typeof DIAGRAM_TEXT_ALIGNS)[number];
+export const DIAGRAM_TEXT_VALIGNS = ['top', 'middle', 'bottom'] as const;
+export type DiagramTextValign = (typeof DIAGRAM_TEXT_VALIGNS)[number];
 
 /** Where the browser fetches an image's picture from: the diagram's own store, or the address it was given. */
 export function pictureUrl(image: string): string {

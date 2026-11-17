@@ -677,6 +677,12 @@ const IN_THE_OPEN = [
     why: 'an empty report, in place of an empty table',
   },
   {
+    file: 'src/pages/explore/DiagramAddMenu.tsx',
+    says: 'No shape is called that',
+    because: 'status',
+    why: "the diagram Add menu's search finding nothing, in place of an empty list",
+  },
+  {
     file: 'src/pages/admin/AdminClientsPage.tsx',
     says: 'No client has connected in this period.',
     because: 'status',

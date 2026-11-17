@@ -72,9 +72,10 @@ try {
   let node = await page.locator('.react-flow__node[data-id="a"]').boundingBox();
   const by = 450 - (node.y + node.height / 2);
   const from = pane.y + pane.height / 2 - by / 2;
-  await page.mouse.move(pane.x + 20, from);
+  // By the right edge: the bottom-left corner is the diagram's map, and a drag there moves the view by the map's scale.
+  await page.mouse.move(pane.x + pane.width - 30, from);
   await page.mouse.down();
-  await page.mouse.move(pane.x + 20, from + by, { steps: 6 });
+  await page.mouse.move(pane.x + pane.width - 30, from + by, { steps: 6 });
   await page.mouse.up();
   await page.waitForTimeout(300);
   node = await page.locator('.react-flow__node[data-id="a"]').boundingBox();

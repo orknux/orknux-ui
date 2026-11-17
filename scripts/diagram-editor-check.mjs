@@ -24,14 +24,16 @@ await page.goto(`${BASE}/workspace/${WORKSPACE}/explore/diagrams/${id}`, { waitU
 await page.getByTestId('diagram-canvas').locator('.react-flow').waitFor({ timeout: 20_000 }).catch(() => undefined);
 await page.waitForTimeout(400);
 
-// The panel down the right sits where the wireframe editor's does: the same frame, the same width.
+// The editor fills the frame the wireframe editor does: its chat now a panel on the canvas's left, its settings on the right.
 async function frameOf(canvasId, panelId) {
   const canvas = await page.getByTestId(canvasId).boundingBox().catch(() => null);
   const panel = await page.getByTestId(panelId).boundingBox().catch(() => null);
   if (canvas === null || panel === null) return null;
   return { left: canvas.x, right: panel.x + panel.width, top: Math.min(canvas.y, panel.y), bottom: Math.max(canvas.y + canvas.height, panel.y + panel.height), panelX: panel.x, panel: panel.width };
 }
-const diagramFrame = await frameOf('diagram-canvas', 'diagram-panel');
+const settingsFrame = await frameOf('diagram-canvas', 'diagram-panel');
+const chatBox = await page.getByTestId('diagram-chat-panel').boundingBox().catch(() => null);
+const diagramFrame = settingsFrame === null || chatBox === null ? null : { ...settingsFrame, left: chatBox.x };
 const composer = await page.getByTestId('diagram-chat-input').boundingBox().catch(() => null);
 const { createWireframe: wire } = await graphql('mutation ($w: ID!, $n: String!) { createWireframe(workspaceId: $w, name: $n) { id } }', { w: WORKSPACE, n: `zzFrame ${stamp}` });
 await page.goto(`${BASE}/workspace/${WORKSPACE}/design/wireframes/${wire.id}`, { waitUntil: 'domcontentloaded' });
@@ -42,11 +44,12 @@ const wireComposer = await page.getByTestId('wireframe-chat-input').boundingBox(
 await graphql('mutation ($id: ID!) { deleteWireframe(id: $id) }', { id: wire.id });
 const near = (a, b) => Math.abs(a - b) <= 2;
 record(
-  diagramFrame !== null && wireFrame !== null && ['left', 'right', 'top', 'bottom', 'panelX', 'panel'].every((side) => near(diagramFrame[side], wireFrame[side])),
-  `the chat panel takes the wireframe editor's place on the right (${JSON.stringify({ diagramFrame, wireFrame })})`,
+  diagramFrame !== null && wireFrame !== null && ['left', 'right', 'top', 'bottom'].every((side) => near(diagramFrame[side], wireFrame[side])),
+  `the editor fills the wireframe editor's frame, the chat on its left (${JSON.stringify({ diagramFrame, chatBox, wireFrame })})`,
 );
-record(composer !== null && wireComposer !== null && near(composer.x, wireComposer.x) && near(composer.width, wireComposer.width) && near(composer.y + composer.height, wireComposer.y + wireComposer.height),
-  `and its box to ask in sits at the foot as the wireframe editor's does (${JSON.stringify({ composer, wireComposer })})`);
+// The foot of its own panel - under the field only the row of the model and the send button, and the panel's padding: the diagram's chat has no count of shapes under it, which the wireframe editor's has.
+record(composer !== null && wireComposer !== null && chatBox !== null && composer.x >= chatBox.x && composer.x + composer.width <= chatBox.x + chatBox.width && near(composer.width, wireComposer.width) && chatBox.y + chatBox.height - (composer.y + composer.height) <= 72,
+  `and its box to ask in sits at the foot of the chat, as wide as the wireframe editor's (${JSON.stringify({ composer, chatBox, wireComposer })})`);
 
 await page.goto(`${BASE}/workspace/${WORKSPACE}/explore/diagrams/${id}`, { waitUntil: 'domcontentloaded' });
 await page.getByTestId('diagram-canvas').locator('.react-flow').waitFor({ timeout: 20_000 }).catch(() => undefined);

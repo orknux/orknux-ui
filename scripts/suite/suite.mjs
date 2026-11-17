@@ -2780,6 +2780,90 @@ export const TESTS = [
     /* Makes its own diagram and removes it. The diagram goes to the recycle bin, as any deleted one does. */
   },
   {
+    name: 'diagram-minimap-check',
+    what: 'a diagram draws a map of itself in a corner that moves the view, stays in View, and can be hidden and remembered hidden',
+    needs: ['workspace'],
+    /* Makes its own diagram and removes it. The diagram goes to the recycle bin, as any deleted one does. */
+  },
+  {
+    name: 'diagram-line-defaults-check',
+    what: 'a new diagram line is drawn curved, and a lit line with no arrowhead shows no arrowheads travelling along it',
+    needs: ['workspace'],
+    /* Makes its own diagram and removes it. The diagram goes to the recycle bin, as any deleted one does. */
+  },
+  {
+    name: 'diagram-line-panel-check',
+    what: 'with a line selected, every one of its properties fits the panel without scrolling',
+    needs: ['workspace'],
+    /* Makes its own diagram and removes it. The diagram goes to the recycle bin, as any deleted one does. */
+  },
+  {
+    name: 'diagram-text-check',
+    what: 'text in a diagram shape is placed left, centre or right and top, middle or bottom, sized in pixels, kept, and exported the same way',
+    needs: ['workspace'],
+    /* Makes its own diagram and removes it. The diagram goes to the recycle bin, as any deleted one does. */
+  },
+  {
+    name: 'diagram-suggestion-check',
+    what: 'resting on a side of a shape offers a line to the shape beside it, or a copy of the shape joined to it, and a click takes it',
+    needs: ['workspace'],
+    /* Makes its own diagram and removes it. The diagram goes to the recycle bin, as any deleted one does. */
+  },
+  {
+    name: 'diagram-add-shortcut-check',
+    what: 'the Add shortcut opens the Add menu of a diagram at the pointer, the keyboard picks from it, and a shape is made where the pointer was',
+    needs: ['workspace'],
+    /* Makes its own diagram and removes it. The diagram goes to the recycle bin, as any deleted one does. */
+  },
+  {
+    name: 'diagram-drag-check',
+    what: 'a dragged diagram shape follows the pointer exactly, settles on the grid when let go, and shows and snaps to alignment guides',
+    needs: ['workspace'],
+    /* Makes its own diagram and removes it. The diagram goes to the recycle bin, as any deleted one does. */
+  },
+  {
+    name: 'diagram-select-check',
+    what: 'with rectangle select on, a drag on a diagram selects what it touches, the selection moves and deletes together, and the tool is remembered',
+    needs: ['workspace'],
+    /* Makes its own diagram and removes it. The diagram goes to the recycle bin, as any deleted one does. */
+  },
+  {
+    name: 'diagram-pinned-route-check',
+    what: 'a curved line meets a pinned side square on, a right-angle line leaves and arrives by its pinned sides, and a run of it is dragged aside, kept and exported',
+    needs: ['workspace'],
+    /* Makes its own diagram and removes it. The diagram goes to the recycle bin, as any deleted one does. */
+  },
+  {
+    name: 'diagram-handle-reach-check',
+    what: 'the line handles and resize corners of a diagram shape are taken hold of from a little way off',
+    needs: ['workspace'],
+    /* Makes its own diagram and removes it. The diagram goes to the recycle bin, as any deleted one does. */
+  },
+  {
+    name: 'diagram-colour-row-check',
+    what: 'the colour row of a diagram shape fits the panel at its narrowest, default and wide widths',
+    needs: ['workspace'],
+    /* Makes its own diagram and removes it. The diagram goes to the recycle bin, as any deleted one does. */
+  },
+  {
+    name: 'diagram-connect-check',
+    what: 'a line drawn onto a handle of a diagram shape is made, let go on the handle or just outside its shape',
+    needs: ['workspace'],
+    /* Makes its own diagram and removes it. The diagram goes to the recycle bin, as any deleted one does. */
+  },
+  {
+    name: 'diagram-bend-check',
+    what: 'a straight or curved diagram line is bent by dragging the middle of it, the bend moved and taken out, and exported through the same point',
+    needs: ['workspace'],
+    /* Makes its own diagram and removes it. The diagram goes to the recycle bin, as any deleted one does. */
+  },
+  {
+    name: 'diagram-big-check',
+    what: 'a shape dragged on a diagram of six hundred, and the canvas moved, keep up with the pointer',
+    needs: ['workspace'],
+    /* Makes its own diagram and removes it. The diagram goes to the recycle bin, as any deleted one does. */
+  },
+  {
     name: 'diagram-node-link-check',
     what: 'a link to one box of a diagram opens it with that box selected and in the middle of the canvas, from a fresh load and a reload',
     needs: ['workspace'],

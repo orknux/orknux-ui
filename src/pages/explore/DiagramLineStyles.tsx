@@ -15,6 +15,22 @@ export function styleOf(edge: Pick<DiagramEdgeData, 'kind' | 'line' | 'start' | 
   return { line: edge.line ?? kind.line, start: edge.start ?? kind.start, end: edge.end ?? kind.end };
 }
 
+/** The ends that are arrowheads, and so say which way a line points; a diamond or a circle marks an end without pointing. */
+const POINTED: DiagramEndStyle[] = ['arrow', 'open', 'triangle'];
+
+/**
+ * Which way a line points, for what travels along it while it is lit: towards
+ * its `to` where only that end carries an arrowhead, back towards its `from`
+ * where only that one does, and neither way where both do or none does - a
+ * plain line showed arrows running along it that it does not have.
+ */
+export function headingOf(start: DiagramEndStyle, end: DiagramEndStyle): 'forward' | 'backward' | undefined {
+  const atStart = POINTED.includes(start);
+  const atEnd = POINTED.includes(end);
+  if (atStart === atEnd) return undefined;
+  return atEnd ? 'forward' : 'backward';
+}
+
 /** The nearest of the four old kinds, kept beside the style for a reader that knows only them; as the server reckons it. */
 export function nearestKind(line: DiagramLineStyle, start: DiagramEndStyle, end: DiagramEndStyle): DiagramEdgeKind {
   if (end === 'none') return 'line';

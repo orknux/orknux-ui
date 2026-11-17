@@ -1349,7 +1349,7 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
                   {t('Add Node Shortcut')}
                 </span>
                 <FieldHint label={t('Add Node Shortcut')}>
-                  {t('Opens the workflow editor\'s Add menu and puts the first kind of node under the keyboard, so a graph can be built without reaching for the toolbar. A bare letter is allowed here for the same reason it is above: only the canvas hears it.')}
+                  {t('Opens the Add menu of the workflow editor and of the diagram editor and puts its first row under the keyboard, so a graph or a drawing can be built without reaching for the toolbar. A bare letter is allowed here for the same reason it is above: only the canvas hears it.')}
                 </FieldHint>
               </span>
               <div className={styles.options}>
@@ -1380,7 +1380,7 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
                   {t('Rectangle Select Shortcut')}
                 </span>
                 <FieldHint label={t('Rectangle Select Shortcut')}>
-                  {t('Switches the workflow canvas between panning and drawing a selection rectangle, the same as the button in its corner. Shift-drag draws one at any time. A bare letter is allowed here because only the canvas hears it.')}
+                  {t('Switches the workflow canvas and the diagram canvas between panning and drawing a selection rectangle, the same as the button in the corner. Shift-drag draws one at any time. A bare letter is allowed here because only the canvas hears it.')}
                 </FieldHint>
               </span>
               <div className={styles.options}>

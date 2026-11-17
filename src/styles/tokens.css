@@ -35,6 +35,8 @@
    */
   --color-scrollbar: #3f3f46;
   --color-scrollbar-hover: #52525b;
+  /* On a menu, which is raised off the page and nearly the thumb's colour: brighter, or a list's end is not found. */
+  --color-scrollbar-raised: #71717a;
   --color-border: #27272a;
   /* A field that has to be found on a toolbar: lighter than the bar, and edged more clearly. */
   --color-field: #27272a;
@@ -301,6 +303,12 @@
   --diagram-note: #fef9c3;
   --diagram-group: #eef2f7;
   --diagram-select: #2f80ed;
+  /* The selection's colour, faint: under the pointer on what can be taken hold of. */
+  --diagram-select-soft: rgba(47, 128, 237, 0.18);
+  /* An alignment guide: purple, a colour nothing on a diagram is drawn in by default, so it reads as the editor's and not the drawing's. */
+  --diagram-guide: #9333ea;
+  /* What the small map lays over the part of the diagram that is off screen. */
+  --diagram-map-mask: rgba(24, 24, 27, 0.14);
   --diagram-ink-on-dark: #fafafa;
   --diagram-ink-on-light: #18181b;
 }
@@ -362,6 +370,7 @@
   /* The same idea the other way up: dark enough to see on a light page. */
   --color-scrollbar: #c4c4c8;
   --color-scrollbar-hover: #a1a1aa;
+  --color-scrollbar-raised: #a1a1aa;
   --color-border: #e4e4e7;
   --color-field: #ffffff;
   --color-field-border: #a1a1aa;
