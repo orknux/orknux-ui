@@ -773,6 +773,24 @@ const IN_THE_OPEN = [
     why: 'the same, for the picker that chooses what draws',
   },
   {
+    file: 'src/pages/workspace/WorkspaceSettingsPage.tsx',
+    says: 'The Jira plugin is not loaded.',
+    because: 'status',
+    why: 'whether the plugin a diagram’s Jira shapes read through is there: the state of the field, not how to use it',
+  },
+  {
+    file: 'src/pages/workspace/WorkspaceSettingsPage.tsx',
+    says: 'The Jira plugin is switched off under Admin',
+    because: 'status',
+    why: 'the same, for a Jira plugin that is loaded and switched off',
+  },
+  {
+    file: 'src/pages/workspace/WorkspaceSettingsPage.tsx',
+    says: 'This workspace has no Jira connection yet.',
+    because: 'status',
+    why: 'the same, for the picker that chooses which Jira a diagram reads: why it offers only the plugin’s own',
+  },
+  {
     file: 'src/pages/admin/AdminSettingsPage.tsx',
     says: 'here, and the stored answer is the one in force.',
     because: 'status',

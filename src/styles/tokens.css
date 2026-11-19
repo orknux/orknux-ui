@@ -300,6 +300,17 @@
   --diagram-muted: #71717a;
   /* A link card's name: a link's blue, on the diagram's paper. */
   --diagram-link: #2563eb;
+  /* A code shape is a dark card on the diagram's paper in either theme, with the dark theme's colours for its code. */
+  --diagram-code-paper: #18181b;
+  --diagram-code-rule: #3f3f46;
+  --diagram-code-ink: #e4e4e7;
+  --diagram-code-muted: #a1a1aa;
+  --diagram-code-comment: #71717a;
+  --diagram-code-string: #4ade80;
+  --diagram-code-number: #fbbf24;
+  --diagram-code-keyword: #c084fc;
+  --diagram-code-type: #60a5fa;
+  --diagram-jira-status: #e4e4e7;
   --diagram-note: #fef9c3;
   --diagram-group: #eef2f7;
   --diagram-select: #2f80ed;

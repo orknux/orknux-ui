@@ -219,6 +219,15 @@
   field-sizing: content;
 }
 
+/* The label typed into as it is drawn: words kept on their lines and wrapped, the styled ones styled. */
+.labelEditorRich {
+  min-width: 1ch;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  cursor: text;
+  user-select: text;
+}
+
 .linkLabelEditing {
   pointer-events: all;
 }
@@ -524,6 +533,14 @@
   box-shadow: 0 0 0 2px var(--diagram-select);
 }
 
+/* The cards are boxes of their own, not a .shape: lit the same way, or a selected one showed only its grips. */
+:global(.react-flow__node-shape.selected) .linkNode,
+:global(.react-flow__node-shape.selected) .codeNode,
+:global(.react-flow__node-shape.selected) .jiraNode {
+  border-color: var(--diagram-select);
+  box-shadow: 0 0 0 2px var(--diagram-select);
+}
+
 :global(.react-flow__node-shape.selected) .diamond polygon,
 :global(.react-flow__node-shape.selected) .outlinePiece {
   stroke: var(--diagram-select);
@@ -532,20 +549,25 @@
 
 /* ---- A connection ---- */
 
+/*
+ * Important, to win over React Flow's own edge stroke - and so a line's own
+ * colour and thickness come in as variables: written on the path as plain
+ * stroke and stroke-width, they lost to this rule and every line drew grey.
+ */
 .link {
-  stroke: var(--diagram-ink) !important;
-  stroke-width: 1.5 !important;
+  stroke: var(--link-stroke, var(--diagram-ink)) !important;
+  stroke-width: var(--link-width, 1.5) !important;
 }
 
 .linkSelected {
   stroke: var(--diagram-select) !important;
-  stroke-width: 2.5 !important;
+  stroke-width: var(--link-width-lit, 2.5) !important;
 }
 
 /* A line of a selected box: lit with it, a little lighter than a line selected itself. */
 .linkTouched {
   stroke: var(--diagram-select) !important;
-  stroke-width: 2 !important;
+  stroke-width: var(--link-width-lit, 2) !important;
 }
 
 /*
@@ -1836,6 +1858,201 @@
   border-radius: 8px;
 }
 
+.codeNode {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  color: var(--diagram-code-ink);
+  background: var(--diagram-code-paper);
+  border: var(--node-border-width, 1px) solid var(--node-border, var(--diagram-code-rule));
+  border-radius: 6px;
+}
+
+.codeNodeCaption {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--diagram-code-rule);
+  color: var(--diagram-code-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.codeNodeName {
+  overflow: hidden;
+  flex: 1 1 auto;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.codeNodeLanguage {
+  flex: none;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.codeNodeState {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--diagram-code-number);
+}
+
+.codeNodeFailed {
+  background: var(--color-danger);
+}
+
+.codeNodeOpen,
+.jiraNodeOpen {
+  flex: none;
+  color: inherit;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.codeNodeEmpty {
+  padding: 10px;
+  color: var(--diagram-code-muted);
+  font-size: 12px;
+}
+
+.codeNodeLines {
+  flex: 1 1 auto;
+  margin: 0;
+  padding: 4px 0;
+  overflow: hidden;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: 12px;
+  line-height: 17px;
+  white-space: pre;
+  tab-size: 4;
+}
+
+.codeNodeLine {
+  display: block;
+  padding-right: 8px;
+}
+
+.codeNodeNumber {
+  display: inline-block;
+  min-width: 3ch;
+  padding: 0 8px 0 6px;
+  color: var(--diagram-code-comment);
+  text-align: right;
+  user-select: none;
+}
+
+.codeNodeLines :global(.hljs-comment),
+.codeNodeLines :global(.hljs-quote) {
+  color: var(--diagram-code-comment);
+  font-style: italic;
+}
+
+.codeNodeLines :global(.hljs-string),
+.codeNodeLines :global(.hljs-attr),
+.codeNodeLines :global(.hljs-symbol),
+.codeNodeLines :global(.hljs-addition) {
+  color: var(--diagram-code-string);
+}
+
+.codeNodeLines :global(.hljs-number),
+.codeNodeLines :global(.hljs-literal),
+.codeNodeLines :global(.hljs-regexp) {
+  color: var(--diagram-code-number);
+}
+
+.codeNodeLines :global(.hljs-keyword),
+.codeNodeLines :global(.hljs-selector-tag),
+.codeNodeLines :global(.hljs-built_in),
+.codeNodeLines :global(.hljs-meta),
+.codeNodeLines :global(.hljs-doctag) {
+  color: var(--diagram-code-keyword);
+}
+
+.codeNodeLines :global(.hljs-title),
+.codeNodeLines :global(.hljs-type),
+.codeNodeLines :global(.hljs-class),
+.codeNodeLines :global(.hljs-name),
+.codeNodeLines :global(.hljs-section),
+.codeNodeLines :global(.hljs-variable),
+.codeNodeLines :global(.hljs-attribute) {
+  color: var(--diagram-code-type);
+}
+
+.codeNodeLines :global(.hljs-deletion) {
+  color: var(--color-danger);
+}
+
+.jiraNode {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: 8px 12px;
+  color: var(--diagram-ink);
+  background: var(--diagram-paper);
+  border: var(--node-border-width, 1.5px) solid var(--node-border, var(--diagram-ink));
+  border-radius: 8px;
+}
+
+.jiraNodeTop {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.jiraNodeKey {
+  overflow: hidden;
+  flex: 1 1 auto;
+  color: var(--diagram-link);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.jiraNodeStatus {
+  flex: none;
+  max-width: 50%;
+  overflow: hidden;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--diagram-jira-status);
+  color: var(--diagram-ink-on-light);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.jiraNodeSummary {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 18px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+
+.jiraNodeFoot {
+  margin-top: auto;
+  overflow: hidden;
+  color: var(--diagram-muted);
+  font-size: 11px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .linkNodeGone .linkNodeName {
   text-decoration: line-through;
   opacity: 0.6;
@@ -1871,10 +2088,12 @@
 
 .linkNodeOpen {
   flex: none;
-  width: 36px;
-  height: 36px;
+  /* Small: the card is what a click selects, and a big button was most of where a click on it landed. */
+  width: 26px;
+  height: 26px;
+  padding: 0;
   color: #3f3f46;
-  font-size: 20px;
+  font-size: 15px;
   line-height: 1;
   background: #f4f4f5;
   border: 1px solid #d4d4d8;
@@ -2154,4 +2373,168 @@
 
 .suggestionLine polygon {
   fill: var(--diagram-select);
+}
+
+.sourceRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.sourceSaid {
+  overflow-wrap: anywhere;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.sourceProblem {
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+}
+
+/* Space held: looking, not editing - the hand, over shapes too. */
+.canvasLooking :global(.react-flow__pane),
+.canvasLooking :global(.react-flow__node),
+.canvasLooking :global(.react-flow__edge) {
+  cursor: grab;
+}
+
+.canvasLooking :global(.react-flow__node),
+.canvasLooking :global(.react-flow__edge) {
+  pointer-events: none;
+}
+
+/* Over the words being typed in a shape: style the selected ones. On the page, in the app's own colours. */
+.styleBar {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+  box-shadow: var(--shadow-menu);
+}
+
+.styleBarButton {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-4);
+  cursor: pointer;
+}
+
+.styleBarButton:hover {
+  background: var(--color-surface-hover);
+}
+
+.styleBarRule {
+  width: 1px;
+  height: 18px;
+  margin: 0 3px;
+  background: var(--color-border);
+}
+
+.styleBarColour {
+  width: 16px;
+  height: 16px;
+  margin: 0 2px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+/* A line's label is taken hold of to slide it along the line. */
+.linkLabelMovable {
+  pointer-events: all;
+  cursor: grab;
+}
+
+.linkLabelMovable:active {
+  cursor: grabbing;
+}
+
+/* The side panel's text style toggles: a letter drawn in the style it gives. */
+.textStyleToggle {
+  width: 28px;
+  height: 26px;
+  padding: 0;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  cursor: pointer;
+}
+
+.textStyleToggle:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+
+.textStyleToggleOn {
+  color: var(--color-accent-foreground);
+  background: var(--color-accent);
+  border-color: transparent;
+}
+
+.textStyleToggle:disabled,
+.strokeRow .swatch:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* The text size: the number between a step down and a step up of its own - the browser's arrows started an empty field from its least. */
+.textSizeField {
+  display: inline-flex;
+  align-items: stretch;
+  gap: var(--space-4);
+}
+
+.textSizeField .textSize {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.textSizeField .textSize::-webkit-outer-spin-button,
+.textSizeField .textSize::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+.textSizeStep {
+  min-width: 28px;
+  padding: 0;
+  color: var(--color-text-primary);
+  font-size: 15px;
+  line-height: 1;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  cursor: pointer;
+}
+
+.textSizeStep:hover {
+  background: var(--color-surface-hover);
+}
+
+/* A line being drawn: to where it will land, its end marked on the outline it will be pinned to. */
+.connectionPreview {
+  fill: none;
+  stroke: var(--diagram-select);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+
+.connectionPreviewEnd {
+  fill: var(--diagram-paper);
+  stroke: var(--diagram-select);
+  stroke-width: 2;
 }

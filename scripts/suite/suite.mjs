@@ -2804,6 +2804,18 @@ export const TESTS = [
     /* Makes its own diagram and removes it. The diagram goes to the recycle bin, as any deleted one does. */
   },
   {
+    name: 'diagram-sources-check',
+    what: 'code shapes show a GitHub file\'s lines highlighted and Jira shapes an issue, read lazily through the workspace\'s chosen functions and kept; a pasted address makes its shape; text fits its shape; a line alone is cut and pasted back',
+    needs: ['workspace'],
+    /* Makes its own diagram and two functions standing in for the plugins, points the workspace at them, and puts back what it found. */
+  },
+  {
+    name: 'diagram-rich-text-check',
+    what: 'words selected while typing in a shape are made bold, italic, underlined, struck through or coloured, drawn and exported so, and a new line looks like the line made before it',
+    needs: ['workspace'],
+    /* Makes its own diagram and removes it. The diagram goes to the recycle bin, as any deleted one does. */
+  },
+  {
     name: 'diagram-suggestion-check',
     what: 'resting on a side of a shape offers a line to the shape beside it, or a copy of the shape joined to it, and a click takes it',
     needs: ['workspace'],

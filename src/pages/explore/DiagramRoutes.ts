@@ -461,3 +461,51 @@ export function along(points: Point[], share: number): Point {
   }
   return points[points.length - 1];
 }
+
+/** How finely a curve is followed as straight runs: the server's `DiagramRoute.CURVE_STEPS`. */
+const CURVE_STEPS = 24;
+
+/**
+ * A drawn line as straight runs, start to end: its corners, or its curve
+ * followed closely - the server's `DiagramRoute.trace`, so a label put a share
+ * of the way along a curve lands at the same point in a picture.
+ */
+export function traceOf(route: Route): Point[] {
+  if (route.points !== undefined) return route.points;
+  const numbers = (route.d.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
+  if (!route.d.includes('C') || numbers.length < 8) {
+    const points: Point[] = [];
+    for (let at = 0; at + 1 < numbers.length; at += 2) points.push({ x: numbers[at], y: numbers[at + 1] });
+    return points;
+  }
+  const traced: Point[] = [{ x: numbers[0], y: numbers[1] }];
+  for (let at = 2; at + 6 <= numbers.length; at += 6) {
+    const { x: x0, y: y0 } = traced[traced.length - 1];
+    const [x1, y1, x2, y2, x3, y3] = numbers.slice(at, at + 6);
+    for (let step = 1; step <= CURVE_STEPS; step++) {
+      const t = step / CURVE_STEPS;
+      const u = 1 - t;
+      traced.push({ x: u * u * u * x0 + 3 * u * u * t * x1 + 3 * u * t * t * x2 + t * t * t * x3, y: u * u * u * y0 + 3 * u * u * t * y1 + 3 * u * t * t * y2 + t * t * t * y3 });
+    }
+  }
+  return traced;
+}
+
+/** How far along [points] the point of them nearest [to] is, as a share of their length. */
+export function shareNearest(points: Point[], to: Point): number {
+  const lengths = points.slice(1).map((b, at) => Math.hypot(b.x - points[at].x, b.y - points[at].y));
+  const total = lengths.reduce((sum, one) => sum + one, 0);
+  if (total === 0) return 0.5;
+  let best = { gap: Infinity, at: 0 };
+  let before = 0;
+  for (let at = 0; at < lengths.length; at++) {
+    const a = points[at];
+    const b = points[at + 1];
+    const length = lengths[at];
+    const part = length === 0 ? 0 : Math.min(1, Math.max(0, ((to.x - a.x) * (b.x - a.x) + (to.y - a.y) * (b.y - a.y)) / (length * length)));
+    const gap = Math.hypot(a.x + (b.x - a.x) * part - to.x, a.y + (b.y - a.y) * part - to.y);
+    if (gap < best.gap) best = { gap, at: before + length * part };
+    before += length;
+  }
+  return best.at / total;
+}

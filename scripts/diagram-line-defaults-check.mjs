@@ -29,7 +29,8 @@ const id = (
       ],
       edges: [
         { id: 'plain', from: 'a', to: 'b', kind: 'line', line: 'solid', start: 'none', end: 'none' },
-        { id: 'arrow', from: 'b', to: 'c', kind: 'arrow', line: 'solid', start: 'none', end: 'arrow' },
+        // Curved: a new line now looks like the line made before it, which this is - diagram-rich-text-check holds that half.
+        { id: 'arrow', from: 'b', to: 'c', kind: 'arrow', line: 'solid', start: 'none', end: 'arrow', routing: 'curved' },
       ],
     }),
   })

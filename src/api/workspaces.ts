@@ -47,6 +47,10 @@ export interface Workspace {
    * with.
    */
   imageModelId: string | null;
+  /** The Jira connection diagrams' Jira shapes read through; null is the Jira plugin's own. */
+  diagramJiraConnectionId?: string | null;
+  /** How many minutes such a shape's copy is kept before it is read again; null is sixty. */
+  diagramFetchMinutes?: number | null;
   /**
    * Above how many tokens a chat here is summarised; null is off, which is
    * where every workspace starts.
@@ -241,7 +245,7 @@ export interface Workspace {
 
 const WORKSPACE_FIELDS =
   'id name description roles { id name } adminRoles { id name } administered readsSecrets adminWorkspace ' +
-  'companionModelId transcriptionModelId speechModelId imageModelId quickChatModelId quickChatModelAny quickChatAvailable quickChatMayWrite ' +
+  'companionModelId transcriptionModelId speechModelId imageModelId diagramJiraConnectionId diagramFetchMinutes quickChatModelId quickChatModelAny quickChatAvailable quickChatMayWrite ' +
   'completionModelId completionModelDefault completionAvailable completionPauseMillis ' +
   'compactAfterTokens compactionSummaryTokens compactionModelId ' +
   'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault agentMaxSubagents agentMaxSubagentsDefault agentMaxSubagentsAtOnceDefault chatMaxRounds chatMaxRoundsDefault researchReviewRounds researchReviewRoundsDefault researchFollowUps researchFollowUpsDefault maxToolCallsAtOnce maxToolCallsAtOnceDefault sessionCompactAfterTokens sessionCompactAfterTokensDefault sessionCompactionKeepTurns sessionCompactionKeepTurnsDefault sessionCompactionSummaryTokens sessionCompactionSummaryTokensDefault sessionCompactionAttempts sessionCompactionAttemptsDefault sessionCompactionModelId unsafeBuiltInTools commandMarker commandMarkerDefault ' +
@@ -360,6 +364,17 @@ export async function setWorkspaceImageModel(
     { workspaceId, modelId },
   );
   return data.setWorkspaceImageModel;
+}
+
+/** Chooses what diagrams' code and Jira shapes read through, and how long a copy is kept; null minutes is sixty. */
+export async function setWorkspaceDiagramSources(workspaceId: string, jiraConnectionId: string | null, fetchMinutes: number | null): Promise<Workspace> {
+  const data = await graphql<{ setWorkspaceDiagramSources: Workspace }>(
+    `mutation SetWorkspaceDiagramSources($workspaceId: ID!, $jiraConnectionId: ID, $fetchMinutes: Int) {
+       setWorkspaceDiagramSources(workspaceId: $workspaceId, jiraConnectionId: $jiraConnectionId, fetchMinutes: $fetchMinutes) { ${WORKSPACE_FIELDS} }
+     }`,
+    { workspaceId, jiraConnectionId, fetchMinutes },
+  );
+  return data.setWorkspaceDiagramSources;
 }
 
 /** Chooses the model behind the quick chat; null takes the button away, and useAny hands it to any chat model. */

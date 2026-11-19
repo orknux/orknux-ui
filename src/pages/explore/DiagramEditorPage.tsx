@@ -1,10 +1,11 @@
-import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Background,
   BackgroundVariant,
   ConnectionMode,
+  type ConnectionLineComponentProps,
   MarkerType,
   MiniMap,
   Panel,
@@ -46,6 +47,11 @@ import {
   renameDiagram,
   saveDiagram,
   setDiagramAgentAccess,
+  codeSourceOf,
+  diagramSources,
+  fetchDiagramSource,
+  jiraKeyOf,
+  sourceKindOf,
 } from '../../api/diagrams';
 import type {
   Diagram,
@@ -62,6 +68,8 @@ import type {
   DiagramTextAlign,
   DiagramTextValign,
   DiagramTurn,
+  DiagramSource,
+  DiagramSourceKind,
 } from '../../api/diagrams';
 import type { SessionUser } from '../../api/session';
 import alignLeftIcon from '../../assets/align-left.svg';
@@ -109,6 +117,10 @@ import stickyIcon from '../../assets/sticky-note.svg';
 import diamondIcon from '../../assets/diamond.svg';
 import undoIcon from '../../assets/undo.svg';
 import usersIcon from '../../assets/users.svg';
+import codeIcon from '../../assets/code.svg';
+import jiraIcon from '../../assets/ticket.svg';
+import fitIcon from '../../assets/scale.svg';
+import refreshIcon from '../../assets/refresh-cw.svg';
 import { ApiError } from '../../api/client';
 import { AppShell } from '../../components/AppShell';
 import { LivePointers, mergeById, Presence, useAutosave, useLiveRoom } from '../../components/LiveRoom';
@@ -143,12 +155,13 @@ import { CLAUDE_CODE_MODEL, DesignChat, askThroughClaudeCode, useChatFiles, useC
 import type { ChatIdea } from '../design/DesignChat';
 import shell from '../design/DesignImageEditorPage.module.css';
 import chat from '../design/WireframeEditorPage.module.css';
-import { AlignmentGuides, EDGE_TYPES, GRID, LabelEditingContext, LinkEndsContext, LinkOpenContext, NODE_TYPES, SWATCH_ROW, SWATCHES, SuggestionGhost, TurnedResizeContext, ViewingContext, sameAll } from './DiagramCanvas';
+import { AlignmentGuides, EDGE_TYPES, GRID, LABEL_MOST, LINE_TRACES, LabelEditingContext, LinkEndsContext, LinkOpenContext, NODE_TYPES, SWATCH_ROW, SWATCHES, SuggestionGhost, TurnedResizeContext, ViewingContext, sameAll } from './DiagramCanvas';
 import { DiagramAddMenu, rememberAdded } from './DiagramAddMenu';
-import { turned } from './DiagramRoutes';
+import { shareNearest, turned } from './DiagramRoutes';
 import { alignTo, boundsOf, stretched } from './DiagramGuides';
 import type { Guide, GuideBox, GuideLine } from './DiagramGuides';
 import type { LinkCard } from './DiagramCanvas';
+import { restyled, wholeStyleOf } from './DiagramRichText';
 import type { Linkable } from './DiagramLinkSearch';
 import { fetchDocuments } from '../../api/documents';
 import { fetchWireframes } from '../../api/wireframes';
@@ -225,6 +238,8 @@ const MORE_SHAPES: Partial<Record<DiagramNodeKind, () => string>> = {
   entity: () => t('Entity'),
   image: () => t('Picture'),
   link: () => t('Link'),
+  code: () => t('Code from GitHub'),
+  jira: () => t('Jira issue'),
   subroutine: () => t('Subroutine'),
   'manual-input': () => t('Manual input'),
   delay: () => t('Delay'),
@@ -268,6 +283,8 @@ const MADE: Record<DiagramNodeKind, { w: number; h: number }> = {
   entity: { w: 90, h: 90 },
   image: { w: 240, h: 160 },
   link: { w: 220, h: 64 },
+  code: { w: 480, h: 280 },
+  jira: { w: 260, h: 110 },
   text: { w: 200, h: 40 },
   subroutine: { w: 170, h: 60 },
   'manual-input': { w: 170, h: 70 },
@@ -357,6 +374,98 @@ function StrokeField({ label, colour, width, onChange, testId }: {
   );
 }
 
+/** Text colours offered for a shape's words: the in-place bar's, and the usual ink. */
+const TEXT_COLOURS = ['#dc2626', '#ea580c', '#ca8a04', '#16a34a', '#2563eb', '#9333ea', '#71717a', '#ffffff'];
+
+/**
+ * The words of a shape, or of every shape selected, styled whole: bold,
+ * italic, underlined, struck through, and a colour. Written as the marks
+ * the bar over words being typed writes, so a part styled there and the whole
+ * styled here are one thing, exported and read by an agent alike.
+ */
+function TextStyleField({ labels, onChange }: { labels: string[]; onChange: (restyle: (label: string) => string) => void }) {
+  const said = labels.filter((label) => label.trim() !== '');
+  const looks = said.map(wholeStyleOf);
+  const all = (key: 'bold' | 'italic' | 'underline' | 'strike') => looks.length > 0 && looks.every((look) => look[key] === true);
+  const colour = looks.length > 0 && looks.every((look) => look.color !== undefined && look.color === looks[0].color) ? looks[0].color : undefined;
+  const none = said.length === 0;
+  return (
+    <div className={styles.field} data-testid="diagram-text-style-field">
+      <span>{t('Text')}</span>
+      <div className={styles.strokeRow}>
+        {([
+          ['bold', 'B', t('Bold'), { fontWeight: 700 }],
+          ['italic', 'I', t('Italic'), { fontStyle: 'italic' }],
+          ['underline', 'U', t('Underline'), { textDecoration: 'underline' }],
+          ['strike', 'S', t('Strikethrough'), { textDecoration: 'line-through' }],
+        ] as const).map(([key, letter, name, look]) => (
+          <button
+            key={key}
+            type="button"
+            className={`${styles.textStyleToggle} ${all(key) ? styles.textStyleToggleOn : ''}`}
+            style={look}
+            disabled={none}
+            aria-pressed={all(key)}
+            onClick={() => {
+              const on = !all(key);
+              onChange((label) => restyled(label, { [key]: on }));
+            }}
+            title={name}
+            aria-label={name}
+            data-testid={`diagram-text-style-${key}`}
+          >
+            {letter}
+          </button>
+        ))}
+      </div>
+      <div className={styles.strokeRow}>
+        <button
+          type="button"
+          className={`${styles.swatch} ${styles.swatchNone} ${colour === undefined ? styles.swatchOn : ''}`}
+          disabled={none}
+          onClick={() => onChange((label) => restyled(label, { color: null }))}
+          title={t('Usual')}
+          aria-label={t('Usual')}
+          data-testid="diagram-text-colour-usual"
+        />
+        {TEXT_COLOURS.map((one) => (
+          <button
+            key={one}
+            type="button"
+            className={`${styles.swatch} ${colour === one ? styles.swatchOn : ''}`}
+            style={{ background: one }}
+            disabled={none}
+            onClick={() => onChange((label) => restyled(label, { color: one }))}
+            title={one}
+            aria-label={one}
+            data-testid={`diagram-text-colour-${one.slice(1)}`}
+          />
+        ))}
+        <label className={`${styles.swatch} ${styles.swatchCustom} ${colour !== undefined && !TEXT_COLOURS.includes(colour) ? styles.swatchOn : ''}`} title={t('Another colour')}>
+          <input
+            type="color"
+            className={styles.swatchPicker}
+            value={colour ?? '#18181b'}
+            disabled={none}
+            aria-label={t('Another colour')}
+            ref={(input) => {
+              if (input === null) return;
+              input.onchange = () => {
+                const picked = input.value.toLowerCase();
+                onChange((label) => restyled(label, { color: picked }));
+              };
+            }}
+            onChange={() => {}}
+          />
+        </label>
+      </div>
+    </div>
+  );
+}
+
+/** What a line looks like, as a new line copies it: everything but where it goes, what it says and how it bends. */
+const LOOK_KEYS = ['kind', 'line', 'start', 'end', 'routing', 'color', 'width'] as const;
+
 function kindLabel(kind: DiagramNodeKind): string {
   return SHAPES.find((one) => one.kind === kind)?.label() ?? MORE_SHAPES[kind]?.() ?? kind;
 }
@@ -389,6 +498,30 @@ function sideAt(box: { x: number; y: number; w: number; h: number; rotation?: nu
   return Math.abs(nx) > Math.abs(ny) ? (nx > 0 ? 'right' : 'left') : (ny > 0 ? 'bottom' : 'top');
 }
 const snap = (value: number) => Math.round(value / GRID) * GRID;
+/** How far off a shape's outline, in screen pixels, a dragged line end still lands on it. */
+const LAND_REACH = 18;
+
+/**
+ * Where along [side] of a box a point falls, as a share of the side from its start - left to right along the top
+ * and bottom, top to bottom down the sides, in the box's own upright frame - or nothing near the middle, where an
+ * end pinned to a side always sat: within a twentieth of it, so a drop on a side's handle is that handle.
+ */
+function shareAt(box: { x: number; y: number; w: number; h: number; rotation?: number }, side: DiagramSide | undefined, fx: number, fy: number): number | undefined {
+  if (side === undefined) return undefined;
+  const [dx, dy] = unturned(box, fx, fy);
+  const share = side === 'top' || side === 'bottom' ? (box.w > 0 ? dx / box.w + 0.5 : 0.5) : box.h > 0 ? dy / box.h + 0.5 : 0.5;
+  const kept = Math.round(Math.min(1, Math.max(0, share)) * 1000) / 1000;
+  return Math.abs(kept - 0.5) < 0.05 ? undefined : kept;
+}
+
+/** The point an end pinned at [share] along [side] of a box sits at, as the box is drawn - turned, if it is. */
+function sidePoint(box: { x: number; y: number; w: number; h: number; rotation?: number }, side: DiagramSide, share: number | undefined) {
+  const along = (share ?? 0.5) - 0.5;
+  const [dx, dy] =
+    side === 'top' ? [along * box.w, -box.h / 2] : side === 'bottom' ? [along * box.w, box.h / 2] : side === 'left' ? [-box.w / 2, along * box.h] : [box.w / 2, along * box.h];
+  const [tx, ty] = box.rotation ? turned(dx, dy, box.rotation) : [dx, dy];
+  return { x: box.x + box.w / 2 + tx, y: box.y + box.h / 2 + ty };
+}
 
 /** Which way each side of an upright box faces, and the side across from it. */
 const FACING: Record<DiagramSide, [number, number]> = { top: [0, -1], right: [1, 0], bottom: [0, 1], left: [-1, 0] };
@@ -487,6 +620,94 @@ const TEXT_LEAST = 6;
 const TEXT_MOST = 96;
 
 /**
+ * What a code or a Jira shape shows, pasted or typed and put down with Enter:
+ * a GitHub file's address, or an issue's key or address. Under it, what that
+ * reads as, when it was read, Refresh, and why the last read failed - or that
+ * the workspace has not chosen what reads it, with the way there.
+ */
+function SourceField({
+  node,
+  read,
+  workspaceId,
+  onSource,
+  onRefresh,
+}: {
+  node: DiagramNodeData;
+  read: DiagramSource | undefined;
+  workspaceId: string | undefined;
+  onSource: (source: string | undefined) => void;
+  onRefresh: () => void;
+}) {
+  const code = node.kind === 'code';
+  const [problem, setProblem] = useState<string | null>(null);
+  const file = code && node.source !== undefined ? codeSourceOf(node.source) : null;
+  const said = file !== null
+    ? `${file.owner}/${file.repo} · ${file.path}${file.fromLine === undefined ? '' : ` · ${tf('lines {from}–{to}', { from: file.fromLine, to: file.toLine ?? file.fromLine })}`} · ${file.ref}`
+    : !code && node.source !== undefined
+      ? node.source
+      : null;
+  return (
+    <div className={styles.field} data-testid="diagram-node-source-field">
+      <label className={styles.field}>
+        <span>{code ? t('GitHub file') : t('Jira issue')}</span>
+        <input
+          className={form.input}
+          defaultValue={node.source ?? ''}
+          autoFocus={node.source === undefined}
+          placeholder={code ? 'https://github.com/owner/repo/blob/main/src/App.kt#L10-L40' : 'PROJ-123'}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter') return;
+            event.preventDefault();
+            const typed = event.currentTarget.value.trim();
+            if (typed === '') {
+              setProblem(null);
+              onSource(undefined);
+              return;
+            }
+            const kept = code ? (codeSourceOf(typed) === null ? null : typed) : jiraKeyOf(typed);
+            if (kept === null) {
+              setProblem(code ? t('That is not a GitHub file’s address. Copy it from the file’s page; add #L10-L40 for some of its lines.') : t('That is neither an issue key like PROJ-123 nor an issue’s address.'));
+              return;
+            }
+            setProblem(null);
+            onSource(kept);
+          }}
+          data-testid="diagram-node-source"
+        />
+      </label>
+      {problem !== null && <span className={styles.sourceProblem}>{problem}</span>}
+      {said !== null && (
+        <span className={styles.sourceSaid} data-testid="diagram-node-source-said">
+          {said}
+        </span>
+      )}
+      {read !== undefined && !read.configured ? (
+        <span className={styles.sourceSaid}>
+          {code ? t('The GitHub plugin is not loaded here, or is switched off.') : t('The Jira plugin is not loaded here, or is switched off.')}{' '}
+          {workspaceId !== undefined && <a href={`/workspace/${workspaceId}/settings#diagram-sources`}>{t('See Workspace → Settings')}</a>}
+        </span>
+      ) : (
+        node.source !== undefined && (
+          <span className={styles.sourceRow}>
+            <span className={styles.sourceSaid}>
+              {read?.fetchedAt == null ? t('Not read yet') : tf('Read {when}', { when: new Date(read.fetchedAt).toLocaleString() })}
+            </span>
+            <button type="button" className={styles.textChoice} onClick={onRefresh} aria-label={t('Read it again')} title={t('Read it again')} data-testid="diagram-node-source-refresh">
+              <img src={refreshIcon} alt="" width={16} height={16} />
+            </button>
+          </span>
+        )
+      )}
+      {read?.failed != null && (
+        <span className={styles.sourceProblem} data-testid="diagram-node-source-failed">
+          {read.failed}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
  * How big a shape's words are, typed. A size is taken the moment it is one the
  * server keeps, and what is half typed - the 1 of 18 - is left in the field
  * and not on the shape. Emptied, the shape writes at its usual size again,
@@ -494,34 +715,61 @@ const TEXT_MOST = 96;
  */
 function TextSizeField({ value, usual, onChange, onFocus, onBlur }: { value: number | undefined; usual: number; onChange: (size: number | undefined) => void; onFocus: () => void; onBlur: () => void }) {
   const [draft, setDraft] = useState<string | null>(null);
+  const shown = draft ?? (value === undefined ? '' : String(value));
+  /*
+   * One step from the size shown - the one typed, or the usual one written
+   * faintly in the empty field. The browser's own arrows stepped an empty
+   * field from its least, so they are hidden and these step instead.
+   */
+  const stepBy = (by: number) => {
+    const from = shown.trim() !== '' && Number.isFinite(Number(shown)) ? Number(shown) : usual;
+    const size = Math.min(TEXT_MOST, Math.max(TEXT_LEAST, Math.round(from) + by));
+    setDraft(String(size));
+    onChange(size);
+  };
   return (
-    <input
-      type="number"
-      className={`${form.input} ${styles.textSize}`}
-      min={TEXT_LEAST}
-      max={TEXT_MOST}
-      step={1}
-      value={draft ?? (value === undefined ? '' : String(value))}
-      placeholder={String(usual)}
-      aria-label={t('Text size')}
-      title={t('Text size, in pixels')}
-      onFocus={onFocus}
-      onBlur={() => {
-        setDraft(null);
-        onBlur();
-      }}
-      onChange={(event) => {
-        const said = event.target.value;
-        setDraft(said);
-        if (said.trim() === '') {
-          onChange(undefined);
-          return;
-        }
-        const size = Number(said);
-        if (Number.isInteger(size) && size >= TEXT_LEAST && size <= TEXT_MOST) onChange(size);
-      }}
-      data-testid="diagram-node-text-size"
-    />
+    <span className={styles.textSizeField}>
+      <button type="button" className={styles.textSizeStep} onMouseDown={(event) => event.preventDefault()} onClick={() => stepBy(-1)} aria-label={t('Smaller')} title={t('Smaller')} data-testid="diagram-node-text-size-down">
+        −
+      </button>
+      <input
+        type="number"
+        className={`${form.input} ${styles.textSize}`}
+        min={TEXT_LEAST}
+        max={TEXT_MOST}
+        step={1}
+        value={shown}
+        placeholder={String(usual)}
+        aria-label={t('Text size')}
+        title={t('Text size, in pixels')}
+        onFocus={onFocus}
+        onBlur={() => {
+          setDraft(null);
+          onBlur();
+        }}
+        onKeyDown={(event) => {
+          if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+          event.preventDefault();
+          stepBy(event.key === 'ArrowUp' ? 1 : -1);
+        }}
+        // Nor does the wheel turn it: a scroll past the panel changed the size of whatever was selected.
+        onWheel={(event) => event.currentTarget.blur()}
+        onChange={(event) => {
+          const said = event.target.value;
+          setDraft(said);
+          if (said.trim() === '') {
+            onChange(undefined);
+            return;
+          }
+          const size = Number(said);
+          if (Number.isInteger(size) && size >= TEXT_LEAST && size <= TEXT_MOST) onChange(size);
+        }}
+        data-testid="diagram-node-text-size"
+      />
+      <button type="button" className={styles.textSizeStep} onMouseDown={(event) => event.preventDefault()} onClick={() => stepBy(1)} aria-label={t('Larger')} title={t('Larger')} data-testid="diagram-node-text-size-up">
+        +
+      </button>
+    </span>
   );
 }
 
@@ -861,6 +1109,33 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
   const mapShown = mapFold !== 'off';
   /** Whether a drag on empty canvas draws a rectangle that selects, where it otherwise moves the canvas; remembered. */
   const [marqueeFold, setMarqueeFold] = useSieve('diagram.editor.marquee');
+  /*
+   * Space held is looking, not editing: the canvas moves under the pointer and
+   * nothing is picked, dragged or joined - the shapes are drawn as View draws
+   * them until it is let go. Not while typing, where a space is a space.
+   */
+  const [spaceHeld, setSpaceHeld] = useState(false);
+  useEffect(() => {
+    const typing = (target: EventTarget | null) =>
+      target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || (target instanceof HTMLElement && target.isContentEditable);
+    const down = (event: KeyboardEvent) => {
+      if (event.code !== 'Space' || typing(event.target)) return;
+      event.preventDefault();
+      if (!event.repeat) setSpaceHeld(true);
+    };
+    const up = (event: KeyboardEvent) => {
+      if (event.code === 'Space') setSpaceHeld(false);
+    };
+    const away = () => setSpaceHeld(false);
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    window.addEventListener('blur', away);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+      window.removeEventListener('blur', away);
+    };
+  }, []);
   const marquee = marqueeFold === 'on';
   /** The Add menu the shortcut opens: where on the screen, and where on the drawing what is picked goes. */
   const [addMenu, setAddMenu] = useState<{ x: number; y: number; at: { x: number; y: number } } | null>(null);
@@ -984,6 +1259,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
     });
   }
   const noteMost = diagram?.noteCharactersMost ?? 5000;
+  const labelMost = diagram?.labelCharactersMost ?? LABEL_MOST;
   const byId = useMemo(() => new Map(drawing.nodes.map((node) => [node.id, node])), [drawing]);
 
   // -- Loading ------------------------------------------------------------
@@ -1078,6 +1354,13 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
 
   function change(next: DiagramDrawing) {
     remember(drawing);
+    // A line given a new look is the one the next line copies, as much as the one made last.
+    const before = new Map(drawing.edges.map((edge) => [edge.id, edge]));
+    const looked = next.edges.filter((edge) => {
+      const was = before.get(edge.id);
+      return was !== undefined && LOOK_KEYS.some((key) => was[key] !== edge[key]);
+    });
+    if (looked.length > 0) lastLine.current = looked[looked.length - 1].id;
     setDrawing(next);
   }
 
@@ -1135,6 +1418,124 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
    * inside a group being dragged is a new object there, and exactly where it
    * was inside its group.
    */
+  /*
+   * What code and Jira shapes last read, by kind and source. Lazy on purpose:
+   * the diagram opens on the copies the server kept, or nothing, and only once
+   * it is drawn are the shapes whose copy is missing or stale read again - and
+   * only those in view, one at a time, so a diagram of fifty files neither waits
+   * for GitHub nor asks it fifty things at once. A source is asked once a visit;
+   * Refresh in the side panel asks again regardless.
+   */
+  const [reads, setReads] = useState<ReadonlyMap<string, DiagramSource>>(new Map());
+  /** Whether the copies have come: until they have, nothing is read, or a fresh copy would be read again. */
+  const [readsLoaded, setReadsLoaded] = useState(false);
+  const asked = useRef(new Set<string>());
+  const [moved, setMoved] = useState(0);
+  const diagramIdNow = diagram?.id;
+  useEffect(() => {
+    if (diagramIdNow === undefined) return;
+    let gone = false;
+    asked.current = new Set();
+    setReadsLoaded(false);
+    diagramSources(diagramIdNow)
+      .then((found) => {
+        if (gone) return;
+        setReads(new Map(found.map((one) => [`${one.kind}|${one.source}`, one])));
+        setReadsLoaded(true);
+      })
+      .catch(() => {
+        if (!gone) setReadsLoaded(true);
+      });
+    return () => {
+      gone = true;
+    };
+  }, [diagramIdNow]);
+  const readSource = useCallback(
+    async (kind: DiagramSourceKind, source: string, force: boolean) => {
+      if (diagramIdNow === undefined) return;
+      const key = `${kind}|${source}`;
+      asked.current.add(key);
+      try {
+        const read = await fetchDiagramSource(diagramIdNow, kind, source, force);
+        setReads((before) => new Map(before).set(key, read));
+      } catch (problem) {
+        const failed = problem instanceof Error ? problem.message : String(problem);
+        setReads((before) => {
+          const held = before.get(key);
+          return new Map(before).set(key, { kind, source, body: held?.body ?? null, fetchedAt: held?.fetchedAt ?? null, stale: false, failed, configured: held?.configured ?? true });
+        });
+      }
+    },
+    [diagramIdNow],
+  );
+  // Read through refs, so a render that changes neither which shapes read nor where they are does not restart the wait.
+  const drawingForReads = useRef(drawing);
+  drawingForReads.current = drawing;
+  const readsNow = useRef(reads);
+  readsNow.current = reads;
+  const sourcesKey = useMemo(
+    () =>
+      drawing.nodes
+        .filter((node) => sourceKindOf(node.kind) !== null && node.source !== undefined)
+        .map((node) => `${node.kind}|${node.source}|${node.x}|${node.y}|${node.w}|${node.h}`)
+        .join('\n'),
+    [drawing],
+  );
+  /*
+   * One pass at a time, and a trigger never cancels one that is waiting: a
+   * diagram fitted into view moves the view several times as it settles, and
+   * a wait restarted on each move never ended. A trigger during a pass asks
+   * for another after it.
+   */
+  const passing = useRef<'idle' | 'waiting' | 'running' | 'again'>('idle');
+  const readsAlive = useRef(true);
+  useEffect(() => () => {
+    readsAlive.current = false;
+  }, []);
+  const passRef = useRef<() => void>(() => undefined);
+  passRef.current = () => {
+    if (passing.current === 'running') {
+      passing.current = 'again';
+      return;
+    }
+    if (passing.current !== 'idle') return;
+    passing.current = 'waiting';
+    window.setTimeout(async () => {
+      passing.current = 'running';
+      try {
+        const { x, y, zoom } = flow.getViewport();
+        const left = -x / zoom;
+        const top = -y / zoom;
+        const right = left + paneWidth / zoom;
+        const bottom = top + paneHeight / zoom;
+        const due = drawingForReads.current.nodes.filter((node) => {
+          const kind = sourceKindOf(node.kind);
+          if (kind === null || node.source === undefined) return false;
+          const key = `${kind}|${node.source}`;
+          if (asked.current.has(key)) return false;
+          const held = readsNow.current.get(key);
+          if (held !== undefined && (!held.stale || !held.configured)) return false;
+          return node.x < right && node.x + node.w > left && node.y < bottom && node.y + node.h > top;
+        });
+        for (const node of due) {
+          if (!readsAlive.current) return;
+          const kind = sourceKindOf(node.kind) as DiagramSourceKind;
+          if (asked.current.has(`${kind}|${node.source}`)) continue;
+          await readSource(kind, node.source as string, false);
+        }
+      } finally {
+        const again = (passing.current as string) === 'again';
+        passing.current = 'idle';
+        if (again && readsAlive.current) passRef.current();
+      }
+    }, 150);
+  };
+  useEffect(() => {
+    // After the paint: a moment later, so the diagram is drawn before anything is asked of GitHub or Jira.
+    if (diagramIdNow === undefined || !readsLoaded || sourcesKey === '' || paneWidth === 0) return;
+    passRef.current();
+  }, [diagramIdNow, readsLoaded, sourcesKey, moved, paneWidth, paneHeight]);
+
   const builtNodes = useRef(new Map<string, { key: readonly unknown[]; built: ShapeNode }>());
   const builtEdges = useRef(new Map<string, { key: readonly unknown[]; built: LinkEdge }>());
   const madeEdges = useRef<LinkEdge[]>([]);
@@ -1155,9 +1556,12 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
       const selected = chosen.has(node.id);
       const hidden = hiddenNow.has(layerOf(node, drawing));
       const locked = lockedNow.has(layerOf(node, drawing));
+      const readKind = sourceKindOf(node.kind);
+      const read = readKind === null || node.source === undefined ? undefined : reads.get(`${readKind}|${node.source}`);
       const key = [
         x, y, parent?.id, node.kind, node.label, node.color, noted, node.link, node.image, loading, node.rotation,
         node.align, node.valign, node.textSize, node.border, node.borderWidth, node.w, node.h, selected, hidden, locked,
+        node.textFit, node.source, read,
       ];
       const before = builtNodes.current.get(node.id);
       if (before !== undefined && sameAll(before.key, key)) {
@@ -1181,6 +1585,9 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
           align: node.align,
           valign: node.valign,
           textSize: node.textSize,
+          textFit: node.textFit,
+          source: node.source,
+          read,
         },
         // Its own outline, read by the shape's CSS through these, so every kind of shape takes it the same way.
         style: {
@@ -1203,7 +1610,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
     });
     builtNodes.current = kept;
     return made;
-  }, [drawing, byId, selectedNodes, hiddenNow, lockedNow, uploading]);
+  }, [drawing, byId, selectedNodes, hiddenNow, lockedNow, uploading, reads]);
 
   const edges = useMemo<LinkEdge[]>(() => {
     const chosen = new Set(selectedEdges);
@@ -1251,6 +1658,8 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
           routing: edge.routing ?? 'straight',
           fromSide: edge.fromSide,
           toSide: edge.toSide,
+          fromAt: edge.fromAt,
+          toAt: edge.toAt,
           points: edge.points,
           labelAt: edge.labelAt,
           color: edge.color,
@@ -1426,13 +1835,14 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
   function onConnect() {}
 
   /** The smallest shape a point falls inside - what a dragged arrow end lands on, if anything. */
-  function nodeUnder(fx: number, fy: number) {
+  /** The smallest shape under a point - or within [reach] of its outline, for an end let go on the outline or just off it. */
+  function nodeUnder(fx: number, fy: number, reach = 0) {
     return drawing.nodes
       .filter((node) => {
         if (node.kind === 'text') return false;
         // Inside the shape where it is drawn, which for a turned one is not inside its upright box.
         const [dx, dy] = unturned(node, fx, fy);
-        return Math.abs(dx) <= node.w / 2 && Math.abs(dy) <= node.h / 2;
+        return Math.abs(dx) <= node.w / 2 + reach && Math.abs(dy) <= node.h / 2 + reach;
       })
       .sort((a, b) => a.w * a.h - b.w * b.h)[0];
   }
@@ -1455,34 +1865,73 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
    * line that names no routing is a straight one - every line drawn before
    * this, and every one an agent draws without saying.
    */
+  /**
+   * Where a line being drawn out of [fromId] lands, the pointer at (fx, fy):
+   * the shape it reaches, the side and the point along it - what the line
+   * dragged shows and what it is made with, by the one sum, so the preview
+   * never promises the middle of a side the line is then not pinned to.
+   *
+   * The shape is the one React Flow snapped to, or the one under the pointer
+   * or just off its outline. The side is the one the pointer is toward, not
+   * the snapped handle's: near a corner React Flow snaps to whichever handle
+   * is nearer, often the next side's, and the line was pinned to that side.
+   * The handle's side is the answer only where the pointer is in the middle.
+   */
+  function connectLanding(fromId: string, toNodeId: string | null | undefined, toHandleId: string | null | undefined, fx: number, fy: number) {
+    const snapped = toNodeId != null && toNodeId !== fromId ? byId.get(toNodeId) : undefined;
+    const onto = snapped ?? nodeUnder(fx, fy, LAND_REACH / flow.getZoom());
+    if (onto === undefined || onto.id === fromId) return null;
+    const side = sideAt(onto, fx, fy) ?? (snapped !== undefined ? asSide(toHandleId) : undefined);
+    return { onto, side, at: shareAt(onto, side, fx, fy) };
+  }
+  const connectLandingNow = useRef(connectLanding);
+  connectLandingNow.current = connectLanding;
+  /*
+   * The line being drawn, ending where it will land - the point of the side
+   * it will pin to - rather than at the handle React Flow snapped it to, in
+   * the middle of a side it would not be pinned to. Made once: it reads the
+   * sum through the ref above.
+   */
+  const ConnectionPreview = useMemo(
+    () =>
+      function ConnectionPreview({ fromNode, fromX, fromY, toX, toY, toNode, toHandle, pointer }: ConnectionLineComponentProps<ShapeNode>) {
+        // The pointer arrives in the canvas's own pixels - React Flow turns the line's end into the diagram's units and not this.
+        const [panX, panY, zoom] = useStore((state) => state.transform);
+        const landing = connectLandingNow.current(fromNode.id, toNode?.id, toHandle?.id, (pointer.x - panX) / zoom, (pointer.y - panY) / zoom);
+        const end =
+          landing === null
+            ? { x: toX, y: toY }
+            : landing.side === undefined
+              ? { x: landing.onto.x + landing.onto.w / 2, y: landing.onto.y + landing.onto.h / 2 }
+              : sidePoint(landing.onto, landing.side, landing.at);
+        return (
+          <g data-testid="diagram-connection-preview" data-x={Math.round(end.x)} data-y={Math.round(end.y)}>
+            <path className={styles.connectionPreview} d={`M ${fromX} ${fromY} L ${end.x} ${end.y}`} />
+            {landing !== null && <circle className={styles.connectionPreviewEnd} cx={end.x} cy={end.y} r={4} />}
+          </g>
+        );
+      },
+    [],
+  );
+
   function onConnectEnd(event: MouseEvent | TouchEvent, state: FinalConnectionState) {
     connecting.current = false;
     if (viewing || state.fromNode == null) return;
     const at = pointerFlow(event);
-    /*
-     * The handle the line was drawn to, where it snapped to one: that is what
-     * the line was shown reaching while it was dragged, and what it ends on.
-     * A handle sits on its shape's outline and is taken hold of from a little
-     * way outside it, so the pointer let go there is very often over no shape
-     * at all - and the line that was shown reaching a handle was not made.
-     */
-    const snapped = state.toNode != null && state.toNode.id !== state.fromNode.id ? byId.get(state.toNode.id) : undefined;
-    const onto = snapped ?? nodeUnder(at.x, at.y);
-    if (onto === undefined || onto.id === state.fromNode.id) return;
+    const landing = connectLanding(state.fromNode.id, state.toNode?.id, state.toHandle?.id, at.x, at.y);
+    if (landing === null) return;
+    const { onto, side: toSide, at: toAt } = landing;
     const fromSide = asSide(state.fromHandle?.id);
-    const toSide = snapped !== undefined && state.toHandle != null ? asSide(state.toHandle.id) : sideAt(onto, at.x, at.y);
     const made: DiagramEdgeData = {
       id: freshId('e'),
       from: state.fromNode.id,
       to: onto.id,
-      kind: 'arrow',
-      line: 'solid',
-      start: 'none',
-      end: 'arrow',
-      routing: 'curved',
+      ...lineLooks(),
       ...(fromSide !== undefined ? { fromSide } : {}),
       ...(toSide !== undefined ? { toSide } : {}),
+      ...(toAt !== undefined ? { toAt } : {}),
     };
+    lastLine.current = made.id;
     change({ ...drawing, edges: [...drawing.edges, made] });
     setSelectedNodes([]);
     setSelectedEdges([made.id]);
@@ -1497,9 +1946,11 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
   function landingOf(edgeId: string, end: LinkEnd, fx: number, fy: number) {
     const edge = drawing.edges.find((one) => one.id === edgeId);
     if (viewing || edge === undefined) return null;
-    const onto = nodeUnder(fx, fy);
+    // On the outline or just off it counts: that is where an end pinned to a point of a side is let go.
+    const onto = nodeUnder(fx, fy, LAND_REACH / flow.getZoom());
     if (onto === undefined || onto.id === (end === 'to' ? edge.from : edge.to)) return null;
-    return { onto, side: sideAt(onto, fx, fy) };
+    const side = sideAt(onto, fx, fy);
+    return { onto, side, at: shareAt(onto, side, fx, fy) };
   }
 
   /**
@@ -1514,29 +1965,38 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
    * with what it shows: every line reads this, and a new object on every
    * render was every line drawn again on every render.
    */
-  const linkEndsNow = useRef<Omit<LinkEnds, 'hovered'>>({ aim: () => null, drop: () => {}, bend: () => {} });
+  const linkEndsNow = useRef<Omit<LinkEnds, 'hovered'>>({ aim: () => null, drop: () => {}, bend: () => {}, slide: () => {}, pick: () => {} });
   linkEndsNow.current = {
     // Shown while it is dragged: the middle of the side it would pin to, or of the box it would float on.
     aim: (edgeId, end, fx, fy) => {
       const landing = landingOf(edgeId, end, fx, fy);
       if (landing === null) return null;
-      const { onto, side } = landing;
-      const [dx, dy] =
-        side === 'top' ? [0, -onto.h / 2] : side === 'bottom' ? [0, onto.h / 2] : side === 'left' ? [-onto.w / 2, 0] : side === 'right' ? [onto.w / 2, 0] : [0, 0];
-      // A side turns with its box.
-      const [tx, ty] = onto.rotation ? turned(dx, dy, onto.rotation) : [dx, dy];
-      return { x: onto.x + onto.w / 2 + tx, y: onto.y + onto.h / 2 + ty };
+      const { onto, side, at } = landing;
+      // The point of the side it would pin to, turned with its box; the box's middle where it would float.
+      return side === undefined ? { x: onto.x + onto.w / 2, y: onto.y + onto.h / 2 } : sidePoint(onto, side, at);
     },
     drop: (edgeId, end, fx, fy) => {
       const landing = landingOf(edgeId, end, fx, fy);
       if (landing === null) return;
-      const { onto, side } = landing;
+      const { onto, side, at } = landing;
       change({
         ...drawing,
         edges: drawing.edges.map((one) =>
-          one.id === edgeId ? (end === 'to' ? { ...one, to: onto.id, toSide: side } : { ...one, from: onto.id, fromSide: side }) : one,
+          one.id === edgeId ? (end === 'to' ? { ...one, to: onto.id, toSide: side, toAt: at } : { ...one, from: onto.id, fromSide: side, fromAt: at }) : one,
         ),
       });
+      setSelectedNodes([]);
+      setSelectedEdges([edgeId]);
+    },
+    pick: (edgeId, typing) => {
+      setSelectedNodes([]);
+      setSelectedEdges([edgeId]);
+      if (typing && !viewing) setLabelling({ kind: 'edge', id: edgeId });
+    },
+    // Its label slid along it: kept that share of the way along, whatever the line goes on to do.
+    slide: (edgeId, share) => {
+      if (viewing) return;
+      change({ ...drawing, edges: drawing.edges.map((one) => (one.id === edgeId ? { ...one, labelAt: share } : one)) });
       setSelectedNodes([]);
       setSelectedEdges([edgeId]);
     },
@@ -1557,6 +2017,8 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
       aim: (edgeId, end, fx, fy) => linkEndsNow.current.aim(edgeId, end, fx, fy),
       drop: (edgeId, end, fx, fy) => linkEndsNow.current.drop(edgeId, end, fx, fy),
       bend: (edgeId, corners) => linkEndsNow.current.bend(edgeId, corners),
+      slide: (edgeId, share) => linkEndsNow.current.slide(edgeId, share),
+      pick: (edgeId, typing) => linkEndsNow.current.pick(edgeId, typing),
     }),
     [viewing, hoveredEdge],
   );
@@ -1651,6 +2113,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
     setAddMenu(null);
     // A picture or a link is made through its own menu, which [add] is not: it is remembered here.
     if (kind === 'image' || kind === 'link') rememberAdded(kind);
+    // A code or a Jira shape is made empty, and asks for what it shows in the side panel, focused there.
     if (kind === 'image') setMenu('picture');
     else if (kind === 'link') setMenu('link');
     else add(kind, at);
@@ -1690,6 +2153,30 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
     [],
   );
 
+  const lastLine = useRef<string | null>(null);
+  /**
+   * How a new line looks: as the line made last looks now - its style, its two
+   * ends, its routing, colour and thickness - so a diagram drawn in dashed grey
+   * right angles goes on being drawn that way without each line being set by
+   * hand. The first line of a diagram is a curved arrow. Where it goes, and
+   * what it says, are its own.
+   */
+  function lineLooks(): Pick<DiagramEdgeData, 'kind' | 'line' | 'start' | 'end' | 'routing' | 'color' | 'width'> {
+    // The one made last on this visit; after a reload, the last in the drawing, which is where a new one goes.
+    const last = drawing.edges.find((edge) => edge.id === lastLine.current) ?? drawing.edges[drawing.edges.length - 1];
+    if (last === undefined) return { kind: 'arrow', line: 'solid', start: 'none', end: 'arrow', routing: 'curved' };
+    const { line, start, end } = styleOf(last);
+    return {
+      kind: last.kind,
+      line,
+      start,
+      end,
+      routing: last.routing ?? 'straight',
+      ...(last.color !== undefined ? { color: last.color } : {}),
+      ...(last.width !== undefined ? { width: last.width } : {}),
+    };
+  }
+
   /** The suggestion, taken by a click on its handle: the line, and for a copy the box it ends on, its label ready to be typed. */
   function takeSuggestion(shown: Suggestion) {
     const source = byId.get(shown.from);
@@ -1700,16 +2187,13 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
       id: freshId('e'),
       from: source.id,
       to,
-      kind: 'arrow',
-      line: 'solid',
-      start: 'none',
-      end: 'arrow',
-      routing: 'curved',
+      ...lineLooks(),
       fromSide: shown.side,
       ...(shown.toSide !== undefined ? { toSide: shown.toSide } : {}),
     });
     if (shown.kind === 'line' && shown.to !== undefined) {
       const made = line(shown.to);
+      lastLine.current = made.id;
       change({ ...drawing, edges: [...drawing.edges, made] });
       setSelectedNodes([]);
       setSelectedEdges([made.id]);
@@ -1736,7 +2220,9 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
       ...(source.valign !== undefined ? { valign: source.valign } : {}),
       ...(source.textSize !== undefined ? { textSize: source.textSize } : {}),
     };
-    change({ ...drawing, nodes: [...drawing.nodes, copy], edges: [...drawing.edges, line(copy.id)] });
+    const joined = line(copy.id);
+    lastLine.current = joined.id;
+    change({ ...drawing, nodes: [...drawing.nodes, copy], edges: [...drawing.edges, joined] });
     setSelectedNodes([copy.id]);
     setSelectedEdges([]);
     setLabelling({ kind: 'node', id: copy.id });
@@ -1839,7 +2325,8 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
        * those words a link, as in a document: the words stay, and the box
        * leads to the address. Not selected, an address is just more text.
        */
-      if (target instanceof HTMLTextAreaElement && target.dataset.testid === 'diagram-label-editor' && target.selectionStart !== target.selectionEnd) {
+      const typingBox = target?.closest('[data-testid="diagram-label-editor"]');
+      if (typingBox != null && window.getSelection()?.isCollapsed === false) {
         const address = event.clipboardData?.getData('text/plain').trim() ?? '';
         const typingIn = labellingNow.current;
         if (typingIn?.kind === 'node' && /^(https?:\/\/|mailto:)\S+$/i.test(address)) {
@@ -1974,13 +2461,14 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
     setSelectedEdges([]);
   }
 
-  /** What is selected, and the connections between it. */
+  /** What is selected: its boxes, the connections between them, and any line picked on its own - so a line alone can be copied and cut too. */
   function picked(): DiagramDrawing | null {
-    if (selectedNodes.length === 0) return null;
+    if (selectedNodes.length === 0 && selectedEdges.length === 0) return null;
     const ids = new Set(selectedNodes);
+    const lines = new Set(selectedEdges);
     return {
       nodes: drawing.nodes.filter((node) => ids.has(node.id)),
-      edges: drawing.edges.filter((edge) => ids.has(edge.from) && ids.has(edge.to)),
+      edges: drawing.edges.filter((edge) => lines.has(edge.id) || (ids.has(edge.from) && ids.has(edge.to))),
     };
   }
 
@@ -2030,6 +2518,11 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
    */
   function pasteText(text: string, at?: { x: number; y: number }) {
     if (viewing) return;
+    // An address alone is a shape that shows it: a GitHub file's code, a Jira issue's card, or a card leading anywhere else.
+    if (/^https?:\/\/\S+$/i.test(text)) {
+      pasteAddress(text, at);
+      return;
+    }
     const lines = text.replace(/\s+$/, '').split(/\r?\n/);
     const longest = Math.max(...lines.map((one) => one.length));
     // Sized to the words: as wide as the longest line up to a column's width, as tall as they wrap to.
@@ -2045,8 +2538,42 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
     setSelectedEdges([]);
   }
 
+  /** A pasted address made a shape: code for a GitHub file, a card for a Jira issue, a link card for the rest. */
+  function pasteAddress(address: string, at?: { x: number; y: number }) {
+    const kind: DiagramNodeKind = codeSourceOf(address) !== null ? 'code' : jiraKeyOf(address) !== null ? 'jira' : 'link';
+    const size = MADE[kind];
+    const box = document.querySelector('[data-testid="diagram-canvas"]')?.getBoundingClientRect();
+    const middle = box === undefined ? { x: 0, y: 0 } : flow.screenToFlowPosition({ x: box.left + box.width / 2, y: box.top + box.height / 2 });
+    const centre = at ?? middle;
+    const made: DiagramNodeData = {
+      id: freshId('n'),
+      kind,
+      label: '',
+      x: snap(centre.x - size.w / 2),
+      y: snap(centre.y - size.h / 2),
+      w: size.w,
+      h: size.h,
+      layer: placing,
+      ...(kind === 'link' ? { link: address } : { source: kind === 'jira' ? (jiraKeyOf(address) as string) : address }),
+    };
+    change({ ...drawing, nodes: [...drawing.nodes, made] });
+    setSelectedNodes([made.id]);
+    setSelectedEdges([]);
+  }
+
   function paste(from: DiagramDrawing | null = clipboard, at?: { x: number; y: number } | null) {
-    if (from === null || from.nodes.length === 0) return;
+    if (from === null || (from.nodes.length === 0 && from.edges.length === 0)) return;
+    if (from.nodes.length === 0) {
+      // Lines alone go back between the boxes they joined, where those are still here: a line cut and pasted is put back.
+      const lines = from.edges
+        .filter((edge) => byId.has(edge.from) && byId.has(edge.to))
+        .map((edge) => ({ ...edge, id: freshId('e'), layer: layers.some((one) => one.id === edge.layer) ? edge.layer : placing }));
+      if (lines.length === 0) return;
+      change({ ...drawing, edges: [...drawing.edges, ...lines] });
+      setSelectedNodes([]);
+      setSelectedEdges(lines.map((edge) => edge.id));
+      return;
+    }
     const renamed = new Map(from.nodes.map((node) => [node.id, freshId('n')]));
     // Pasted under the pointer where there is one, the copied boxes' middle on it; a duplicate sits just off its original.
     const left = Math.min(...from.nodes.map((node) => node.x));
@@ -2064,13 +2591,16 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
       // Its own layer where this diagram has it - copied from another, it may not - else where new shapes go.
       layer: layers.some((one) => one.id === node.layer) ? node.layer : placing,
     }));
-    const edges = from.edges.map((edge) => ({
-      ...edge,
-      layer: layers.some((one) => one.id === edge.layer) ? edge.layer : placing,
-      id: freshId('e'),
-      from: renamed.get(edge.from) as string,
-      to: renamed.get(edge.to) as string,
-    }));
+    // A line goes to the copy of each box it joined, or to the box itself where only the line was picked at that end.
+    const edges = from.edges
+      .map((edge) => ({
+        ...edge,
+        layer: layers.some((one) => one.id === edge.layer) ? edge.layer : placing,
+        id: freshId('e'),
+        from: renamed.get(edge.from) ?? (byId.has(edge.from) ? edge.from : ''),
+        to: renamed.get(edge.to) ?? (byId.has(edge.to) ? edge.to : ''),
+      }))
+      .filter((edge) => edge.from !== '' && edge.to !== '');
     change({ ...drawing, nodes: [...drawing.nodes, ...nodes], edges: [...drawing.edges, ...edges] });
     setSelectedNodes(nodes.map((node) => node.id));
     setSelectedEdges([]);
@@ -2227,8 +2757,8 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
   const commitNow = useRef(commitLabel);
   commitNow.current = commitLabel;
   const labelEditing = useMemo(
-    () => ({ target: labelling, commit: (text: string) => commitNow.current(text), cancel: () => setLabelling(null) }),
-    [labelling],
+    () => ({ target: labelling, commit: (text: string) => commitNow.current(text), cancel: () => setLabelling(null), most: labelMost }),
+    [labelling, labelMost],
   );
 
   // -- Saving -------------------------------------------------------------
@@ -2666,10 +3196,17 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
       }
       if (!viewing) setLabelling({ kind: 'node', id: node.id });
     },
-    onEdgeDoubleClick: (_, edge) => {
+    onEdgeDoubleClick: (event, edge) => {
       setSelectedEdges([edge.id]);
       setSelectedNodes([]);
-      if (!viewing) setLabelling({ kind: 'edge', id: edge.id });
+      if (viewing) return;
+      // The label goes where the line was double-clicked, not where the line's middle happens to be.
+      const trace = LINE_TRACES.get(edge.id);
+      if (trace !== undefined && trace.length > 1) {
+        const share = Math.round(shareNearest(trace, flow.screenToFlowPosition({ x: event.clientX, y: event.clientY })) * 1000) / 1000;
+        change({ ...drawing, edges: drawing.edges.map((one) => (one.id === edge.id ? { ...one, labelAt: share } : one)) });
+      }
+      setLabelling({ kind: 'edge', id: edge.id });
     },
     onNodeDragStop: (_, node, dragged) => {
       if (!viewing) onDragStop(node.id, dragged.map((one) => one.id));
@@ -2715,6 +3252,8 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
       if (event !== null && following !== null) setFollowing(null);
     },
     onMoveEnd: (_event, view) => {
+      // Shapes moved into view may be read now.
+      setMoved((count) => count + 1);
       if (!viewSettled.current) return;
       try {
         window.localStorage.setItem(viewKey, JSON.stringify({ x: view.x, y: view.y, zoom: view.zoom }));
@@ -3180,7 +3719,8 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
           </>
         ) : null}
         <div
-          className={styles.canvas}
+          className={`${styles.canvas} ${spaceHeld ? styles.canvasLooking : ''}`}
+          data-looking={spaceHeld ? 'true' : undefined}
           data-testid="diagram-canvas"
           onMouseMove={(event) => {
             const at = flow.screenToFlowPosition({ x: event.clientX, y: event.clientY });
@@ -3371,6 +3911,8 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                   ...SHAPES.map((one) => ({ kind: one.kind, icon: one.icon, label: one.label() })),
                   { kind: 'image' as const, icon: pictureIcon, label: t('Picture') },
                   { kind: 'link' as const, icon: linkToolIcon, label: t('Link') },
+                  { kind: 'code' as const, icon: codeIcon, label: t('Code from GitHub') },
+                  { kind: 'jira' as const, icon: jiraIcon, label: t('Jira issue') },
                 ]}
                 labelOf={kindLabel}
                 closeKey={addKey}
@@ -3379,7 +3921,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
               />
             )}
             <LinkOpenContext.Provider value={linkCtx}>
-            <ViewingContext.Provider value={viewing}>
+            <ViewingContext.Provider value={viewing || spaceHeld}>
             <TurnedResizeContext.Provider value={turnedResize}>
             <LabelEditingContext.Provider value={labelEditing}>
             <LinkEndsContext.Provider value={linkEnds}>
@@ -3396,10 +3938,12 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
               connectOnClick={false}
               // An end is moved by the grip the canvas draws on it - see LinkEnds - and not by React Flow's unseen anchors.
               edgesReconnectable={false}
-              nodesDraggable={!viewing}
-              nodesConnectable={!viewing}
+              nodesDraggable={!viewing && !spaceHeld}
+              nodesConnectable={!viewing && !spaceHeld}
+              elementsSelectable={!spaceHeld}
               zoomOnDoubleClick={false}
               connectionMode={ConnectionMode.Loose}
+              connectionLineComponent={ConnectionPreview}
               deleteKeyCode={null}
               multiSelectionKeyCode={MANY_KEYS}
               /*
@@ -3408,8 +3952,8 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                * middle button - the right one keeps its menu. Off, a drag
                * moves the canvas and Shift-drag selects, as it always has.
                */
-              selectionOnDrag={marquee && !viewing}
-              panOnDrag={marquee && !viewing ? MIDDLE_BUTTON : true}
+              selectionOnDrag={marquee && !viewing && !spaceHeld}
+              panOnDrag={marquee && !viewing && !spaceHeld ? MIDDLE_BUTTON : true}
               selectionMode={SelectionMode.Partial}
               minZoom={0.1}
               maxZoom={4}
@@ -3887,7 +4431,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                   onFocus={begin}
                   onBlur={end}
                   onChange={(event) => setNode(oneNode.id, { label: event.target.value })}
-                  maxLength={500}
+                  maxLength={labelMost}
                   data-testid="diagram-node-label"
                 />
               </label>
@@ -3909,6 +4453,8 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                   ))}
                 </Select>
               </label>
+              {/* A code card keeps its own dark paper, which its highlighting is coloured for. */}
+              {oneNode.kind !== 'code' && (
               <div className={styles.field}>
                 <span>{t('Colour')}</span>
                 <div className={styles.swatches} role="radiogroup" aria-label={t('Colour')}>
@@ -3968,6 +4514,13 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                   </button>
                 </div>
               </div>
+              )}
+              {oneNode.kind !== 'image' && oneNode.kind !== 'code' && oneNode.kind !== 'jira' && oneNode.kind !== 'link' && (
+                <TextStyleField
+                  labels={[oneNode.label]}
+                  onChange={(restyle) => change({ ...drawing, nodes: drawing.nodes.map((node) => (node.id === oneNode.id ? { ...node, label: restyle(node.label) } : node)) })}
+                />
+              )}
               {oneNode.kind === 'image' && (
                 <label className={styles.field}>
                   <span>{t('Picture address')}</span>
@@ -3986,6 +4539,22 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                     data-testid="diagram-node-picture-address"
                   />
                 </label>
+              )}
+              {(oneNode.kind === 'code' || oneNode.kind === 'jira') && (
+                <SourceField
+                  key={oneNode.id}
+                  node={oneNode}
+                  read={(() => {
+                    const kind = sourceKindOf(oneNode.kind);
+                    return kind === null || oneNode.source === undefined ? undefined : reads.get(`${kind}|${oneNode.source}`);
+                  })()}
+                  workspaceId={workspaceId}
+                  onSource={(source) => change({ ...drawing, nodes: drawing.nodes.map((node) => (node.id === oneNode.id ? { ...node, source } : node)) })}
+                  onRefresh={() => {
+                    const kind = sourceKindOf(oneNode.kind);
+                    if (kind !== null && oneNode.source !== undefined) void readSource(kind, oneNode.source, true);
+                  }}
+                />
               )}
               <StrokeField
                 label={t('Outline')}
@@ -4027,7 +4596,8 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
               )}
               {(() => {
                 // Where its words sit is offered for a shape that has room to move them in: not a card, a picture, a class's compartments or an icon's caption.
-                const seated = oneNode.kind !== 'link' && oneNode.kind !== 'image' && oneNode.kind !== 'class' && outlineOf(oneNode.kind, oneNode.w, oneNode.h)?.icon !== true;
+                const seated =
+                  oneNode.kind !== 'link' && oneNode.kind !== 'image' && oneNode.kind !== 'code' && oneNode.kind !== 'jira' && oneNode.kind !== 'class' && outlineOf(oneNode.kind, oneNode.w, oneNode.h)?.icon !== true;
                 // What the kind does by itself is kept as nothing at all, so a drawing says only what somebody chose.
                 const usualAcross: DiagramTextAlign = oneNode.kind === 'text' || oneNode.kind === 'group' ? 'left' : 'center';
                 const usualDown: DiagramTextValign = oneNode.kind === 'group' ? 'top' : 'middle';
@@ -4075,12 +4645,25 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                       )}
                       <TextSizeField
                         key={oneNode.id}
-                        value={oneNode.textSize}
-                        usual={oneNode.kind === 'group' || oneNode.kind === 'image' ? 13 : 14}
-                        onChange={(size) => setNode(oneNode.id, { textSize: size })}
+                        value={oneNode.textFit === true ? undefined : oneNode.textSize}
+                        usual={oneNode.kind === 'group' || oneNode.kind === 'image' ? 13 : oneNode.kind === 'code' ? 12 : 14}
+                        onChange={(size) => setNode(oneNode.id, { textSize: size, textFit: undefined })}
                         onFocus={begin}
                         onBlur={end}
                       />
+                      {seated && (
+                        <button
+                          type="button"
+                          className={styles.textChoice}
+                          aria-pressed={oneNode.textFit === true}
+                          aria-label={t('Fit the text to the shape')}
+                          title={t('Fit the text to the shape')}
+                          onClick={() => setNode(oneNode.id, { textFit: oneNode.textFit === true ? undefined : true })}
+                          data-testid="diagram-node-text-fit"
+                        >
+                          <img src={fitIcon} alt="" width={16} height={16} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -4193,7 +4776,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                   onFocus={begin}
                   onBlur={end}
                   onChange={(event) => setEdge(oneEdge.id, { label: event.target.value === '' ? undefined : event.target.value })}
-                  maxLength={500}
+                  maxLength={labelMost}
                   data-testid="diagram-edge-label-input"
                 />
               </label>
@@ -4310,6 +4893,33 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
               {tf('{count} selected', { count: selectedNodes.length + selectedEdges.length })}
             </p>
           )}
+          {/* Several shapes: their fill and their words, all at once - the side panel says what one shape's does. */}
+          {selectedNodes.length > 1 && (() => {
+            const many = drawing.nodes.filter((node) => selectedNodes.includes(node.id) && node.kind !== 'code' && node.kind !== 'image');
+            if (many.length === 0) return null;
+            const fills = new Set(many.map((node) => node.color));
+            const fill = fills.size === 1 ? [...fills][0] : null;
+            const paint = (colour: string | undefined) => change({ ...drawing, nodes: drawing.nodes.map((node) => (many.some((one) => one.id === node.id) ? { ...node, color: colour } : node)) });
+            return (
+              <>
+                <div className={styles.field} data-testid="diagram-many-fill">
+                  <span>{t('Colour')}</span>
+                  <div className={styles.strokeRow}>
+                    <button type="button" className={`${styles.swatch} ${styles.swatchNone} ${fill === undefined ? styles.swatchOn : ''}`} onClick={() => paint(undefined)} aria-label={t('No colour')} title={t('No colour')} data-testid="diagram-many-fill-none" />
+                    {SWATCHES.map((colour) => (
+                      <button key={colour} type="button" className={`${styles.swatch} ${fill === colour ? styles.swatchOn : ''}`} style={{ background: colour }} onClick={() => paint(colour)} aria-label={colour} title={colour} data-testid="diagram-many-fill-colour" />
+                    ))}
+                  </div>
+                </div>
+                {many.some((node) => node.kind !== 'jira' && node.kind !== 'link') && (
+                  <TextStyleField
+                    labels={many.filter((node) => node.kind !== 'jira' && node.kind !== 'link').map((node) => node.label)}
+                    onChange={(restyle) => change({ ...drawing, nodes: drawing.nodes.map((node) => (many.some((one) => one.id === node.id) && node.kind !== 'jira' && node.kind !== 'link' ? { ...node, label: restyle(node.label) } : node)) })}
+                  />
+                )}
+              </>
+            );
+          })()}
           </fieldset>
           </div>
           {/* Here and not in the chat's foot: the chat may be folded away, and a diagram that did not save has to say so. */}

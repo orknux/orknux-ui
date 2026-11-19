@@ -19,7 +19,7 @@ export const UML_KINDS = ['actor', 'class', 'component', 'package', 'interface',
 /** The shapes of a system's architecture - queues, storage, machines and where people meet it - in the order the menu offers them. */
 export const ARCHITECTURE_KINDS = ['queue', 'storage', 'server', 'browser', 'mobile'] as const;
 
-export const DIAGRAM_NODE_KINDS = ['box', 'rounded', 'ellipse', 'diamond', 'note', 'group', 'image', 'text', 'link', ...FLOWCHART_KINDS, ...ARCHITECTURE_KINDS, ...UML_KINDS] as const;
+export const DIAGRAM_NODE_KINDS = ['box', 'rounded', 'ellipse', 'diamond', 'note', 'group', 'image', 'text', 'link', 'code', 'jira', ...FLOWCHART_KINDS, ...ARCHITECTURE_KINDS, ...UML_KINDS] as const;
 
 /**
  * What a connection was drawn as before it had a style and two ends (`DiagramEdgeKind`):
@@ -74,6 +74,10 @@ export interface DiagramNodeData {
   valign?: DiagramTextValign;
   /** How big its words are, in pixels, 6 to 96; left out, the size its kind of shape usually writes in. */
   textSize?: number;
+  /** Its words sized to fill it, as large as fit, rather than drawn at textSize; left out, not. */
+  textFit?: boolean;
+  /** What a code or a Jira shape shows: a GitHub file's address, or an issue key. */
+  source?: string;
 }
 
 /** Where a shape's label sits across it, and down it (`DiagramTextAlign`, `DiagramTextValign`). */
@@ -139,6 +143,9 @@ export interface DiagramEdgeData {
   fromSide?: DiagramSide;
   /** The side of its `to` box it is pinned to; left out, the end floats to the side facing `from`. */
   toSide?: DiagramSide;
+  /** Where along its pinned side each end sits, a share of the side from its start (left or top), 0 to 1; left out, the middle. */
+  fromAt?: number;
+  toAt?: number;
   /** The layer it is on, by id; left out, the drawing's first. */
   layer?: string;
   /**
@@ -198,6 +205,8 @@ export interface Diagram {
   revision: number;
   /** How long a node's notes may be on this installation. */
   noteCharactersMost: number;
+  /** Newer servers only; a label past it is trimmed on save. */
+  labelCharactersMost?: number;
   createdBy: string;
   createdAt: string;
   updatedBy: string;
@@ -225,7 +234,7 @@ export interface DiagramAnswer {
 }
 
 const FIELDS =
-  'id workspaceId catalogId catalogName name description descriptionCharactersMost agentAccess document nodeCount edgeCount revision noteCharactersMost createdBy createdAt updatedBy updatedAt';
+  'id workspaceId catalogId catalogName name description descriptionCharactersMost agentAccess document nodeCount edgeCount revision noteCharactersMost labelCharactersMost createdBy createdAt updatedBy updatedAt';
 const CATALOG_FIELDS = 'id workspaceId name diagramCount';
 
 /** The drawing of a stored diagram; one that cannot be read is an empty drawing. */
@@ -357,6 +366,92 @@ export async function saveDiagram(id: string, drawing: DiagramDrawing, revision:
     { id, document: documentOf(drawing), revision, viewer: viewer ?? null },
   );
   return data.saveDiagram;
+}
+
+/** Which shapes read from outside the diagram (`DiagramSourceKind`). */
+export type DiagramSourceKind = 'CODE' | 'JIRA';
+
+/** What one code or Jira shape last read (`DiagramSource`). */
+export interface DiagramSource {
+  kind: DiagramSourceKind;
+  source: string;
+  /** The code's lines, or the issue as JSON; null where nothing was read yet. */
+  body: string | null;
+  fetchedAt: string | null;
+  stale: boolean;
+  failed: string | null;
+  /** Whether the workspace chose a function to read this kind with. */
+  configured: boolean;
+}
+
+const SOURCE_FIELDS = 'kind source body fetchedAt stale failed configured';
+
+/** The kind of read a shape makes, or null for a shape that reads nothing. */
+export function sourceKindOf(kind: DiagramNodeKind): DiagramSourceKind | null {
+  return kind === 'code' ? 'CODE' : kind === 'jira' ? 'JIRA' : null;
+}
+
+/** What every code and Jira shape of a diagram last read, from the copies only: nothing is fetched. */
+export async function diagramSources(diagramId: string): Promise<DiagramSource[]> {
+  const data = await graphql<{ diagramSources: DiagramSource[] }>(
+    `query ($diagramId: ID!) { diagramSources(diagramId: $diagramId) { ${SOURCE_FIELDS} } }`,
+    { diagramId },
+  );
+  return data.diagramSources;
+}
+
+/** One shape read again where its copy is stale, or always with force. */
+export async function fetchDiagramSource(diagramId: string, kind: DiagramSourceKind, source: string, force = false): Promise<DiagramSource> {
+  const data = await graphql<{ fetchDiagramSource: DiagramSource }>(
+    `mutation ($diagramId: ID!, $kind: DiagramSourceKind!, $source: String!, $force: Boolean) {
+       fetchDiagramSource(diagramId: $diagramId, kind: $kind, source: $source, force: $force) { ${SOURCE_FIELDS} }
+     }`,
+    { diagramId, kind, source, force },
+  );
+  return data.fetchDiagramSource;
+}
+
+/** A GitHub file's address read as the server reads it: owner, repo, ref, path and the lines asked for. */
+export interface CodeSource {
+  owner: string;
+  repo: string;
+  ref: string;
+  path: string;
+  fromLine?: number;
+  toLine?: number;
+}
+
+/** The file an address names, or null where it is not a GitHub file's address (`DiagramCodeSource`). */
+export function codeSourceOf(address: string): CodeSource | null {
+  let url: URL;
+  try {
+    url = new URL(address.trim());
+  } catch {
+    return null;
+  }
+  if (!/^https?:$/.test(url.protocol) || !/^(www\.)?github\.com$/i.test(url.hostname)) return null;
+  const parts = url.pathname.split('/').filter((part) => part !== '');
+  if (parts.length < 5 || parts[2] !== 'blob') return null;
+  const found: CodeSource = { owner: parts[0], repo: parts[1].replace(/\.git$/, ''), ref: parts[3], path: decodeURIComponent(parts.slice(4).join('/')) };
+  const range = /^L(\d+)(?:-L?(\d+))?$/i.exec(url.hash.replace(/^#/, ''));
+  if (url.hash !== '' && url.hash !== '#') {
+    if (range === null) return null;
+    const first = Number(range[1]);
+    const last = range[2] === undefined ? first : Number(range[2]);
+    if (first < 1) return null;
+    found.fromLine = Math.min(first, last);
+    found.toLine = Math.max(first, last);
+  }
+  return found;
+}
+
+/** The issue key a key or an address names, upper case, or null (`DiagramJiraSource`). */
+export function jiraKeyOf(said: string): string | null {
+  const text = said.trim();
+  if (/^[A-Za-z][A-Za-z0-9_]{0,63}-[1-9][0-9]{0,11}$/.test(text)) return text.toUpperCase();
+  if (!/^https?:\/\//i.test(text)) return null;
+  const found = /(?:\/browse\/|[?&]selectedIssue=)([A-Za-z][A-Za-z0-9_]{0,63}-[1-9][0-9]{0,11})(?:[/?#&]|$)/.exec(text);
+  return found === null ? null : found[1].toUpperCase();
 }
 
 export async function deleteDiagram(id: string): Promise<boolean> {

@@ -210,6 +210,11 @@ try {
     pinned?.to === 'b' && pinned?.toSide === 'left',
     `an end dropped on a box's side pins there, anywhere on the side (to=${pinned?.to}, toSide=${pinned?.toSide ?? 'none'})`,
   );
+  // And at the point of the side it was let go on - any point of the outline, not only the side's middle.
+  record(Math.abs((pinned?.toAt ?? 0.5) - 0.4) < 0.03, `it is pinned where along the side it was dropped (toAt=${pinned?.toAt ?? 'the middle'})`);
+  line = await drawn();
+  const along = await screenOf(360, 260 + 0.4 * 60);
+  record(within(line.end, along, 3), `and the line is drawn to that point (${Math.round(Math.hypot(line.end.x - along.x, line.end.y - along.y))}px off it)`);
 
   // The start is an end too. Pinned to its box's top, it is dragged to the same box's right side...
   await drag('from', point(await boxOf('a'), 0.9, 0.5));

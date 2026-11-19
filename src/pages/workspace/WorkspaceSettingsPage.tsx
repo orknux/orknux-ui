@@ -26,6 +26,7 @@ import {
   setWorkspaceCompaction,
   setWorkspaceCompanionModel,
   setWorkspaceImageModel,
+  setWorkspaceDiagramSources,
   setWorkspaceDefaultMemoryShare,
   setWorkspaceFunctionTimeout,
   setWorkspaceToolTimeout,
@@ -73,8 +74,12 @@ import { forgetWorkspaces } from '../../session/workspaces';
 import styles from './WorkspaceSettingsPage.module.css';
 import { SearchSettings, useSearchSettings } from '../workspace-settings/SearchSettings';
 import { INHERITED_MODEL, ModelPicker } from '../../components/ModelPicker';
-import { t } from '../../i18n';
+import { t, tf } from '../../i18n';
 import { Select } from '../../components/Select';
+import { fetchWorkspaceConnections } from '../../api/integrations';
+import type { WorkspaceConnection } from '../../api/integrations';
+import { fetchWorkspacePlugins } from '../../api/plugins';
+import type { WorkspacePlugin } from '../../api/plugins';
 
 export interface WorkspaceSettingsPageProps {
   session: SessionUser;
@@ -446,6 +451,33 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
   const [transcription, setTranscription] = useState('');
   const [speech, setSpeech] = useState('');
   const [image, setImage] = useState('');
+  // What diagrams' code and Jira shapes read through, and how long a copy lasts: functions taking what each passes.
+  const [jiraConnection, setJiraConnection] = useState('');
+  const [fetchMinutes, setFetchMinutes] = useState('');
+  /** The workspace's plugins and its Jira connections: what code and Jira shapes read through, and the Jira ones to choose among. */
+  const [sourcePlugins, setSourcePlugins] = useState<WorkspacePlugin[] | null>(null);
+  const [jiraConnections, setJiraConnections] = useState<WorkspaceConnection[] | null>(null);
+  useEffect(() => {
+    if (workspaceId === undefined || workspaceId === '') return;
+    let gone = false;
+    fetchWorkspacePlugins(workspaceId)
+      .then((found) => {
+        if (!gone) setSourcePlugins(found);
+      })
+      .catch(() => {
+        if (!gone) setSourcePlugins([]);
+      });
+    fetchWorkspaceConnections(workspaceId)
+      .then((found) => {
+        if (!gone) setJiraConnections(found.filter((one) => one.pluginType === 'jira/jira'));
+      })
+      .catch(() => {
+        if (!gone) setJiraConnections([]);
+      });
+    return () => {
+      gone = true;
+    };
+  }, [workspaceId]);
   const [quickChat, setQuickChat] = useState('');
   const [quickChatWrites, setQuickChatWrites] = useState(false);
   /** Whether chats in this workspace show when each message was sent. Issue #323. */
@@ -566,6 +598,8 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         setTranscription(found?.transcriptionModelId ?? '');
         setSpeech(found?.speechModelId ?? '');
         setImage(found?.imageModelId ?? '');
+        setJiraConnection(found?.diagramJiraConnectionId ?? '');
+        setFetchMinutes(found?.diagramFetchMinutes == null ? '' : String(found.diagramFetchMinutes));
         setQuickChat(quickChatChoice(found));
         setQuickChatWrites(found?.quickChatMayWrite ?? false);
         setChatTimestamps(found?.chatShowTimestamps ?? true);
@@ -803,6 +837,9 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
       if (touched.has('image')) {
         latest = await setWorkspaceImageModel(workspaceId, asNull(image));
       }
+      if (touched.has('diagramSources')) {
+        latest = await setWorkspaceDiagramSources(workspaceId, asNull(jiraConnection), fetchMinutes.trim() === '' ? null : Number(fetchMinutes));
+      }
       if (touched.has('chatTimestamps')) {
         latest = await setWorkspaceChatTimestamps(workspaceId, chatTimestamps);
       }
@@ -921,6 +958,8 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
     setTranscription(held.transcriptionModelId ?? '');
     setSpeech(held.speechModelId ?? '');
     setImage(held.imageModelId ?? '');
+    setJiraConnection(held.diagramJiraConnectionId ?? '');
+    setFetchMinutes(held.diagramFetchMinutes == null ? '' : String(held.diagramFetchMinutes));
     setQuickChat(quickChatChoice(held));
     setQuickChatWrites(held.quickChatMayWrite);
     setChatTimestamps(held.chatShowTimestamps);
@@ -1973,6 +2012,102 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
               placeholder={workspace === null ? '' : String(workspace.functionTimeoutSecondsDefault)}
               value={functionTimeout}
               onChange={(event) => { touch('functionTimeout'); setFunctionTimeout(event.target.value); }}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/*
+        What diagrams' code and Jira shapes read through: the GitHub plugin,
+        with its token, and the Jira plugin, through the Jira connection chosen
+        here or the one the plugin is pointed at. Each says whether it can.
+      */}
+      <section className={styles.card}>
+        <div className={styles.sectionTitle}>
+          <h2 id="diagram-sources" className={styles.sectionHeading}>{t('Code and Jira in diagrams')}</h2>
+          <div className={styles.rule} />
+        </div>
+        {(() => {
+          const github = sourcePlugins?.find((one) => one.plugin.key === 'github');
+          const jira = sourcePlugins?.find((one) => one.plugin.key === 'jira');
+          const stateOf = (one: WorkspacePlugin | undefined, name: string) =>
+            one === undefined
+              ? tf('The {name} plugin is not loaded. An administrator loads it under Admin → Plugins.', { name })
+              : !one.plugin.enabled
+                ? tf('The {name} plugin is switched off under Admin → Plugins.', { name })
+                : one.missing.length > 0
+                  ? tf('The {name} plugin still needs {what} on this workspace’s Plugins page.', { name, what: one.missing.join(', ') })
+                  : null;
+          const githubState = stateOf(github, 'GitHub');
+          const jiraReady = jira !== undefined && jira.plugin.enabled;
+          return (
+            <>
+              <div className={styles.field}>
+                <span className={styles.label}>{t('GitHub Files')}</span>
+                <p className={styles.fieldNote} data-testid="diagram-code-state">
+                  {sourcePlugins === null ? t('Loading…') : (githubState ?? t('Code shapes read their files through the GitHub plugin, with its token.'))}
+                </p>
+              </div>
+              <div className={styles.field}>
+                <span className={styles.labelWithHint}>
+                  <label className={styles.label} htmlFor="diagram-jira-connection">
+                    {t('Jira Connection')}
+                  </label>
+                  <FieldHint label={t('Jira Connection')}>
+                    {t('Which Jira a diagram’s Jira shapes read issues from, through the Jira plugin. The plugin’s own is the connection it is pointed at on this workspace’s Plugins page.')}
+                  </FieldHint>
+                </span>
+                <div className={styles.inputWrapper}>
+                  <Select
+                    id="diagram-jira-connection"
+                    className={`${styles.input} ${styles.select}`}
+                    value={jiraConnection}
+                    disabled={workspace === null || jiraConnections === null}
+                    onChange={(picked) => {
+                      touch('diagramSources');
+                      setJiraConnection(picked);
+                    }}
+                    chevron={false}
+                    data-testid="diagram-jira-connection"
+                  >
+                    <option value="">{t('The Jira plugin’s own')}</option>
+                    {(jiraConnections ?? []).map((one) => (
+                      <option key={one.id} value={one.id}>
+                        {one.name}
+                      </option>
+                    ))}
+                  </Select>
+                  <img src={chevronDown12Icon} alt="" width={12} height={12} />
+                </div>
+                {sourcePlugins !== null && jira === undefined && <p className={styles.fieldNote}>{t('The Jira plugin is not loaded. An administrator loads it under Admin → Plugins.')}</p>}
+                {sourcePlugins !== null && jira !== undefined && !jira.plugin.enabled && <p className={styles.fieldNote}>{t('The Jira plugin is switched off under Admin → Plugins.')}</p>}
+                {jiraConnections !== null && jiraConnections.length === 0 && jiraReady && (
+                  <p className={styles.fieldNote}>{t('This workspace has no Jira connection yet. Add one under Integrations.')}</p>
+                )}
+              </div>
+            </>
+          );
+        })()}
+        <div className={styles.field}>
+          <span className={styles.labelWithHint}>
+            <label className={styles.label} htmlFor="diagram-fetch-minutes">
+              {t('Copies Kept (Minutes)')}
+            </label>
+            <FieldHint label={t('Copies Kept (Minutes)')}>
+              {t('Minutes a code or Jira shape shows its copy before it is read again. A diagram opens on the copy at once and reads again only the shapes in view that are older; Refresh in the side panel reads one now. 0 reads every time it is shown; empty keeps sixty minutes.')}
+            </FieldHint>
+          </span>
+          <div className={styles.shareRow}>
+            <input
+              id="diagram-fetch-minutes"
+              className={styles.input}
+              type="number"
+              min={0}
+              max={10080}
+              placeholder="60"
+              value={fetchMinutes}
+              onChange={(event) => { touch('diagramSources'); setFetchMinutes(event.target.value); }}
+              data-testid="diagram-fetch-minutes"
             />
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { createContext, memo, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createContext, memo, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import linkIcon from '../../assets/link.svg';
@@ -10,8 +10,12 @@ import type { DiagramLineStyle, DiagramNodeKind, DiagramRouting, DiagramSide, Di
 import { t, tf } from '../../i18n';
 import { pictureUrl } from '../../api/diagrams';
 import { dashesOf } from './DiagramLineStyles';
-import { jumped, pathOf, routeBent, routeOf, routeThrough, straightened, turned } from './DiagramRoutes';
+import { along, jumped, pathOf, routeBent, routeOf, routeThrough, shareNearest, straightened, traceOf, turned } from './DiagramRoutes';
 import type { Point, Route, RouteBox } from './DiagramRoutes';
+import { CodeNode, JiraNode } from './DiagramSourceNodes';
+import { Styled, insertedTyped, labelOfTyped, plainOf, selectionIn, showTyped, styledTyped, typedOf, typedOfBox } from './DiagramRichText';
+import type { Typed } from './DiagramRichText';
+import type { DiagramSource } from '../../api/diagrams';
 import { ICON_LABEL, OutlinePieces, compartments, outlineOf, rimBorder, rimBorderFrom } from './DiagramShapes';
 import type { Outline } from './DiagramShapes';
 import styles from './DiagramEditorPage.module.css';
@@ -46,7 +50,64 @@ export type ShapeData = {
   valign?: DiagramTextValign;
   /** How big its words are, in pixels; left out, the size its kind of shape usually writes in. */
   textSize?: number;
+  /** Its words sized to fill it rather than drawn at textSize. */
+  textFit?: boolean;
+  /** What a code or a Jira shape shows, and what it last read; the editor reads, the shape only draws. */
+  source?: string;
+  read?: DiagramSource;
 };
+
+/** The largest and smallest a fitted label is drawn, the text size field's own bounds. */
+const FIT_MOST = 96;
+const FIT_LEAST = 6;
+
+/**
+ * The largest size [label] fills a [width] by [height] room at, wrapped as the export wraps it -
+ * the server's `DiagramSvg.fit`, so a fitted label is the same size on the canvas and in a picture.
+ */
+/** Where the words of a diamond or an ellipse may go, tried in turn - as the export's `fitted` tries them: rectangles inside its sides. */
+const FIT_SHARES = [0.3, 0.4, 0.5, 0.6, 0.7];
+const FIT_ANGLES = [25, 35, 45, 55, 65].map((degrees) => (degrees * Math.PI) / 180);
+const FIT_ROOM = 0.9;
+
+/** The largest size [label] fits at in any of [rooms], and the width of the room it fits largest in. */
+export function fittedIn(label: string, rooms: [number, number][]): { size: number; width: number } {
+  return rooms.map(([width, height]) => ({ size: fittedSize(label, width, height), width })).reduce((best, one) => (one.size > best.size ? one : best));
+}
+
+/** The rooms a shape's fitted words are tried in: its outline's inside, a diamond's or an ellipse's inscribed rectangles, or its box less an inset. */
+export function roomsOf(kind: string, w: number, h: number, inside?: { left: number; right: number; top: number; bottom: number }): [number, number][] {
+  if (inside !== undefined) return [[((inside.right - inside.left) * w) / 100, ((inside.bottom - inside.top) * h) / 100]];
+  if (kind === 'diamond') return FIT_SHARES.map((t) => [Math.floor(w * (1 - t) * FIT_ROOM), Math.floor(h * t * FIT_ROOM)]);
+  if (kind === 'ellipse') return FIT_ANGLES.map((a) => [Math.floor(w * Math.cos(a) * FIT_ROOM), Math.floor(h * Math.sin(a) * FIT_ROOM)]);
+  return [[w - 16, h - 8]];
+}
+
+export function fittedSize(label: string, width: number, height: number): number {
+  const words = plainOf(label).trim();
+  if (words === '') return 14;
+  const parts = words.split(/\s+/);
+  for (let size = FIT_MOST; size >= FIT_LEAST; size -= 1) {
+    const line = Math.max(size + 2, Math.round((size * 18) / 14));
+    const fits = Math.max(1, Math.floor(width / (size * 0.56)));
+    if (parts.some((word) => word.length > fits)) continue;
+    let lines = 0;
+    for (const paragraph of words.split('\n')) {
+      let length = 0;
+      lines += 1;
+      for (const word of paragraph.split(' ').filter((one) => one !== '')) {
+        if (length === 0) length = word.length;
+        else if (length + 1 + word.length <= fits) length += 1 + word.length;
+        else {
+          lines += 1;
+          length = word.length;
+        }
+      }
+    }
+    if (lines * line <= height) return size;
+  }
+  return FIT_LEAST;
+}
 
 const ACROSS = { left: 'flex-start', center: 'center', right: 'flex-end' } as const;
 const DOWN = { top: 'flex-start', middle: 'center', bottom: 'flex-end' } as const;
@@ -103,6 +164,9 @@ export type LinkData = {
   fromSide?: DiagramSide;
   /** The side of its target box it is pinned to; left out, the end floats to the side facing the source. */
   toSide?: DiagramSide;
+  /** Where along its pinned side each end sits, a share of the side; left out, the middle. */
+  fromAt?: number;
+  toAt?: number;
   /** Its own corners, where it was routed around the boxes in its way; drawn only in right angles. */
   points?: [number, number][];
   /** Where along it its label sits, where the router moved it. */
@@ -137,14 +201,19 @@ export const SWATCHES = [
   '#3f3f46', '#1e3a8a', '#14532d', '#713f12', '#7c2d12', '#7f1d1d', '#4c1d95', '#831843', '#164e63',
 ];
 
+/** How long a label is kept when an older server does not say: its default. */
+export const LABEL_MOST = 5000;
+
 /** Which label is being typed over in place, and what becomes of what is typed. */
 export interface LabelEditing {
   target: { kind: 'node' | 'edge'; id: string } | null;
   commit: (text: string) => void;
   cancel: () => void;
+  /** How long a label is kept on this server; what is typed past it would be trimmed on save. */
+  most: number;
 }
 
-export const LabelEditingContext = createContext<LabelEditing>({ target: null, commit: () => {}, cancel: () => {} });
+export const LabelEditingContext = createContext<LabelEditing>({ target: null, commit: () => {}, cancel: () => {}, most: LABEL_MOST });
 
 /** Whether the diagram is being viewed rather than edited: no resizing, no handles to draw a line from. */
 export const ViewingContext = createContext(false);
@@ -189,9 +258,13 @@ export interface LinkEnds {
   drop: (id: string, end: LinkEnd, x: number, y: number) => void;
   /** A right-angle line given corners of its own, one of its runs having been dragged aside; none, and it finds its own way again. */
   bend: (id: string, corners: [number, number][]) => void;
+  /** Its label slid along it to [share] of the way from its start. */
+  slide: (id: string, share: number) => void;
+  /** Its label clicked, which selects the line as a click on the line does - or, twice, opens the label to type in. */
+  pick: (id: string, typing: boolean) => void;
 }
 
-export const LinkEndsContext = createContext<LinkEnds>({ hovered: null, aim: () => null, drop: () => {}, bend: () => {} });
+export const LinkEndsContext = createContext<LinkEnds>({ hovered: null, aim: () => null, drop: () => {}, bend: () => {}, slide: () => {}, pick: () => {} });
 
 /** The grid a shape settles on, and a run of a line dragged aside. */
 export const GRID = 8;
@@ -297,43 +370,188 @@ function TurnedResizer({ id, x, y, width, height, turn, keepRatio }: { id: strin
  */
 export function InPlaceLabel({ initial, className, multiline, style }: { initial: string; className: string; multiline: boolean; style?: CSSProperties }) {
   const editing = useContext(LabelEditingContext);
-  const box = useRef<HTMLTextAreaElement | null>(null);
+  const box = useRef<HTMLDivElement | null>(null);
+  /**
+   * The words as typed, a style per character - drawn styled in the box, with
+   * the marks they are kept as written only when the label is put down. The
+   * box was a textarea, which can only show the marks themselves.
+   */
+  const typed = useRef<Typed>(typedOf(initial));
+  /** Its own undo, since every keystroke redraws the box and the browser's would undo the redraw. */
+  const history = useRef<{ typed: Typed; start: number; end: number }[]>([]);
+  const ahead = useRef<{ typed: Typed; start: number; end: number }[]>([]);
   /** Set once Enter or Escape has decided, so the blur that follows does not decide again. */
   const done = useRef(false);
+  const composing = useRef(false);
+  /** Where the styling bar sits: just above the box, on the screen. */
+  const [bar, setBar] = useState<{ left: number; top: number } | null>(null);
   useEffect(() => {
     const held = box.current;
     if (held === null) return;
     held.focus();
-    held.select();
+    showTyped(held, typed.current, 0, typed.current.text.length);
+    const rect = held.getBoundingClientRect();
+    setBar({ left: rect.left, top: Math.max(4, rect.top - 38) });
   }, []);
+  const label = () => labelOfTyped(typed.current).slice(0, editing.most);
+  /** [next] put in the box with the selection from [start] to [end], the state before it kept to undo to. */
+  const put = (next: Typed, start: number, end = start) => {
+    const held = box.current;
+    if (held === null) return;
+    const was = selectionIn(held) ?? { start, end };
+    history.current = [...history.current.slice(-199), { typed: typed.current, start: was.start, end: was.end }];
+    ahead.current = [];
+    typed.current = next;
+    showTyped(held, next, start, end);
+  };
+  const restyle = (change: { mark: 'bold' | 'italic' | 'underline' | 'strike' } | { color: string }) => {
+    const held = box.current;
+    if (held === null) return;
+    const at = selectionIn(held);
+    if (at === null || at.start === at.end) return;
+    put(styledTyped(typed.current, at.start, at.end, change), at.start, at.end);
+  };
+  const insert = (words: string) => {
+    const held = box.current;
+    if (held === null) return;
+    const at = selectionIn(held) ?? { start: typed.current.text.length, end: typed.current.text.length };
+    put(insertedTyped(typed.current, at.start, at.end, words), at.start + words.length);
+  };
+  const step = (from: typeof history, to: typeof history) => {
+    const held = box.current;
+    const back = from.current[from.current.length - 1];
+    if (held === null || back === undefined) return;
+    const now = selectionIn(held) ?? { start: 0, end: 0 };
+    from.current = from.current.slice(0, -1);
+    to.current = [...to.current, { typed: typed.current, start: now.start, end: now.end }];
+    typed.current = back.typed;
+    showTyped(held, back.typed, back.start, back.end);
+  };
   return (
-    <textarea
-      ref={box}
-      className={`nodrag nopan nowheel ${className}`}
-      style={style}
-      defaultValue={initial}
-      rows={1}
-      onKeyDown={(event) => {
-        event.stopPropagation();
-        if (event.key === 'Escape') {
+    <>
+      <div
+        ref={box}
+        className={`nodrag nopan nowheel ${className} ${styles.labelEditorRich}`}
+        style={style}
+        contentEditable
+        suppressContentEditableWarning
+        role="textbox"
+        aria-multiline={multiline}
+        spellCheck={false}
+        onKeyDown={(event) => {
+          event.stopPropagation();
+          const held = event.ctrlKey || event.metaKey;
+          const key = event.key.toLowerCase();
+          // The selected words styled, as in any editor: Ctrl+B, Ctrl+I, Ctrl+U, and Ctrl+Shift+X to strike them through.
+          if (held && !event.altKey && (key === 'b' || key === 'i' || key === 'u' || (key === 'x' && event.shiftKey))) {
+            event.preventDefault();
+            restyle({ mark: key === 'b' ? 'bold' : key === 'i' ? 'italic' : key === 'u' ? 'underline' : 'strike' });
+            return;
+          }
+          if (held && !event.altKey && (key === 'z' || key === 'y')) {
+            event.preventDefault();
+            if (key === 'y' || event.shiftKey) step(ahead, history);
+            else step(history, ahead);
+            return;
+          }
+          if (event.key === 'Escape') {
+            event.preventDefault();
+            done.current = true;
+            editing.cancel();
+          } else if (event.key === 'Enter') {
+            event.preventDefault();
+            if (multiline && event.shiftKey) {
+              insert('\n');
+              return;
+            }
+            done.current = true;
+            editing.commit(label());
+          }
+        }}
+        onCompositionStart={() => {
+          composing.current = true;
+        }}
+        onCompositionEnd={(event) => {
+          composing.current = false;
+          const held = event.currentTarget;
+          const at = selectionIn(held);
+          const next = typedOfBox(held);
+          history.current = [...history.current.slice(-199), { typed: typed.current, start: at?.start ?? 0, end: at?.end ?? 0 }];
+          typed.current = next;
+          showTyped(held, next, at?.start ?? next.text.length);
+        }}
+        // Whatever the browser did to the box - typed a letter into a span, deleted across two - is read back off it and drawn again, tidily.
+        onInput={(event) => {
+          if (composing.current) return;
+          const held = event.currentTarget;
+          const at = selectionIn(held) ?? { start: 0, end: 0 };
+          const next = typedOfBox(held);
+          history.current = [...history.current.slice(-199), { typed: typed.current, start: at.start, end: at.end }];
+          ahead.current = [];
+          typed.current = next;
+          showTyped(held, next, at.start, at.end);
+        }}
+        // Pasted words arrive as words, in the style of the ones before them - not as somebody else's markup.
+        onPaste={(event) => {
+          const words = event.clipboardData.getData('text/plain');
+          // An address over selected words is the editor's to make a link of, as in a document: left to it, untouched here.
+          const over = box.current === null ? null : selectionIn(box.current);
+          if (over !== null && over.start !== over.end && /^(https?:\/\/|mailto:)\S+$/i.test(words.trim())) return;
           event.preventDefault();
-          done.current = true;
-          editing.cancel();
-        } else if (event.key === 'Enter' && !(multiline && event.shiftKey)) {
-          event.preventDefault();
-          done.current = true;
-          editing.commit(event.currentTarget.value);
-        }
-      }}
-      onDoubleClick={(event) => event.stopPropagation()}
-      onBlur={(event) => {
-        if (!done.current) editing.commit(event.currentTarget.value);
-      }}
-      aria-label={t('Label')}
-      data-testid="diagram-label-editor"
-    />
+          insert(multiline ? words.replace(/\r\n?/g, '\n') : words.replace(/\s*[\r\n]+\s*/g, ' '));
+        }}
+        onDrop={(event) => event.preventDefault()}
+        onDoubleClick={(event) => event.stopPropagation()}
+        onBlur={() => {
+          if (!done.current) editing.commit(label());
+        }}
+        aria-label={t('Label')}
+        data-testid="diagram-label-editor"
+      />
+      {bar !== null &&
+        createPortal(
+          // Pressed without taking the focus from the words, so what is selected stays selected.
+          <div className={styles.styleBar} style={{ left: bar.left, top: bar.top }} role="toolbar" aria-label={t('Style the selected words')} onMouseDown={(event) => event.preventDefault()} data-testid="diagram-style-bar">
+            {(
+              [
+                ['bold', 'B', t('Bold'), 'Ctrl+B', { fontWeight: 700 }],
+                ['italic', 'I', t('Italic'), 'Ctrl+I', { fontStyle: 'italic' }],
+                ['underline', 'U', t('Underline'), 'Ctrl+U', { textDecoration: 'underline' }],
+                ['strike', 'S', t('Strikethrough'), 'Ctrl+Shift+X', { textDecoration: 'line-through' }],
+              ] as const
+            ).map(([mark, letter, name, keys, look]) => (
+              <button key={letter} type="button" className={styles.styleBarButton} style={look} onClick={() => restyle({ mark })} title={`${name} (${keys})`} aria-label={name} data-testid={`diagram-style-${letter.toLowerCase()}`}>
+                {letter}
+              </button>
+            ))}
+            <span className={styles.styleBarRule} />
+            {STYLE_COLOURS.map((colour) => (
+              <button
+                key={colour}
+                type="button"
+                className={styles.styleBarColour}
+                style={{ background: colour }}
+                onClick={() => restyle({ color: colour })}
+                title={tf('Colour the selected words {colour}', { colour })}
+                aria-label={tf('Colour the selected words {colour}', { colour })}
+                data-testid={`diagram-style-colour-${colour.slice(1)}`}
+              />
+            ))}
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }
+
+/**
+ * Where each line drawn now runs, by its id - as the canvas draws it, so a
+ * double-click on a line can put its label at the point on it nearest the click.
+ */
+export const LINE_TRACES = new Map<string, Point[]>();
+
+/** The colours offered for part of a label: the strong ones, which read on a light shape and on paper. */
+const STYLE_COLOURS = ['#dc2626', '#ea580c', '#ca8a04', '#16a34a', '#2563eb', '#9333ea'];
 
 /**
  * A box's link, opened by its own button rather than by a click on the box,
@@ -397,7 +615,9 @@ function NodeLink({ link, beside = false }: { link: string; beside?: boolean }) 
  * card does the same. Its label is only the name it was made with, shown
  * while what it leads to is not known yet, or for a web address.
  */
-function LinkCardNode({ link, label, size }: { link?: string; label: string; size?: CSSProperties }) {
+function LinkCardNode({ link, label, size, textSize, fill, ink }: { link?: string; label: string; size?: CSSProperties; textSize?: number; fill?: string; ink?: string }) {
+  // Where it leads is written smaller than its name, in the proportion the card has at the usual size: eleven to fourteen.
+  const whereSize = textSize === undefined ? undefined : { fontSize: Math.max(6, Math.round((textSize * 11) / 14)) };
   const links = useContext(LinkOpenContext);
   // Resting on the card shows where it goes, as a box's link button does: what it is, where it is, its first words.
   const root = useRef<HTMLDivElement>(null);
@@ -418,6 +638,8 @@ function LinkCardNode({ link, label, size }: { link?: string; label: string; siz
     <div
       ref={root}
       className={`${styles.linkNode} ${card?.missing ? styles.linkNodeGone : ''}`}
+      // A fill picked for it is its card's, with words that read on it.
+      style={fill === undefined ? undefined : { background: fill, color: ink }}
       onMouseEnter={() => {
         if (card === null) return;
         waiting.current = window.setTimeout(() => {
@@ -435,17 +657,16 @@ function LinkCardNode({ link, label, size }: { link?: string; label: string; siz
         <span className={styles.linkNodeName} style={size} data-testid="diagram-node-label-text">
           {name}
         </span>
-        <span className={styles.linkNodeWhere}>{where}</span>
+        <span className={styles.linkNodeWhere} style={whereSize}>
+          {where}
+        </span>
       </span>
       {set && card !== null && !card.missing && (
         <button
           type="button"
-          className={`nodrag nopan ${styles.linkNodeOpen}`}
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={(event) => {
-            event.stopPropagation();
-            links.open(link);
-          }}
+          className={`nopan ${styles.linkNodeOpen}`}
+          // The click goes on to the card, so it is selected as well as opened: its button was the one place on it a click did not select it.
+          onClick={() => links.open(link)}
           aria-label={tf('Open {name}', { name })}
           title={tf('Open {name}', { name })}
           data-testid="diagram-node-link"
@@ -494,7 +715,7 @@ function LinkedWords({ link, label, style }: { link?: string; label: string; sty
       data-testid="diagram-node-label-text"
       data-linked={linked ? '' : undefined}
     >
-      {label}
+      <Styled text={label} />
     </span>
   );
 }
@@ -522,7 +743,14 @@ export function ShapeNodeView({ id, data, selected, width, height, positionAbsol
   // Fitted to the node's own size, so a wide one keeps small features at its sides.
   const outline = outlineOf(data.kind, width ?? 100, height ?? 100);
   const turn = data.rotation ?? 0;
-  const seat = seatOf(data.align, data.valign, data.textSize);
+  // A fitted label's size, in the room the shape leaves for words - its outline's inside, or the box less its inset.
+  const fitted = useMemo(
+    () => (data.textFit === true ? fittedIn(data.label, roomsOf(data.kind, width ?? 100, height ?? 100, outline?.inside)) : undefined),
+    [data.textFit, data.label, data.kind, width, height, outline],
+  );
+  const placed = seatOf(data.align, data.valign, fitted?.size ?? data.textSize);
+  // Fitted inside a diamond or an ellipse, the words are set no wider than the room they were fitted to, or they cross its sides.
+  const seat = fitted !== undefined && (data.kind === 'diamond' || data.kind === 'ellipse') ? { ...placed, words: { ...placed.words, maxWidth: fitted.width } } : placed;
   /*
    * React Flow reads where a node's handles are when the node is measured, and
    * a turn changes where they are without changing its size - so it is told,
@@ -538,8 +766,12 @@ export function ShapeNodeView({ id, data, selected, width, height, positionAbsol
   }, [remeasure, id, turn]);
   const drawn = (
     <>
-      {data.kind === 'link' ? (
-        <LinkCardNode link={data.link} label={data.label} size={seat.size} />
+      {data.kind === 'code' ? (
+        <CodeNode source={data.source} label={data.label} read={data.read} size={data.textSize} />
+      ) : data.kind === 'jira' ? (
+        <JiraNode source={data.source} label={data.label} read={data.read} size={data.textSize} fill={data.color} ink={filled ? style?.color : undefined} />
+      ) : data.kind === 'link' ? (
+        <LinkCardNode link={data.link} label={data.label} size={seat.size} textSize={data.textSize} fill={data.color} ink={filled ? style?.color : undefined} />
       ) : data.kind === 'image' ? (
         <div className={styles.picture} data-testid="diagram-node-shape" data-kind="image">
           {data.loading === true ? (
@@ -556,7 +788,7 @@ export function ShapeNodeView({ id, data, selected, width, height, positionAbsol
           ) : (
             data.label !== '' && (
               <span className={styles.pictureCaption} style={seat.size} data-testid="diagram-node-label-text">
-                {data.label}
+                <Styled text={data.label} />
               </span>
             )
           )}
@@ -581,7 +813,7 @@ export function ShapeNodeView({ id, data, selected, width, height, positionAbsol
             <InPlaceLabel initial={data.label} className={`${styles.shapeLabel} ${styles.labelEditor}`} multiline style={{ ...(filled ? { color: style?.color } : {}), ...seat.words }} />
           ) : (
             <span className={styles.shapeLabel} style={{ ...(filled ? { color: style?.color } : {}), ...seat.words }} data-testid="diagram-node-label-text">
-              {data.label}
+              <Styled text={data.label} />
             </span>
           )}
         </div>
@@ -591,7 +823,7 @@ export function ShapeNodeView({ id, data, selected, width, height, positionAbsol
             <InPlaceLabel initial={data.label} className={`${data.kind === 'group' ? styles.groupLabel : styles.shapeLabel} ${styles.labelEditor}`} multiline style={seat.words} />
           ) : (
             <span className={data.kind === 'group' ? styles.groupLabel : styles.shapeLabel} style={seat.words} data-testid="diagram-node-label-text">
-              {data.label}
+              <Styled text={data.label} />
             </span>
           )}
         </div>
@@ -646,7 +878,7 @@ function OutlinedShape({ kind, outline, label, typing, fill, ink, seat }: { kind
       <InPlaceLabel initial={label} className={`${className} ${styles.labelEditor}`} multiline style={{ ...(ink ? { color: ink } : {}), ...seat.words }} />
     ) : (
       <span className={className} style={{ ...(ink ? { color: ink } : {}), ...seat.words }} data-testid="diagram-node-label-text">
-        {label}
+        <Styled text={label} />
       </span>
     );
   if (outline.icon) {
@@ -660,7 +892,7 @@ function OutlinedShape({ kind, outline, label, typing, fill, ink, seat }: { kind
         {/* Beneath the icon, on the paper, so it is ink whatever the fill. */}
         {typing ? <InPlaceLabel initial={label} className={`${styles.shapeIconLabel} ${styles.labelEditor}`} multiline={false} style={under} /> : (
           <span className={styles.shapeIconLabel} style={under} data-testid="diagram-node-label-text">
-            {label}
+            <Styled text={label} />
           </span>
         )}
       </div>
@@ -677,7 +909,7 @@ function OutlinedShape({ kind, outline, label, typing, fill, ink, seat }: { kind
           {compartments(label).map((lines, at) => (
             <div key={at} className={at === 0 ? styles.className : styles.classPart}>
               {lines.map((line, row) => (
-                <div key={row}>{line === '' ? ' ' : line}</div>
+                <div key={row}>{line === '' ? ' ' : <Styled text={line} />}</div>
               ))}
             </div>
           ))}
@@ -726,8 +958,16 @@ function border(box: { cx: number; cy: number; hw: number; hh: number }, tx: num
  * the node objects being rebuilt.
  */
 /** Far off a pinned side, so the outline's own point on that side is where the end leaves; the floating target otherwise. */
-function sideAim(box: { cx: number; cy: number; hw: number; hh: number }, side: DiagramSide | undefined, tx: number, ty: number): [number, number] {
+function sideAim(box: { cx: number; cy: number; hw: number; hh: number }, side: DiagramSide | undefined, tx: number, ty: number, at?: number): [number, number] {
   const far = 1_000_000;
+  // Part way along the side: toward that point of it, where the outline is met on the ray through it - the server's `DiagramRoute.aim`.
+  if (at !== undefined && side !== undefined) {
+    const along = at - 0.5;
+    if (side === 'top') return [box.cx + along * 2 * box.hw, box.cy - box.hh];
+    if (side === 'bottom') return [box.cx + along * 2 * box.hw, box.cy + box.hh];
+    if (side === 'left') return [box.cx - box.hw, box.cy + along * 2 * box.hh];
+    return [box.cx + box.hw, box.cy + along * 2 * box.hh];
+  }
   switch (side) {
     case 'top':
       return [box.cx, box.cy - far];
@@ -751,6 +991,8 @@ function routeBetween(
   labelAt?: number,
   fromSide?: DiagramSide,
   toSide?: DiagramSide,
+  fromAt?: number,
+  toAt?: number,
 ): Route {
   const a = boxOf(from);
   const b = boxOf(to);
@@ -771,7 +1013,7 @@ function routeBetween(
   };
   const leave = (box: typeof a, tx: number, ty: number) => {
     const side = box === a ? fromSide : toSide;
-    let [ax, ay] = sideAim(box, side, tx, ty);
+    let [ax, ay] = sideAim(box, side, tx, ty, box === a ? fromAt : toAt);
     // A pinned side turns with its box: the top of one turned a quarter is on its right.
     if (box.turn && side !== undefined) {
       const [sx, sy] = turned(ax - box.cx, ay - box.cy, box.turn);
@@ -790,8 +1032,12 @@ function routeBetween(
     return routeThrough(a, b, points, leaveFrom, labelAt);
   }
   // Bent by hand: through its own points, as straight runs or as a curve.
-  if (points !== undefined && points.length > 0) return routeBent(a, b, routing, points, leave, { from: outOf(a, fromSide), to: outOf(b, toSide) }, labelAt);
-  return routeOf(a, b, routing, leave, { from: outOf(a, fromSide), to: outOf(b, toSide) });
+  const drawn =
+    points !== undefined && points.length > 0
+      ? routeBent(a, b, routing, points, leave, { from: outOf(a, fromSide), to: outOf(b, toSide) }, labelAt)
+      : routeOf(a, b, routing, leave, { from: outOf(a, fromSide), to: outOf(b, toSide) });
+  // A label moved along the line by hand sits that share of the way along it, whatever the line's shape - the server's `DiagramRoute.of`.
+  return labelAt === undefined ? drawn : { ...drawn, label: along(traceOf(drawn), labelAt) };
 }
 
 /** The way out of a box through a side an end is pinned to, a step long and turned with the box; nothing for an end pinned nowhere. */
@@ -876,11 +1122,11 @@ function linesOf(state: ReactFlowState): Map<string, DrawnLine> {
     const key = [
       a.cx, a.cy, a.hw, a.hh, a.turn, (from.data as ShapeData | undefined)?.kind,
       b.cx, b.cy, b.hw, b.hh, b.turn, (to.data as ShapeData | undefined)?.kind,
-      data?.routing, data?.points, data?.labelAt, data?.fromSide, data?.toSide,
+      data?.routing, data?.points, data?.labelAt, data?.fromSide, data?.toSide, data?.fromAt, data?.toAt,
     ];
     const held = before?.routes.get(edge.id);
     const kept = held !== undefined && sameAll(held.key, key);
-    const route = kept ? held.route : routeBetween(from, to, data?.routing ?? 'straight', data?.points, data?.labelAt, data?.fromSide, data?.toSide);
+    const route = kept ? held.route : routeBetween(from, to, data?.routing ?? 'straight', data?.points, data?.labelAt, data?.fromSide, data?.toSide, data?.fromAt, data?.toAt);
     routes.set(edge.id, { key, route });
     if (!kept && (route.points !== undefined || held?.route.points !== undefined)) stale = true;
     const was = before?.lines.get(edge.id);
@@ -931,6 +1177,46 @@ export function FloatingLink({ id, data, selected, markerEnd, markerStart }: Edg
   // A bend being dragged - one of the line's own, or one being made from the middle of a part - and the bends as they would be let go of here.
   // With [both], a part between two bends taken hold of: both move together, by how far the pointer has gone from [both.start].
   const [bending, setBending] = useState<{ at: number; points: Point[]; moved: boolean; both?: { base: Point[]; start: Point } } | null>(null);
+  // The label being slid along the line, and how far along it would be let go of; a press that does not move is a click.
+  const [sliding, setSliding] = useState<{ share: number; moved: boolean } | null>(null);
+  /*
+   * Followed on the window for as long as it is held, as a box is: the label is
+   * drawn again under the pointer at every step, and an element drawn again lost
+   * hold of the pointer after the first one.
+   */
+  const slide = useRef<{ x: number; y: number; share: number; moved: boolean } | null>(null);
+  const traceNow = useRef<Point[]>([]);
+  const slideEnds = useRef(ends);
+  slideEnds.current = ends;
+  const slidingNow = sliding !== null;
+  useEffect(() => {
+    if (!slidingNow) return;
+    const move = (event: PointerEvent) => {
+      const held = slide.current;
+      if (held === null) return;
+      if (!held.moved && Math.hypot(event.clientX - held.x, event.clientY - held.y) <= GRIP_SLACK) return;
+      const where = flow.screenToFlowPosition({ x: event.clientX, y: event.clientY }, { snapToGrid: false });
+      held.moved = true;
+      held.share = shareNearest(traceNow.current, where);
+      setSliding({ share: held.share, moved: true });
+    };
+    const up = () => {
+      const held = slide.current;
+      slide.current = null;
+      setSliding(null);
+      if (held === null) return;
+      if (held.moved) slideEnds.current.slide(id, Math.round(held.share * 1000) / 1000);
+      else slideEnds.current.pick(id, false);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+    return () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+    };
+  }, [slidingNow, flow, id]);
   /*
    * How much its grips and marks are scaled to stay a size a pointer can hit
    * however far out the canvas is. Read only by a line that draws any, so a
@@ -1019,7 +1305,9 @@ export function FloatingLink({ id, data, selected, markerEnd, markerStart }: Edg
   const landing = held !== null && held.moved ? ends.aim(id, held.end, held.x, held.y) : null;
   // A lit line that has no grips - its box is what is selected, or the diagram is only being viewed - still says where it is attached.
   const marked = !gripped && tips !== null && (selected === true || data?.touched === true);
-  const middle = route.label;
+  traceNow.current = traceOf(route);
+  LINE_TRACES.set(id, traceNow.current);
+  const middle = sliding !== null && sliding.moved ? along(traceNow.current, sliding.share) : route.label;
   const dashes = dashesOf(data?.line ?? 'solid');
   return (
     <>
@@ -1032,9 +1320,10 @@ export function FloatingLink({ id, data, selected, markerEnd, markerStart }: Edg
         style={{
           ...(dashes === null ? {} : { strokeDasharray: dashes, strokeLinecap: data?.line === 'dotted' ? 'round' : undefined }),
           // Its own colour and thickness; selected or lit, the selection's colour says so instead.
-          ...(data?.color !== undefined && !selected && data?.touched !== true ? { stroke: data.color } : {}),
-          ...(data?.width !== undefined ? { strokeWidth: selected || data?.touched === true ? data.width + 1 : data.width } : {}),
-        }}
+          // As variables: the stylesheet's stroke is important, and a plain stroke here lost to it.
+          ...(data?.color !== undefined ? { '--link-stroke': data.color } : {}),
+          ...(data?.width !== undefined ? { '--link-width': data.width, '--link-width-lit': data.width + 1 } : {}),
+        } as CSSProperties}
         interactionWidth={16}
       />
       {/*
@@ -1345,11 +1634,28 @@ export function FloatingLink({ id, data, selected, markerEnd, markerStart }: Edg
       {!typing && data?.label !== undefined && data.label !== '' && (
         <OverCanvas layer="react-flow__edgelabel-renderer">
           <div
-            className={`${styles.linkLabel} ${selected || data?.touched ? styles.linkLabelSelected : ''}`}
+            className={`${styles.linkLabel} ${selected || data?.touched ? styles.linkLabelSelected : ''} ${viewing ? '' : styles.linkLabelMovable}`}
             style={{ transform: `translate(-50%, -50%) translate(${middle.x}px, ${middle.y}px)` }}
+            // Taken hold of and moved, it slides along its line - to wherever on the line is nearest the pointer.
+            onPointerDown={(event) => {
+              if (viewing || event.button !== 0) return;
+              event.stopPropagation();
+              event.preventDefault();
+              slide.current = { x: event.clientX, y: event.clientY, share: data?.labelAt ?? 0.5, moved: false };
+              setSliding({ share: data?.labelAt ?? 0.5, moved: false });
+            }}
+            onDoubleClick={(event) => {
+              if (viewing) return;
+              event.stopPropagation();
+              ends.pick(id, true);
+            }}
+            onPointerCancel={() => {
+              pressed.current = null;
+              setSliding(null);
+            }}
             data-testid="diagram-edge-label"
           >
-            {data.label}
+            <Styled text={data.label} />
           </div>
         </OverCanvas>
       )}

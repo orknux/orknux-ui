@@ -43,8 +43,9 @@ await words('d').dblclick();
 const shown = await editor.waitFor({ timeout: 3_000 }).then(() => true).catch(() => false);
 const box = shown ? await editor.boundingBox() : null;
 const look = shown ? await editor.evaluate((one) => ({
-  size: getComputedStyle(one).fontSize, align: getComputedStyle(one).textAlign, value: one.value,
-  selected: one.selectionStart === 0 && one.selectionEnd === one.value.length, focused: document.activeElement === one,
+  // An editable box rather than a textarea, so its words are drawn styled: its text, and the page's selection over all of it.
+  size: getComputedStyle(one).fontSize, align: getComputedStyle(one).textAlign, value: one.innerText,
+  selected: window.getSelection()?.toString() === one.innerText && one.innerText !== '', focused: document.activeElement === one,
 })) : null;
 record(shown && look.value === 'New node' && look.selected && look.focused, `double-clicking a diamond's words opens them to typing, selected (${JSON.stringify(look)})`);
 record(box !== null && box.x >= shape.x && box.x + box.width <= shape.x + shape.width + 1 && box.y >= shape.y && box.y + box.height <= shape.y + shape.height + 1,
