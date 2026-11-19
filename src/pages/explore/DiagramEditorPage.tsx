@@ -161,7 +161,7 @@ import { shareNearest, turned } from './DiagramRoutes';
 import { alignTo, boundsOf, stretched } from './DiagramGuides';
 import type { Guide, GuideBox, GuideLine } from './DiagramGuides';
 import type { LinkCard } from './DiagramCanvas';
-import { restyled, wholeStyleOf } from './DiagramRichText';
+import { labelOfTyped, restyled, wholeStyleOf } from './DiagramRichText';
 import type { Linkable } from './DiagramLinkSearch';
 import { fetchDocuments } from '../../api/documents';
 import { fetchWireframes } from '../../api/wireframes';
@@ -346,13 +346,14 @@ function StrokeField({ label, colour, width, onChange, testId }: {
           <input
             type="color"
             className={styles.swatchPicker}
-            value={colour ?? '#3f3f46'}
+            // Uncontrolled: held to a value, React put the old colour back after each input event and the change event read that.
+            key={colour ?? 'usual'}
+            defaultValue={colour ?? '#3f3f46'}
             aria-label={t('Another colour')}
             ref={(input) => {
               if (input === null) return;
               input.onchange = () => onChange({ colour: input.value.toLowerCase(), width });
             }}
-            onChange={() => {}}
           />
         </label>
       </div>
@@ -445,7 +446,8 @@ function TextStyleField({ labels, onChange }: { labels: string[]; onChange: (res
           <input
             type="color"
             className={styles.swatchPicker}
-            value={colour ?? '#18181b'}
+            key={colour ?? 'usual'}
+            defaultValue={colour ?? '#18181b'}
             disabled={none}
             aria-label={t('Another colour')}
             ref={(input) => {
@@ -455,7 +457,6 @@ function TextStyleField({ labels, onChange }: { labels: string[]; onChange: (res
                 onChange((label) => restyled(label, { color: picked }));
               };
             }}
-            onChange={() => {}}
           />
         </label>
       </div>
@@ -620,7 +621,7 @@ const TEXT_LEAST = 6;
 const TEXT_MOST = 96;
 
 /**
- * What a code or a Jira shape shows, pasted or typed and put down with Enter:
+ * What a code or a Jira shape shows, pasted, or typed and put down with Enter:
  * a GitHub file's address, or an issue's key or address. Under it, what that
  * reads as, when it was read, Refresh, and why the last read failed - or that
  * the workspace has not chosen what reads it, with the way there.
@@ -640,6 +641,26 @@ function SourceField({
 }) {
   const code = node.kind === 'code';
   const [problem, setProblem] = useState<string | null>(null);
+  /** [said] put down as the shape's source, unless it is what it already shows; [loud] says why one that cannot be read was not. */
+  const take = (said: string, loud: boolean) => {
+    const typed = said.trim();
+    if (typed === (node.source ?? '')) {
+      setProblem(null);
+      return;
+    }
+    if (typed === '') {
+      setProblem(null);
+      onSource(undefined);
+      return;
+    }
+    const kept = code ? (codeSourceOf(typed) === null ? null : typed) : jiraKeyOf(typed);
+    if (kept === null) {
+      if (loud) setProblem(code ? t('That is not a GitHub file’s address. Copy it from the file’s page; add #L10-L40 for some of its lines.') : t('That is neither an issue key like PROJ-123 nor an issue’s address.'));
+      return;
+    }
+    setProblem(null);
+    if (kept !== node.source) onSource(kept);
+  };
   const file = code && node.source !== undefined ? codeSourceOf(node.source) : null;
   const said = file !== null
     ? `${file.owner}/${file.repo} · ${file.path}${file.fromLine === undefined ? '' : ` · ${tf('lines {from}–{to}', { from: file.fromLine, to: file.toLine ?? file.fromLine })}`} · ${file.ref}`
@@ -655,23 +676,17 @@ function SourceField({
           defaultValue={node.source ?? ''}
           autoFocus={node.source === undefined}
           placeholder={code ? 'https://github.com/owner/repo/blob/main/src/App.kt#L10-L40' : 'PROJ-123'}
+          // Put down by Enter, by a paste, or by leaving the field: an address pasted and then clicked away from was dropped when only Enter took it.
           onKeyDown={(event) => {
             if (event.key !== 'Enter') return;
             event.preventDefault();
-            const typed = event.currentTarget.value.trim();
-            if (typed === '') {
-              setProblem(null);
-              onSource(undefined);
-              return;
-            }
-            const kept = code ? (codeSourceOf(typed) === null ? null : typed) : jiraKeyOf(typed);
-            if (kept === null) {
-              setProblem(code ? t('That is not a GitHub file’s address. Copy it from the file’s page; add #L10-L40 for some of its lines.') : t('That is neither an issue key like PROJ-123 nor an issue’s address.'));
-              return;
-            }
-            setProblem(null);
-            onSource(kept);
+            take(event.currentTarget.value, true);
           }}
+          onPaste={(event) => {
+            const box = event.currentTarget;
+            window.setTimeout(() => take(box.value, false), 0);
+          }}
+          onBlur={(event) => take(event.currentTarget.value, true)}
           data-testid="diagram-node-source"
         />
       </label>
@@ -3125,6 +3140,13 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
     }),
     [others, workspaceId, navigate],
   );
+  /**
+   * The words a box's Text row styles. A link card with no label of its own
+   * shows the name of what it leads to, so that name becomes its label to carry
+   * the marks; the card keeps showing the name things have now.
+   */
+  const styledLabelOf = (node: DiagramNodeData): string =>
+    node.kind === 'link' && node.label.trim() === '' && node.link !== undefined && node.link !== '' ? labelOfTyped({ text: linkCtx.describe(node.link).name, styles: [] }) : node.label;
   const oneEdge = selectedEdges.length === 1 && selectedNodes.length === 0 ? (drawing.edges.find((edge) => edge.id === selectedEdges[0]) ?? null) : null;
   const access = agentAccessOptions();
 
@@ -3978,6 +4000,8 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                   ariaLabel={t('Map of the diagram')}
                   pannable
                   zoomable
+                  // A click on the map goes there, as a map is used: dragging its frame moves the view a little at a time.
+                  onClick={(_, at) => void flow.setCenter(at.x, at.y, { zoom: flow.getZoom(), duration: 200 })}
                 />
               )}
               <Panel position="bottom-right" style={mapShown ? MAP_BESIDE : undefined}>
@@ -4488,7 +4512,8 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                     <input
                       type="color"
                       className={styles.swatchPicker}
-                      value={oneNode.color ?? '#ffffff'}
+                      key={`${oneNode.id}-${oneNode.color ?? 'usual'}`}
+                      defaultValue={oneNode.color ?? '#ffffff'}
                       aria-label={t('Another colour')}
                       ref={(input) => {
                         if (input === null) return;
@@ -4497,7 +4522,6 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                           change({ ...drawing, nodes: drawing.nodes.map((node) => (node.id === oneNode.id ? { ...node, color: picked } : node)) });
                         };
                       }}
-                      onChange={() => {}}
                       data-testid="diagram-node-colour-custom"
                     />
                   </label>
@@ -4515,10 +4539,10 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                 </div>
               </div>
               )}
-              {oneNode.kind !== 'image' && oneNode.kind !== 'code' && oneNode.kind !== 'jira' && oneNode.kind !== 'link' && (
+              {oneNode.kind !== 'image' && oneNode.kind !== 'code' && oneNode.kind !== 'jira' && (
                 <TextStyleField
-                  labels={[oneNode.label]}
-                  onChange={(restyle) => change({ ...drawing, nodes: drawing.nodes.map((node) => (node.id === oneNode.id ? { ...node, label: restyle(node.label) } : node)) })}
+                  labels={[styledLabelOf(oneNode)]}
+                  onChange={(restyle) => change({ ...drawing, nodes: drawing.nodes.map((node) => (node.id === oneNode.id ? { ...node, label: restyle(styledLabelOf(node)) } : node)) })}
                 />
               )}
               {oneNode.kind === 'image' && (
@@ -4911,10 +4935,10 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                     ))}
                   </div>
                 </div>
-                {many.some((node) => node.kind !== 'jira' && node.kind !== 'link') && (
+                {many.some((node) => node.kind !== 'jira') && (
                   <TextStyleField
-                    labels={many.filter((node) => node.kind !== 'jira' && node.kind !== 'link').map((node) => node.label)}
-                    onChange={(restyle) => change({ ...drawing, nodes: drawing.nodes.map((node) => (many.some((one) => one.id === node.id) && node.kind !== 'jira' && node.kind !== 'link' ? { ...node, label: restyle(node.label) } : node)) })}
+                    labels={many.filter((node) => node.kind !== 'jira').map(styledLabelOf)}
+                    onChange={(restyle) => change({ ...drawing, nodes: drawing.nodes.map((node) => (many.some((one) => one.id === node.id) && node.kind !== 'jira' ? { ...node, label: restyle(styledLabelOf(node)) } : node)) })}
                   />
                 )}
               </>

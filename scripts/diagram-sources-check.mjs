@@ -148,6 +148,14 @@ try {
     await arrive();
   }
 
+  // An address pasted and left - no Enter - is put down all the same, as one pasted in and clicked away from.
+  await page.locator('.react-flow__node[data-id="code"]').click();
+  const sourceField = page.getByTestId('diagram-node-source');
+  await sourceField.fill('https://github.com/acme/till/blob/main/Till.kt');
+  await sourceField.blur();
+  await page.waitForTimeout(300);
+  record((await page.getByTestId('diagram-node-source-said').innerText()).includes('acme/till'), 'an address left without Enter is taken');
+
   // A fitted label is drawn larger than the usual fourteen pixels in a big box.
   const fitted = await page.locator('.react-flow__node[data-id="fit"] [data-testid="diagram-node-label-text"]').evaluate((one) => parseFloat(getComputedStyle(one).fontSize));
   record(fitted > 40, `a shape set to fit its text writes it as large as fits (${fitted}px)`);

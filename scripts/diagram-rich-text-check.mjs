@@ -174,6 +174,17 @@ try {
   const hex = (rgb) => `#${(rgb.match(/\d+/g) ?? []).slice(0, 3).map((n) => Number(n).toString(16).padStart(2, '0')).join('')}`;
   record(hex(cardFill) === picked, `a link card is drawn in the fill picked for it (${hex(cardFill)}, picked ${picked})`);
 
+  // And its words take a colour, from the same Text row a shape's do.
+  await page.getByTestId('diagram-text-colour-16a34a').click();
+  await page.waitForTimeout(300);
+  const cardName = page.locator('.react-flow__node[data-id="card"] [data-testid="diagram-node-label-text"]');
+  const cardInk = await cardName.evaluate((one) => getComputedStyle(one).color);
+  const cardWords = await cardName.innerText();
+  record(hex(cardInk) === '#16a34a' && cardWords === 'Handbook', `a link card's words are drawn in the colour picked, with no marks (${hex(cardInk)}, ${JSON.stringify(cardWords)})`);
+  await page.waitForTimeout(2500);
+  const cardLabel = (await stored()).nodes.find((node) => node.id === 'card')?.label;
+  record(cardLabel === '[Handbook]{#16a34a}', `and its label keeps the colour as a shape's does (${cardLabel})`);
+
   // Several shapes at once: the panel fills them and styles their words.
   await page.keyboard.press('Escape');
   await page.locator('.react-flow__node[data-id="b"]').click();

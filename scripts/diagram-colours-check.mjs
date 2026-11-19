@@ -49,8 +49,14 @@ const picker = page.getByTestId('diagram-node-colour-custom');
 record((await picker.count()) === 1, 'and a picker for any other');
 
 // The picker hands its colour over once it is closed - the change event, not every input on the way.
+// As a real picker does: an input event per colour passed on the way, then one change. A picker React held to its
+// value put the old colour back after each input event, and the change event then read that one.
 await picker.evaluate((input) => {
-  input.value = '#123456';
+  const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+  for (const one of ['#111111', '#123456']) {
+    set.call(input, one);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
   input.dispatchEvent(new Event('change', { bubbles: true }));
 });
 await page.waitForTimeout(300);

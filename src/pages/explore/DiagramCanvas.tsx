@@ -13,7 +13,7 @@ import { dashesOf } from './DiagramLineStyles';
 import { along, jumped, pathOf, routeBent, routeOf, routeThrough, shareNearest, straightened, traceOf, turned } from './DiagramRoutes';
 import type { Point, Route, RouteBox } from './DiagramRoutes';
 import { CodeNode, JiraNode } from './DiagramSourceNodes';
-import { Styled, insertedTyped, labelOfTyped, plainOf, selectionIn, showTyped, styledTyped, typedOf, typedOfBox } from './DiagramRichText';
+import { Styled, insertedTyped, labelOfTyped, plainOf, wholeStyleOf, selectionIn, showTyped, styledTyped, typedOf, typedOfBox } from './DiagramRichText';
 import type { Typed } from './DiagramRichText';
 import type { DiagramSource } from '../../api/diagrams';
 import { ICON_LABEL, OutlinePieces, compartments, outlineOf, rimBorder, rimBorderFrom } from './DiagramShapes';
@@ -632,7 +632,19 @@ function LinkCardNode({ link, label, size, textSize, fill, ink }: { link?: strin
   const set = link !== undefined && link !== '';
   const card = set ? links.describe(link) : null;
   const web = set && /^(https?:|mailto:)/i.test(link);
-  const name = card === null ? t('Not linked yet') : web ? (label !== '' ? label : card.name) : card.missing ? label || card.name : card.name;
+  // Its label's marks style the whole card's words - whichever name it shows - as the panel's Text row writes them.
+  const look = wholeStyleOf(label);
+  const said = plainOf(label);
+  const name = card === null ? t('Not linked yet') : web ? (said !== '' ? said : card.name) : card.missing ? said || card.name : card.name;
+  const lines = [look.underline === true ? 'underline' : '', look.strike === true ? 'line-through' : ''].filter((one) => one !== '').join(' ');
+  const nameLook: CSSProperties = {
+    ...size,
+    ...(look.color !== undefined ? { color: look.color } : {}),
+    ...(look.italic === true ? { fontStyle: 'italic' } : {}),
+    ...(look.bold === true ? { fontWeight: 800 } : {}),
+    ...(lines !== '' ? { textDecoration: lines } : {}),
+  };
+  const whereLook: CSSProperties | undefined = look.color === undefined ? whereSize : { ...whereSize, color: look.color, opacity: 0.75 };
   const where = card === null ? t('Choose what it leads to in the side panel') : card.missing ? t('This diagram was deleted') : web ? link.replace(/^https?:\/\//i, '') : card.where;
   return (
     <div
@@ -654,10 +666,10 @@ function LinkCardNode({ link, label, size, textSize, fill, ink }: { link?: strin
     >
       <img className={styles.linkNodeIcon} src={linkIcon} alt="" width={18} height={18} />
       <span className={styles.linkNodeWords}>
-        <span className={styles.linkNodeName} style={size} data-testid="diagram-node-label-text">
+        <span className={styles.linkNodeName} style={nameLook} data-testid="diagram-node-label-text">
           {name}
         </span>
-        <span className={styles.linkNodeWhere} style={whereSize}>
+        <span className={styles.linkNodeWhere} style={whereLook}>
           {where}
         </span>
       </span>

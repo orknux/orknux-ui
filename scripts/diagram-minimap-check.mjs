@@ -76,6 +76,18 @@ try {
   await page.waitForTimeout(300);
   record((await viewport()) !== before, 'a drag on the map moves the canvas');
 
+  // A click on the map goes there: the spot clicked comes to the middle of the canvas.
+  const centre = () => page.evaluate(() => {
+    const [a, , , d, e, f] = getComputedStyle(document.querySelector('.react-flow__viewport')).transform.match(/-?[\d.]+/g).map(Number);
+    const room = document.querySelector('.react-flow').getBoundingClientRect();
+    return { x: (room.width / 2 - e) / a, y: (room.height / 2 - f) / d };
+  });
+  const wasAt = await centre();
+  await page.mouse.click(mapBox.x + 12, mapBox.y + 12);
+  await page.waitForTimeout(500);
+  const nowAt = await centre();
+  record(Math.hypot(nowAt.x - wasAt.x, nowAt.y - wasAt.y) > 50, `a click on the map's corner moves the view there (${Math.round(wasAt.x)},${Math.round(wasAt.y)} to ${Math.round(nowAt.x)},${Math.round(nowAt.y)})`);
+
   // Viewing, the map is still there: it is for reading a drawing as much as for making one.
   await page.getByTestId('diagram-mode-view').click();
   await page.waitForTimeout(300);
